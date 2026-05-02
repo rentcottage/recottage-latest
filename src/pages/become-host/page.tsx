@@ -1086,7 +1086,6 @@ export default function BecomeHost() {
                 <a href="/privacy" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Privacy</a>
                 <a href="/terms" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Terms &amp; Conditions</a>
                 <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Site Map</a>
-                <a href="https://readdy.ai/?origin=logo" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Made with Readdy</a>
               </div>
             </div>
             <p className="text-gray-400 text-xs md:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
