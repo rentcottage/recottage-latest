@@ -1,0 +1,64 @@
+import { useState } from 'react';
+import { useAuth } from '../../../hooks/useAuth';
+import AuthModals from '../../../components/feature/AuthModals';
+
+interface Props {
+  children: React.ReactNode;
+}
+
+export default function HostGate({ children }: Props) {
+  const { isLoggedIn, loading, user } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="flex items-center gap-3 text-gray-400">
+          <div className="w-5 h-5 flex items-center justify-center animate-spin">
+            <i className="ri-loader-4-line text-xl"></i>
+          </div>
+          <span className="text-sm">Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <i className="ri-home-smile-line text-emerald-600 text-3xl"></i>
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Host Dashboard</h1>
+          <p className="text-gray-500 text-sm mb-8">
+            Sign in to access your host dashboard, manage bookings, and track your earnings.
+          </p>
+          <button
+            onClick={() => setShowAuth(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <div className="w-4 h-4 flex items-center justify-center">
+              <i className="ri-login-circle-line"></i>
+            </div>
+            Sign In to Continue
+          </button>
+          <p className="text-xs text-gray-400 mt-4">
+            Don&apos;t have an account?{' '}
+            <button
+              onClick={() => setShowAuth(true)}
+              className="text-emerald-600 hover:underline cursor-pointer whitespace-nowrap"
+            >
+              Create one
+            </button>
+          </p>
+        </div>
+        {showAuth && <AuthModals onClose={() => setShowAuth(false)} />}
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}

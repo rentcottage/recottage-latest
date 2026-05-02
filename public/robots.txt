@@ -1,0 +1,16 @@
+User-agent: *
+Disallow: /admin
+Disallow: /host-dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /payment/
+Allow: /
+Allow: /search
+Allow: /about-georgia
+Allow: /how-it-works
+Allow: /become-host
+Allow: /host-resources
+Allow: /book-experience
+Allow: /privacy
+Allow: /property/
+Sitemap: https://example.com/sitemap.xml

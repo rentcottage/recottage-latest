@@ -1,0 +1,677 @@
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import HCaptchaLib from '@hcaptcha/react-hcaptcha';
+import {
+  signInWithGoogle,
+  signInWithFacebook,
+  signUpWithEmail,
+  signInWithEmail,
+  sendPasswordReset,
+} from '../../hooks/useAuth';
+import { FEATURE_FLAGS } from '../../lib/featureFlags';
+
+// hCaptcha test sitekey — works on any domain without registration
+const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
+
+interface AuthModalsProps {
+  showLogin: boolean;
+  showSignup: boolean;
+  onCloseLogin: () => void;
+  onCloseSignup: () => void;
+  onSwitchToSignup: () => void;
+  onSwitchToLogin: () => void;
+  onSuccess?: () => void;
+}
+
+type LoginView = 'login' | 'forgot' | 'forgot-sent';
+
+export default function AuthModals({
+  showLogin,
+  showSignup,
+  onCloseLogin,
+  onCloseSignup,
+  onSwitchToSignup,
+  onSwitchToLogin,
+  onSuccess,
+}: AuthModalsProps) {
+  const navigate = useNavigate();
+
+  // Login / forgot state
+  const [loginView, setLoginView] = useState<LoginView>('login');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loginCaptchaToken, setLoginCaptchaToken] = useState('');
+  const loginCaptchaRef = useRef<HCaptchaLib>(null);
+
+  // Forgot password state
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotCaptchaToken, setForgotCaptchaToken] = useState('');
+  const forgotCaptchaRef = useRef<HCaptchaLib>(null);
+
+  // Signup state
+  const [signupError, setSignupError] = useState('');
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [confirmedEmail, setConfirmedEmail] = useState('');
+  const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
+  const [signupCaptchaToken, setSignupCaptchaToken] = useState('');
+  const signupCaptchaRef = useRef<HCaptchaLib>(null);
+  const [signupForm, setSignupForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    acceptTerms: false,
+  });
+
+  const resetLoginState = () => {
+    setLoginView('login');
+    setLoginError('');
+    setForgotEmail('');
+    setForgotError('');
+    setForgotCaptchaToken('');
+    forgotCaptchaRef.current?.resetCaptcha();
+    setLoginForm({ email: '', password: '' });
+    setLoginCaptchaToken('');
+    loginCaptchaRef.current?.resetCaptcha();
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginCaptchaToken) {
+      setLoginError('Please complete the CAPTCHA verification.');
+      return;
+    }
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const { error } = await signInWithEmail(loginForm.email, loginForm.password);
+      if (error) {
+        setLoginError(error);
+        loginCaptchaRef.current?.resetCaptcha();
+        setLoginCaptchaToken('');
+        return;
+      }
+      setLoginForm({ email: '', password: '' });
+      onCloseLogin();
+      resetLoginState();
+      onSuccess?.();
+      navigate('/profile');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    if (!forgotEmail.trim()) {
+      setForgotError('Please enter your email address.');
+      return;
+    }
+    if (!forgotCaptchaToken) {
+      setForgotError('Please complete the CAPTCHA verification.');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const { error } = await sendPasswordReset(forgotEmail);
+      if (error) {
+        setForgotError(error);
+        forgotCaptchaRef.current?.resetCaptcha();
+        setForgotCaptchaToken('');
+        return;
+      }
+      setLoginView('forgot-sent');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupError('');
+
+    if (!signupCaptchaToken) {
+      setSignupError('Please complete the CAPTCHA verification.');
+      return;
+    }
+    if (!signupForm.firstName.trim() || !signupForm.lastName.trim()) {
+      setSignupError('Please enter your first and last name.');
+      return;
+    }
+    const phoneClean = signupForm.phone.replace(/[\s\-\(\)]/g, '');
+    if (!phoneClean) {
+      setSignupError('Phone number is required.');
+      return;
+    }
+    if (!/^\+?[\d]{7,15}$/.test(phoneClean)) {
+      setSignupError('Please enter a valid phone number (e.g. +995 555 000 000).');
+      return;
+    }
+    if (signupForm.password.length < 8) {
+      setSignupError('Password must be at least 8 characters.');
+      return;
+    }
+    if (signupForm.password !== signupForm.confirmPassword) {
+      setSignupError('Passwords do not match.');
+      return;
+    }
+    if (!signupForm.acceptTerms) {
+      setSignupError('Please accept the Terms of Service to continue.');
+      return;
+    }
+
+    setSignupLoading(true);
+    try {
+      const { session, error, confirmationRequired } = await signUpWithEmail(
+        signupForm.firstName,
+        signupForm.lastName,
+        signupForm.email,
+        signupForm.password,
+        signupForm.phone
+      );
+
+      if (error) {
+        setSignupError(
+          error === 'User already registered'
+            ? 'An account with this email already exists. Try logging in instead.'
+            : error
+        );
+        signupCaptchaRef.current?.resetCaptcha();
+        setSignupCaptchaToken('');
+        return;
+      }
+
+      if (confirmationRequired) {
+        setConfirmedEmail(signupForm.email);
+        setConfirmationSent(true);
+        return;
+      }
+
+      if (session) {
+        onCloseSignup();
+        onSuccess?.();
+        navigate('/profile');
+      } else {
+        setSignupError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setSocialLoading('google');
+    try {
+      await signInWithGoogle();
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const handleFacebook = async () => {
+    setSocialLoading('facebook');
+    try {
+      await signInWithFacebook();
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const SocialButtons = () => (
+    <div className="space-y-3">
+      <button
+        onClick={handleGoogle}
+        disabled={!!socialLoading}
+        className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+      >
+        {socialLoading === 'google' ? (
+          <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-3"></div>
+        ) : (
+          <div className="w-5 h-5 flex items-center justify-center mr-3">
+            <i className="ri-google-fill text-red-500"></i>
+          </div>
+        )}
+        Continue with Google
+      </button>
+      {FEATURE_FLAGS.ENABLE_FACEBOOK_LOGIN && (
+        <button
+          onClick={handleFacebook}
+          disabled={!!socialLoading}
+          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+        >
+          {socialLoading === 'facebook' ? (
+            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-3"></div>
+          ) : (
+            <div className="w-5 h-5 flex items-center justify-center mr-3">
+              <i className="ri-facebook-fill text-blue-600"></i>
+            </div>
+          )}
+          Continue with Facebook
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── LOGIN MODAL ── */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+
+              {/* ── Forgot password — sent confirmation ── */}
+              {loginView === 'forgot-sent' && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Check your email</h2>
+                    <button
+                      onClick={() => { onCloseLogin(); resetLoginState(); }}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <i className="ri-close-line text-xl"></i>
+                    </button>
+                  </div>
+                  <div className="text-center py-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="ri-mail-send-line text-green-500 text-2xl"></i>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-1">
+                      We sent a password reset link to
+                    </p>
+                    <p className="font-semibold text-gray-900 mb-5">{forgotEmail}</p>
+                    <p className="text-gray-400 text-xs mb-6">
+                      Click the link in the email to set a new password. Check your spam folder if you don&apos;t see it.
+                    </p>
+                    <button
+                      onClick={() => setLoginView('login')}
+                      className="text-sm text-red-500 hover:text-red-600 cursor-pointer"
+                    >
+                      Back to log in
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* ── Forgot password — email entry ── */}
+              {loginView === 'forgot' && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { setLoginView('login'); setForgotError(''); setForgotCaptchaToken(''); forgotCaptchaRef.current?.resetCaptcha(); }}
+                        className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                      >
+                        <i className="ri-arrow-left-line text-lg"></i>
+                      </button>
+                      <h2 className="text-2xl font-bold text-gray-900">Reset password</h2>
+                    </div>
+                    <button
+                      onClick={() => { onCloseLogin(); resetLoginState(); }}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <i className="ri-close-line text-xl"></i>
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-gray-500 mb-5">
+                    Enter the email address linked to your account. We&apos;ll send you a link to reset your password.
+                  </p>
+
+                  {forgotError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                      <i className="ri-error-warning-line text-red-500"></i>
+                      <p className="text-sm text-red-700">{forgotError}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleForgotSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                      <input
+                        type="email"
+                        required
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        placeholder="Enter your email"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* CAPTCHA */}
+                    <div className="flex justify-center">
+                      <HCaptchaLib
+                        ref={forgotCaptchaRef}
+                        sitekey={HCAPTCHA_SITE_KEY}
+                        onVerify={(token) => setForgotCaptchaToken(token)}
+                        onExpire={() => setForgotCaptchaToken('')}
+                        onError={() => setForgotCaptchaToken('')}
+                        theme="light"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading || !forgotCaptchaToken}
+                      className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                    >
+                      {forgotLoading ? 'Sending...' : 'Send reset link'}
+                    </button>
+                  </form>
+
+                  <p className="mt-4 text-center text-sm text-gray-500">
+                    Remember your password?{' '}
+                    <button
+                      onClick={() => { setLoginView('login'); setForgotError(''); setForgotCaptchaToken(''); forgotCaptchaRef.current?.resetCaptcha(); }}
+                      className="text-red-500 hover:text-red-600 cursor-pointer"
+                    >
+                      Log in
+                    </button>
+                  </p>
+                </>
+              )}
+
+              {/* ── Normal login ── */}
+              {loginView === 'login' && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Log in</h2>
+                    <button
+                      onClick={() => { onCloseLogin(); resetLoginState(); }}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <i className="ri-close-line text-xl"></i>
+                    </button>
+                  </div>
+
+                  <SocialButtons />
+
+                  <div className="my-5 flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-xs text-gray-400">or continue with email</span>
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                  </div>
+
+                  {loginError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                      <i className="ri-error-warning-line text-red-500"></i>
+                      <p className="text-sm text-red-700">{loginError}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleLoginSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                      <input
+                        type="email"
+                        required
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        placeholder="Enter your password"
+                      />
+                    </div>
+
+                    {/* CAPTCHA */}
+                    <div className="flex justify-center">
+                      <HCaptchaLib
+                        ref={loginCaptchaRef}
+                        sitekey={HCAPTCHA_SITE_KEY}
+                        onVerify={(token) => setLoginCaptchaToken(token)}
+                        onExpire={() => setLoginCaptchaToken('')}
+                        onError={() => setLoginCaptchaToken('')}
+                        theme="light"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loginLoading || !loginCaptchaToken}
+                      className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                    >
+                      {loginLoading ? 'Logging in...' : 'Log in'}
+                    </button>
+                  </form>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Don&apos;t have an account?{' '}
+                      <button onClick={onSwitchToSignup} className="text-red-500 hover:text-red-600 cursor-pointer">
+                        Sign up
+                      </button>
+                    </p>
+                    <button
+                      onClick={() => { setLoginView('forgot'); setLoginError(''); }}
+                      className="text-sm text-red-500 hover:text-red-600 cursor-pointer whitespace-nowrap"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SIGNUP MODAL ── */}
+      {showSignup && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+
+              {/* ── Email confirmation sent ── */}
+              {confirmationSent ? (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Check your email</h2>
+                    <button
+                      onClick={() => { onCloseSignup(); setSignupError(''); setConfirmationSent(false); }}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <i className="ri-close-line text-xl"></i>
+                    </button>
+                  </div>
+                  <div className="text-center py-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="ri-mail-send-line text-green-500 text-2xl"></i>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-1">
+                      We sent a confirmation link to
+                    </p>
+                    <p className="font-semibold text-gray-900 mb-5">{confirmedEmail}</p>
+                    <p className="text-gray-500 text-sm mb-6">
+                      Click the link in the email to activate your account. Check your spam folder if you don&apos;t see it within a minute.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setConfirmationSent(false);
+                        onCloseSignup();
+                        onSwitchToLogin();
+                      }}
+                      className="text-sm text-red-500 hover:text-red-600 cursor-pointer"
+                    >
+                      Back to log in
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Create account</h2>
+                    <button
+                      onClick={() => { onCloseSignup(); setSignupError(''); setConfirmationSent(false); }}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <i className="ri-close-line text-xl"></i>
+                    </button>
+                  </div>
+
+                  <SocialButtons />
+
+                  <div className="my-5 flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-xs text-gray-400">or sign up with email</span>
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                  </div>
+
+                  {signupError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                      <i className="ri-error-warning-line text-red-500 mt-0.5 flex-shrink-0"></i>
+                      <p className="text-sm text-red-700">{signupError}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSignupSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">First name</label>
+                        <input
+                          type="text"
+                          required
+                          value={signupForm.firstName}
+                          onChange={(e) => setSignupForm((p) => ({ ...p, firstName: e.target.value }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                          placeholder="First name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
+                        <input
+                          type="text"
+                          required
+                          value={signupForm.lastName}
+                          onChange={(e) => setSignupForm((p) => ({ ...p, lastName: e.target.value }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                      <input
+                        type="email"
+                        required
+                        value={signupForm.email}
+                        onChange={(e) => setSignupForm((p) => ({ ...p, email: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone number <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                          <i className="ri-phone-line text-gray-400 text-sm"></i>
+                        </div>
+                        <input
+                          type="tel"
+                          required
+                          value={signupForm.phone}
+                          onChange={(e) => setSignupForm((p) => ({ ...p, phone: e.target.value }))}
+                          className="w-full pl-9 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                          placeholder="+995 555 000 000"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">Required — include country code</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={signupForm.password}
+                        onChange={(e) => setSignupForm((p) => ({ ...p, password: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        placeholder="Create a password"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Confirm password</label>
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={signupForm.confirmPassword}
+                        onChange={(e) => setSignupForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        placeholder="Confirm your password"
+                      />
+                    </div>
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="acceptTerms"
+                        checked={signupForm.acceptTerms}
+                        onChange={(e) => setSignupForm((p) => ({ ...p, acceptTerms: e.target.checked }))}
+                        className="mt-1 w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                        required
+                      />
+                      <label htmlFor="acceptTerms" className="ml-2 text-sm text-gray-600">
+                        I agree to the{' '}
+                        <span className="text-red-500 cursor-pointer">Terms of Service</span>
+                        {' '}and{' '}
+                        <span className="text-red-500 cursor-pointer">Privacy Policy</span>
+                      </label>
+                    </div>
+
+                    {/* CAPTCHA */}
+                    <div className="flex justify-center">
+                      <HCaptchaLib
+                        ref={signupCaptchaRef}
+                        sitekey={HCAPTCHA_SITE_KEY}
+                        onVerify={(token) => setSignupCaptchaToken(token)}
+                        onExpire={() => setSignupCaptchaToken('')}
+                        onError={() => setSignupCaptchaToken('')}
+                        theme="light"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={signupLoading || !signupCaptchaToken}
+                      className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                    >
+                      {signupLoading ? 'Creating account...' : 'Create account'}
+                    </button>
+                  </form>
+
+                  <p className="mt-4 text-center text-sm text-gray-600">
+                    Already have an account?{' '}
+                    <button onClick={onSwitchToLogin} className="text-red-500 hover:text-red-600 cursor-pointer">
+                      Log in
+                    </button>
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
