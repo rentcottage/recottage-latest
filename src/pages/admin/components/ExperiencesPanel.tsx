@@ -8,6 +8,7 @@ export interface Experience {
   price_per_person: number;
   currency_symbol: string;
   image_url: string | null;
+  gallery_urls: string[] | null;
   status: 'active' | 'coming_soon' | 'archived';
   display_order: number;
   created_at: string;
@@ -15,6 +16,18 @@ export interface Experience {
 }
 
 const BUCKET = 'experience-photos';
+const MAX_IMAGES = 10;
+
+type ImageEntry = {
+  // existing/pasted URL — empty string if entry is a pending file upload
+  url: string;
+  // pending upload (set when user picks a file from disk)
+  file?: File;
+  // what the <img> tag shows (object URL for files, the URL itself otherwise)
+  preview: string;
+  // stable key for React lists
+  key: string;
+};
 
 function statusBadge(status: Experience['status']) {
   if (status === 'active') return 'bg-green-100 text-green-700';
@@ -34,7 +47,6 @@ interface FormState {
   price: string;
   status: Experience['status'];
   display_order: string;
-  image_url: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -43,7 +55,16 @@ const EMPTY_FORM: FormState = {
   price: '',
   status: 'active',
   display_order: '0',
-  image_url: '',
+};
+
+const newKey = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildInitialImages = (initial: Experience | null): ImageEntry[] => {
+  if (!initial) return [];
+  const urls: string[] = [];
+  if (initial.image_url) urls.push(initial.image_url);
+  if (initial.gallery_urls?.length) urls.push(...initial.gallery_urls);
+  return urls.map((url) => ({ url, preview: url, key: newKey() }));
 };
 
 interface EditorProps {
@@ -61,32 +82,75 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
           price: String(initial.price_per_person),
           status: initial.status,
           display_order: String(initial.display_order),
-          image_url: initial.image_url ?? '',
         }
       : EMPTY_FORM,
   );
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>(initial?.image_url ?? '');
+  const [images, setImages] = useState<ImageEntry[]>(() => buildInitialImages(initial));
+  const [pasteUrl, setPasteUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Revoke object URLs we created for pending file uploads when the entry leaves the list.
   useEffect(() => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    return () => {
+      images.forEach((img) => {
+        if (img.file && img.preview.startsWith('blob:')) URL.revokeObjectURL(img.preview);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((s) => ({ ...s, [k]: v }));
 
-  const uploadIfNeeded = async (): Promise<string> => {
-    if (!file) return form.image_url;
-    const safe = file.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
-    const path = `${Date.now()}-${safe}`;
+  const remainingSlots = MAX_IMAGES - images.length;
+
+  const addFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files).slice(0, remainingSlots);
+    const next: ImageEntry[] = incoming.map((file) => ({
+      url: '',
+      file,
+      preview: URL.createObjectURL(file),
+      key: newKey(),
+    }));
+    setImages((prev) => [...prev, ...next]);
+  };
+
+  const addPastedUrl = () => {
+    const url = pasteUrl.trim();
+    if (!url) return;
+    if (images.length >= MAX_IMAGES) return;
+    setImages((prev) => [...prev, { url, preview: url, key: newKey() }]);
+    setPasteUrl('');
+  };
+
+  const removeImage = (key: string) => {
+    setImages((prev) => {
+      const target = prev.find((i) => i.key === key);
+      if (target?.file && target.preview.startsWith('blob:')) URL.revokeObjectURL(target.preview);
+      return prev.filter((i) => i.key !== key);
+    });
+  };
+
+  const moveImage = (key: string, dir: -1 | 1) => {
+    setImages((prev) => {
+      const idx = prev.findIndex((i) => i.key === key);
+      const target = idx + dir;
+      if (idx < 0 || target < 0 || target >= prev.length) return prev;
+      const next = prev.slice();
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const uploadEntry = async (entry: ImageEntry): Promise<string> => {
+    if (!entry.file) return entry.url;
+    const safe = entry.file.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
     const { error: upErr } = await supabase.storage
       .from(BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, entry.file, { contentType: entry.file.type, upsert: false });
     if (upErr) throw upErr;
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     return data.publicUrl;
@@ -111,14 +175,16 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
 
     setSaving(true);
     try {
-      const imageUrl = await uploadIfNeeded();
+      const uploaded = await Promise.all(images.map(uploadEntry));
+      const [cover, ...rest] = uploaded;
       const payload = {
         title: form.title.trim(),
         description: form.description.trim(),
         price_per_person: priceNum,
         status: form.status,
         display_order: Number.isFinite(orderNum) ? orderNum : 0,
-        image_url: imageUrl || null,
+        image_url: cover ?? null,
+        gallery_urls: rest,
       };
       const { error: dbErr } = initial
         ? await supabase.from('experiences').update(payload).eq('id', initial.id)
@@ -216,36 +282,107 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
-            <div className="flex items-start gap-4">
-              <div className="w-32 h-24 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center text-gray-400">
-                {previewUrl ? (
-                  <img src={previewUrl} alt="preview" className="w-full h-full object-cover" />
-                ) : (
-                  <i className="ri-image-line text-2xl"></i>
-                )}
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Photos
+                <span className="text-xs font-normal text-gray-400 ml-1">
+                  (first one is the cover, max {MAX_IMAGES})
+                </span>
+              </label>
+              <span className="text-xs text-gray-400">
+                {images.length} / {MAX_IMAGES}
+              </span>
+            </div>
+
+            {images.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
+                {images.map((img, idx) => (
+                  <div
+                    key={img.key}
+                    className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-[4/3]"
+                  >
+                    <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                    {idx === 0 && (
+                      <span className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                        Cover
+                      </span>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 flex justify-between p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition">
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveImage(img.key, -1)}
+                          disabled={idx === 0}
+                          className="w-6 h-6 flex items-center justify-center rounded bg-white/90 text-gray-700 text-xs disabled:opacity-30"
+                          aria-label="Move left"
+                        >
+                          <i className="ri-arrow-left-s-line"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveImage(img.key, 1)}
+                          disabled={idx === images.length - 1}
+                          className="w-6 h-6 flex items-center justify-center rounded bg-white/90 text-gray-700 text-xs disabled:opacity-30"
+                          aria-label="Move right"
+                        >
+                          <i className="ri-arrow-right-s-line"></i>
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(img.key)}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-white/90 text-red-600 text-xs"
+                        aria-label="Remove"
+                      >
+                        <i className="ri-close-line"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex-1 space-y-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="block text-sm text-gray-600"
-                />
+            )}
+
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={remainingSlots <= 0}
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  e.target.value = '';
+                }}
+                className="block text-sm text-gray-600 disabled:opacity-50"
+              />
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  value={form.image_url}
-                  onChange={(e) => {
-                    update('image_url', e.target.value);
-                    if (!file) setPreviewUrl(e.target.value);
+                  value={pasteUrl}
+                  onChange={(e) => setPasteUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addPastedUrl();
+                    }
                   }}
                   placeholder="…or paste an image URL"
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-300"
+                  disabled={remainingSlots <= 0}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50"
                 />
-                <p className="text-xs text-gray-400">
-                  Upload a photo or paste a URL. JPG/PNG, up to a few MB.
-                </p>
+                <button
+                  type="button"
+                  onClick={addPastedUrl}
+                  disabled={!pasteUrl.trim() || remainingSlots <= 0}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+                >
+                  Add URL
+                </button>
               </div>
+              <p className="text-xs text-gray-400">
+                {remainingSlots > 0
+                  ? `Upload up to ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'} (JPG/PNG).`
+                  : `Maximum of ${MAX_IMAGES} photos reached. Remove one to add another.`}
+              </p>
             </div>
           </div>
 
