@@ -198,7 +198,12 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
       onSaved();
       onClose();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to save.';
+      // Supabase errors are plain objects, not Error instances, so handle both.
+      let msg = 'Failed to save.';
+      if (e instanceof Error) msg = e.message;
+      else if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+        msg = (e as { message: string }).message;
+      }
       setError(msg);
     } finally {
       setSaving(false);
