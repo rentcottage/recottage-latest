@@ -107,7 +107,12 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
 
   const addFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const incoming = Array.from(files).slice(0, remainingSlots);
+    // When selecting a folder the browser includes every file in it, not just images,
+    // so filter by MIME type (and accept the common image extensions as a fallback).
+    const onlyImages = Array.from(files).filter(
+      (f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(f.name),
+    );
+    const incoming = onlyImages.slice(0, remainingSlots);
     const next: ImageEntry[] = incoming.map((file) => ({
       url: '',
       file,
@@ -343,17 +348,52 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
             )}
 
             <div className="space-y-2">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                disabled={remainingSlots <= 0}
-                onChange={(e) => {
-                  addFiles(e.target.files);
-                  e.target.value = '';
-                }}
-                className="block text-sm text-gray-600 disabled:opacity-50"
-              />
+              <div className="flex flex-wrap gap-2">
+                <label
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer ${
+                    remainingSlots <= 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-900 text-white hover:bg-gray-800'
+                  }`}
+                >
+                  <i className="ri-image-add-line"></i>
+                  Choose files
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={remainingSlots <= 0}
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <label
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer border ${
+                    remainingSlots <= 0
+                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <i className="ri-folder-image-line"></i>
+                  Choose folder
+                  <input
+                    type="file"
+                    multiple
+                    disabled={remainingSlots <= 0}
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      e.target.value = '';
+                    }}
+                    // @ts-expect-error — non-standard but supported by all major browsers
+                    webkitdirectory=""
+                    directory=""
+                    className="hidden"
+                  />
+                </label>
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
