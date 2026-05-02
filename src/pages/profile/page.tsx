@@ -699,7 +699,7 @@ export default function Profile() {
                               if (saveProfileError) setSaveProfileError('');
                             }}
                             placeholder="+995 555 000 000"
-                            className="w-full pl-9 pr-3 p-2.5 md:p-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            className="w-full pl-9 pr-3 py-2.5 md:py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           />
                         </div>
                         <p className="text-xs text-gray-400 mt-1">Required — include country code (e.g. +995)</p>
