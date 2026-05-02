@@ -431,11 +431,11 @@ export default function HomePage() {
                     }}
                   >
                     <div className="flex flex-row sm:flex-col flex-1">
-                      <div className="relative w-28 sm:w-full h-auto sm:h-52 flex-shrink-0 overflow-hidden">
+                      <div className="relative w-28 sm:w-full h-auto sm:h-52 flex-shrink-0 overflow-hidden bg-gray-50">
                         {exp.image_url ? (
                           <img
                             alt={exp.title}
-                            className={`w-full h-full object-cover object-top ${isComingSoon ? 'opacity-80' : ''}`}
+                            className={`w-full h-full object-contain ${isComingSoon ? 'opacity-80' : ''}`}
                             style={{ height: '100%', minHeight: '7rem' }}
                             src={exp.image_url}
                           />

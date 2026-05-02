@@ -12,6 +12,7 @@ interface Experience {
   price_per_person: number;
   currency_symbol: string | null;
   image_url: string | null;
+  gallery_urls: string[] | null;
   status: 'active' | 'coming_soon' | 'archived';
 }
 
@@ -22,13 +23,14 @@ export default function BookExperiencePage() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const { data } = await supabase
         .from('experiences')
-        .select('id,title,description,price_per_person,currency_symbol,image_url,status')
+        .select('id,title,description,price_per_person,currency_symbol,image_url,gallery_urls,status')
         .eq('status', 'active')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: true });
@@ -48,6 +50,14 @@ export default function BookExperiencePage() {
   }, [requestedId]);
 
   const active = experiences.find((e) => e.id === activeId) ?? null;
+  const photos = active
+    ? [active.image_url, ...(active.gallery_urls ?? [])].filter((u): u is string => !!u)
+    : [];
+
+  // Reset to first photo when switching experiences
+  useEffect(() => {
+    setPhotoIndex(0);
+  }, [activeId]);
 
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
   const jsonLd = active
@@ -135,19 +145,60 @@ export default function BookExperiencePage() {
 
               {active && (
                 <div className="rounded-xl md:rounded-2xl overflow-hidden border border-gray-100">
-                  <div className="relative">
-                    {active.image_url ? (
+                  <div className="relative bg-gray-50">
+                    {photos.length > 0 ? (
                       <img
-                        src={active.image_url}
+                        src={photos[photoIndex]}
                         alt={active.title}
-                        className="w-full h-40 md:h-56 object-cover object-top"
+                        className="w-full h-56 md:h-80 object-contain"
                       />
                     ) : (
-                      <div className="w-full h-40 md:h-56 bg-gray-100 flex items-center justify-center text-gray-300">
+                      <div className="w-full h-56 md:h-80 bg-gray-100 flex items-center justify-center text-gray-300">
                         <i className="ri-image-line text-4xl"></i>
                       </div>
                     )}
+                    {photos.length > 1 && (
+                      <>
+                        <button
+                          onClick={() =>
+                            setPhotoIndex((i) => (i === 0 ? photos.length - 1 : i - 1))
+                          }
+                          aria-label="Previous photo"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 shadow"
+                        >
+                          <i className="ri-arrow-left-s-line text-lg"></i>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setPhotoIndex((i) => (i === photos.length - 1 ? 0 : i + 1))
+                          }
+                          aria-label="Next photo"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 shadow"
+                        >
+                          <i className="ri-arrow-right-s-line text-lg"></i>
+                        </button>
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/50 text-white text-xs">
+                          {photoIndex + 1} / {photos.length}
+                        </div>
+                      </>
+                    )}
                   </div>
+                  {photos.length > 1 && (
+                    <div className="flex gap-2 px-3 py-3 overflow-x-auto bg-gray-50 border-b border-gray-100">
+                      {photos.map((url, i) => (
+                        <button
+                          key={url + i}
+                          onClick={() => setPhotoIndex(i)}
+                          className={`relative flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition ${
+                            i === photoIndex ? 'border-red-500' : 'border-transparent opacity-70 hover:opacity-100'
+                          }`}
+                          aria-label={`Photo ${i + 1}`}
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="p-4 md:p-6">
                     <h2 className="text-base md:text-xl font-bold text-gray-900 mb-2 md:mb-3">
