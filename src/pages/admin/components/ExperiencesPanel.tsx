@@ -370,29 +370,6 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                     className="hidden"
                   />
                 </label>
-                <label
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer border ${
-                    remainingSlots <= 0
-                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <i className="ri-folder-image-line"></i>
-                  Choose folder
-                  <input
-                    type="file"
-                    multiple
-                    disabled={remainingSlots <= 0}
-                    onChange={(e) => {
-                      addFiles(e.target.files);
-                      e.target.value = '';
-                    }}
-                    // @ts-expect-error — non-standard but supported by all major browsers
-                    webkitdirectory=""
-                    directory=""
-                    className="hidden"
-                  />
-                </label>
               </div>
               <div className="flex gap-2">
                 <input
