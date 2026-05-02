@@ -114,7 +114,7 @@ interface RejectNoteModalProps {
   guestName: string | null;
   onConfirm: (bookingId: string, note: string) => void;
   onCancel: () => void;
-  loading: boolean;
+  loading: boolean
 }
 
 const QUICK_REASONS = [
