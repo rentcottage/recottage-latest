@@ -308,9 +308,13 @@ export default function Profile() {
       return;
     }
 
-    // Validate phone only if provided — phone is optional
+    // Phone is required — matches the registration requirement.
     const phoneClean = editForm.phone.replace(/[\s\-\(\)]/g, '');
-    if (phoneClean && !/^\+?[\d]{7,15}$/.test(phoneClean)) {
+    if (!phoneClean) {
+      setSaveProfileError('Phone number is required.');
+      return;
+    }
+    if (!/^\+?[\d]{7,15}$/.test(phoneClean)) {
       setSaveProfileError('Please enter a valid phone number (e.g. +995 555 000 000).');
       return;
     }
@@ -680,7 +684,7 @@ export default function Profile() {
 
                       <div>
                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                          Phone
+                          Phone <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -688,6 +692,7 @@ export default function Profile() {
                           </div>
                           <input
                             type="tel"
+                            required
                             value={editForm.phone}
                             onChange={(e) => {
                               setEditForm(prev => ({ ...prev, phone: e.target.value }));
@@ -697,7 +702,7 @@ export default function Profile() {
                             className="w-full pl-9 pr-3 p-2.5 md:p-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           />
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Optional — include country code (e.g. +995)</p>
+                        <p className="text-xs text-gray-400 mt-1">Required — include country code (e.g. +995)</p>
                       </div>
                     </div>
 
