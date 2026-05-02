@@ -13,7 +13,7 @@ const sections = [
     content: (
       <>
         <p className="text-gray-700 leading-relaxed mb-4">
-          Welcome to <strong>rentcottage.ge</strong> (&quot;Platform&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;).
+          Welcome to <strong>rentcottage.ge</strong> (&quot;Lux Export LLC &quot; &quot;ID 425368434&quot; ).
         </p>
         <p className="text-gray-700 leading-relaxed mb-4">
           These Terms &amp; Conditions govern your access to and use of the platform, including booking accommodations and listing properties.
@@ -246,7 +246,6 @@ const sections = [
         <p className="text-gray-700 leading-relaxed mb-3">rentcottage.ge:</p>
         <ul className="list-disc pl-6 space-y-2 text-gray-700">
           <li>is not responsible for actions of hosts or guests</li>
-          <li>does not guarantee the condition, safety, or legality of properties</li>
           <li>is not liable for damages, losses, or disputes between users</li>
         </ul>
       </>
