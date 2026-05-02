@@ -523,7 +523,6 @@ export const EN_TO_KA: Record<string, string[]> = {
   // ── COMMON SPELLING VARIANTS ──────────────────────────────────────────────
   'akhali shuakhevi': ['ახალი შუახევი'],
   'shuakhevi village': ['შუახევის სოფელი'],
-  'zhinvali village': ['ჟინვალის სოფელი'],
   'akhalsopeli': ['ახალსოფელი'],
   'tskhinvali district': ['ცხინვალის რაიონი'],
 };

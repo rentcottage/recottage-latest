@@ -1,4 +1,4 @@
-import { RouteObject } from 'react-router-dom';
+import type { RouteObject } from 'react-router-dom';
 import Home from '../pages/home/page';
 import SearchResults from '../pages/search/page';
 import PropertyDetail from '../pages/property/page';
