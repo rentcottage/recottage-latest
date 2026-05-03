@@ -43,7 +43,7 @@
   "name": "react",
   "private": true,
   "scripts": {
-    "build": "vite build && node scripts/prerender.mjs",
+    "build": "vite build && node scripts/prerender.mjs && node scripts/generate-sitemap.mjs",
     "dev": "vite",
     "preview": "vite preview"
   },
