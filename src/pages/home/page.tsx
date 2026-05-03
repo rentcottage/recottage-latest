@@ -274,7 +274,7 @@ export default function HomePage() {
         keywords="Georgian cottage rental, Georgia vacation rental, rent cottage Georgia, Tbilisi accommodation, Kakheti cottage"
         canonical="/"
         jsonLd={jsonLd}
-        ogImage="https://storage.readdy-site.link/project_files/87507404-6cae-4fbc-a8ad-143a124c716f/d2030f81-a54e-47f6-81eb-b1e53ddcafd5_ChatGPT-Image-Apr-2-2026-06_59_51-AM.png"
+        ogImage="https://rentcottage.ge/og-image.png"
       />
       <Header onStaysClick={scrollToListings} onExperiencesClick={scrollToExperiences} />
 

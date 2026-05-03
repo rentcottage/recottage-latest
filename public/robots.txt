@@ -13,4 +13,4 @@ Allow: /host-resources
 Allow: /book-experience
 Allow: /privacy
 Allow: /property/
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://rentcottage.ge/sitemap.xml

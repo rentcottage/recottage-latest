@@ -43,7 +43,7 @@
   "name": "react",
   "private": true,
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender.mjs",
     "dev": "vite",
     "preview": "vite preview"
   },
