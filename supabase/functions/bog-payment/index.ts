@@ -5,7 +5,7 @@ const BOG_AUTH_URL = 'https://account.bog.ge/auth/realms/bog/protocol/openid-con
 const BOG_ORDERS_URL = 'https://api.bog.ge/payments/v1/ecommerce/orders';
 const SITE_URL = 'https://rentcottage.ge';
 const COMPANY_EMAIL = 'info.rentcottage@gmail.com';
-const RESEND_API_KEY = 're_CZyr35EQ_Hu4oARihEKkNBC3s162dDtQv';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const FROM_EMAIL = 'bookings@rentcottage.ge';
 
 const corsHeaders = {

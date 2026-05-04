@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const RESEND_API_KEY = 're_CZyr35EQ_Hu4oARihEKkNBC3s162dDtQv';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const COMPANY_EMAIL = 'info.rentcottage@gmail.com';
 const FROM_EMAIL = 'bookings@rentcottage.ge';
 const SITE_URL = 'https://rentcottage.ge';
