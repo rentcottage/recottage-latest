@@ -6,6 +6,9 @@ interface Props {
   experienceLabel?: string;
 }
 
+const NOTIFY_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/experience-booking-notify`;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
+
 const TIME_OPTIONS = [
   '09:00', '10:00', '11:00', '12:00', '13:00',
   '14:00', '15:00', '16:00', '17:00', '18:00',
@@ -55,24 +58,53 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       : experienceType === 'cooking'
       ? 'cooking_class'
       : experienceType;
-    const { error: sbErr } = await supabase.from('experience_bookings').insert({
-      experience_type: dbType,
-      experience_id: isUuid ? experienceType : null,
-      customer_name: form.customer_name.trim(),
-      customer_email: form.customer_email.trim() || null,
-      customer_phone: form.customer_phone.trim(),
-      preferred_date: form.preferred_date,
-      preferred_time: form.preferred_time || null,
-      guests: parseInt(form.guests, 10),
-      message: form.message.trim() || null,
-      status: 'pending',
-    });
+    const { data: inserted, error: sbErr } = await supabase
+      .from('experience_bookings')
+      .insert({
+        experience_type: dbType,
+        experience_id: isUuid ? experienceType : null,
+        customer_name: form.customer_name.trim(),
+        customer_email: form.customer_email.trim() || null,
+        customer_phone: form.customer_phone.trim(),
+        preferred_date: form.preferred_date,
+        preferred_time: form.preferred_time || null,
+        guests: parseInt(form.guests, 10),
+        message: form.message.trim() || null,
+        status: 'pending',
+      })
+      .select()
+      .maybeSingle();
     setSubmitting(false);
 
     if (sbErr) {
       setError('Something went wrong. Please try again.');
       return;
     }
+
+    // Fire-and-forget: notify the company inbox. Failure here doesn't roll
+    // back the booking — the row is already saved.
+    void fetch(NOTIFY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        experienceTitle: experienceLabel,
+        experienceId: isUuid ? experienceType : null,
+        experienceType: dbType,
+        customerName: form.customer_name.trim(),
+        customerEmail: form.customer_email.trim() || null,
+        customerPhone: form.customer_phone.trim(),
+        preferredDate: form.preferred_date,
+        preferredTime: form.preferred_time || null,
+        guests: parseInt(form.guests, 10),
+        message: form.message.trim() || null,
+        bookingId: inserted?.id,
+      }),
+    }).catch((e) => console.error('[experience-booking-notify] failed:', e));
+
     setSuccess(true);
   };
 
