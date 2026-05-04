@@ -1118,6 +1118,35 @@ Deno.serve(async (req: Request) => {
     if (dbError || !booking) return jsonErr('Failed to save booking', 500);
     await logEvent(supabase, booking.id, 'created', null, initialStatus, 'system', `approvalMode: ${approvalMode}`);
 
+    // Notify the company inbox about every new booking request (regardless of mode)
+    {
+      const adminUrl = `${SITE_URL}/admin`;
+      const html = emailWrapper(
+        `<h2 style="color:#111;margin-top:0">New Booking Request</h2>
+         <p>A new booking has been submitted on RentCottage.Ge.</p>
+         ${bookingTable([
+           ['Property', String(property_title ?? '—')],
+           ['Location', String(property_location ?? '—')],
+           ['Customer', `${user_name ?? '—'} &lt;${user_email}&gt;`],
+           ['Check-in', String(check_in)],
+           ['Check-out', String(check_out)],
+           ['Guests', String(guests)],
+           ['Total', `&#x20BE;${total_price}`],
+           ['Mode', isAutoConfirm ? 'Auto-confirmed' : 'Awaiting host approval'],
+           ['Booking ID', String(booking.id)],
+         ])}
+         <p style="color:#6b7280;font-size:13px;margin:0">Manage this booking in the <a href="${adminUrl}" style="color:#e53e3e">admin panel</a>.</p>`,
+      );
+      await sendEmail(
+        supabase,
+        COMPANY_EMAIL,
+        `New booking request — ${property_title}`,
+        html,
+        'booking_request_company',
+        String(booking.id),
+      );
+    }
+
     if (isAutoConfirm) {
       await sendEmail(supabase, user_email as string, `Booking Confirmed – ${property_title}`, buildAutoConfirmCustomerEmailHtml(booking), 'booking_auto_confirmed', String(booking.id));
     } else {
