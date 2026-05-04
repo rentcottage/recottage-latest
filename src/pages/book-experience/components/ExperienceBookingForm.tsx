@@ -104,7 +104,13 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
     <form onSubmit={handleSubmit} className="bg-white rounded-xl md:rounded-2xl border border-gray-100 p-4 md:p-6 space-y-3 md:space-y-5">
       <div>
         <h2 className="text-base md:text-xl font-bold text-gray-900">
-          {experienceType === 'wine' ? 'Book Wine Tasting' : 'Book Cooking Class'}
+          {experienceLabel
+            ? `Book ${experienceLabel}`
+            : experienceType === 'wine'
+            ? 'Book Wine Tasting'
+            : experienceType === 'cooking'
+            ? 'Book Cooking Class'
+            : 'Book Experience'}
         </h2>
         <p className="text-xs md:text-sm text-gray-400 mt-0.5 md:mt-1">
           Fill in your details and we&apos;ll confirm within 24 hours.
