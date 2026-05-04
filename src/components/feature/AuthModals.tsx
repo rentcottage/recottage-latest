@@ -10,8 +10,10 @@ import {
 } from '../../hooks/useAuth';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 
-// hCaptcha test sitekey — works on any domain without registration
-const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
+// Real hCaptcha sitekey for rentcottage.ge — public value, safe to commit.
+// Validated server-side by Supabase using the matching secret stored in
+// Auth → Attack Protection → Captcha (env-only, never in code).
+const HCAPTCHA_SITE_KEY = '525e8946-9664-4210-8c24-6e9e1a4057ca';
 
 interface AuthModalsProps {
   showLogin: boolean;
@@ -90,7 +92,7 @@ export default function AuthModals({
     setLoginError('');
     setLoginLoading(true);
     try {
-      const { error } = await signInWithEmail(loginForm.email, loginForm.password);
+      const { error } = await signInWithEmail(loginForm.email, loginForm.password, loginCaptchaToken);
       if (error) {
         setLoginError(error);
         loginCaptchaRef.current?.resetCaptcha();
@@ -120,7 +122,7 @@ export default function AuthModals({
     }
     setForgotLoading(true);
     try {
-      const { error } = await sendPasswordReset(forgotEmail);
+      const { error } = await sendPasswordReset(forgotEmail, forgotCaptchaToken);
       if (error) {
         setForgotError(error);
         forgotCaptchaRef.current?.resetCaptcha();
@@ -174,7 +176,8 @@ export default function AuthModals({
         signupForm.lastName,
         signupForm.email,
         signupForm.password,
-        signupForm.phone
+        signupForm.phone,
+        signupCaptchaToken,
       );
 
       if (error) {

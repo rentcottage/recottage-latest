@@ -172,7 +172,8 @@ export async function signUpWithEmail(
   lastName: string,
   email: string,
   password: string,
-  phone?: string
+  phone?: string,
+  captchaToken?: string,
 ): Promise<{
   session: import('@supabase/supabase-js').Session | null;
   user: User | null;
@@ -204,6 +205,7 @@ export async function signUpWithEmail(
       },
       // Redirect target after clicking the confirmation link in email
       emailRedirectTo: 'https://rentcottage.ge/auth/callback',
+      ...(captchaToken ? { captchaToken } : {}),
     },
   });
 
@@ -243,11 +245,13 @@ export async function signUpWithEmail(
 
 export async function signInWithEmail(
   email: string,
-  password: string
+  password: string,
+  captchaToken?: string,
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password,
+    options: captchaToken ? { captchaToken } : undefined,
   });
   if (error) {
     return {
@@ -259,9 +263,13 @@ export async function signInWithEmail(
   return { error: null };
 }
 
-export async function sendPasswordReset(email: string): Promise<{ error: string | null }> {
+export async function sendPasswordReset(
+  email: string,
+  captchaToken?: string,
+): Promise<{ error: string | null }> {
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: 'https://rentcottage.ge/auth/reset-password',
+    ...(captchaToken ? { captchaToken } : {}),
   });
   if (error) return { error: error.message };
   return { error: null };
