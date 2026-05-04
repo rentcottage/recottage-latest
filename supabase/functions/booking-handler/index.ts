@@ -685,7 +685,83 @@ async function applyHostApproveBooking(supabase: any, bookingId: string, hostEma
   if (updateErr) return { ok: false, error: 'Failed to update' };
   await logEvent(supabase, bookingId, 'host_approved', prevStatus, 'confirmed', 'host', `host: ${hostEmail}`);
   await sendEmail(supabase, booking.user_email, `Your booking at ${booking.property_title} is confirmed! 🎉`, buildConfirmEmailHtml(booking), 'booking_confirmed_host', bookingId);
+  // Immediately reveal contact details now that the host has accepted —
+  // host gets the guest's phone/email, guest gets the host's phone/email.
+  // Refetch the row so the helper has the latest status.
+  const { data: confirmedBooking } = await supabase.from('bookings').select('*').eq('id', bookingId).maybeSingle();
+  if (confirmedBooking) {
+    await revealContactsForBooking(supabase, confirmedBooking);
+  }
   return { ok: true, booking };
+}
+
+/**
+ * Send contact-reveal emails for a single booking — host gets the guest's
+ * details, guest gets the host's details. Marks contact_reveal_sent=true
+ * after the first successful send so we don't double-fire.
+ *
+ * Used both inline when the host approves a booking and by the daily bulk
+ * job (applySendContactRevealEmails) as a backstop.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function revealContactsForBooking(supabase: any, booking: Record<string, any>): Promise<{ ok: boolean }> {
+  if (booking.contact_reveal_sent) return { ok: true };
+  if (!booking.property_id) return { ok: false };
+
+  const { data: pa } = await supabase
+    .from('property_applications')
+    .select('host_first_name, host_last_name, host_email, host_phone')
+    .eq('id', booking.property_id)
+    .maybeSingle();
+  if (!pa?.host_email) return { ok: false };
+
+  const hostName = `${pa.host_first_name || ''} ${pa.host_last_name || ''}`.trim() || 'Your Host';
+  const hostFirstName = pa.host_first_name || 'there';
+  const hostPhone: string | null = pa.host_phone ?? null;
+
+  const { data: guestProfile } = await supabase
+    .from('profiles')
+    .select('phone, first_name, last_name')
+    .eq('email', booking.user_email)
+    .maybeSingle();
+
+  const guestPhone: string | null = guestProfile?.phone ?? null;
+  const guestName = booking.user_name
+    || `${guestProfile?.first_name || ''} ${guestProfile?.last_name || ''}`.trim()
+    || 'Guest';
+
+  const customerOk = await sendEmail(
+    supabase,
+    booking.user_email,
+    `Your host contact details are now available – ${booking.property_title} 🔓`,
+    buildCustomerContactRevealEmailHtml(booking, hostName, pa.host_email, hostPhone),
+    'contact_reveal_guest',
+    String(booking.id),
+  );
+
+  const hostOk = await sendEmail(
+    supabase,
+    pa.host_email,
+    `სტუმრის საკონტაქტო ინფორმაცია ხელმისაწვდომია – ${booking.property_title} 🔓`,
+    buildHostContactRevealEmailHtml(hostFirstName, booking, guestName, booking.user_email, guestPhone),
+    'contact_reveal_host',
+    String(booking.id),
+  );
+
+  if (customerOk || hostOk) {
+    await supabase.from('bookings').update({ contact_reveal_sent: true }).eq('id', booking.id);
+    await logEvent(
+      supabase,
+      booking.id,
+      'contact_reveal_sent',
+      booking.status,
+      booking.status,
+      'system',
+      `Reveal sent on host approval — guest=${customerOk ? 'ok' : 'failed'} host=${hostOk ? 'ok' : 'failed'}`,
+    );
+    return { ok: true };
+  }
+  return { ok: false };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
