@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../hooks/useAuth';
+import AuthModals from '../../../components/feature/AuthModals';
 
 interface Props {
   experienceType: string;
@@ -19,6 +21,7 @@ function todayISO() {
 }
 
 export default function ExperienceBookingForm({ experienceType, experienceLabel }: Props) {
+  const { isLoggedIn, loading: authLoading } = useAuth();
   const [form, setForm] = useState({
     customer_name: '',
     customer_email: '',
@@ -31,6 +34,8 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -43,6 +48,14 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
     if (!form.customer_phone.trim()) { setError('Please enter a phone number.'); return; }
     if (!form.preferred_date) { setError('Please select a preferred date.'); return; }
     if (parseInt(form.guests, 10) < 1) { setError('Guests must be at least 1.'); return; }
+
+    // Final auth check — short-circuit before hitting Supabase if the session
+    // disappeared while the form was open.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setError('Please log in to book this experience.');
+      return;
+    }
 
     setSubmitting(true);
     // Legacy short codes used to be the only experiences. New experiences come
@@ -107,6 +120,55 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
 
     setSuccess(true);
   };
+
+  // Auth gate — anonymous visitors can browse but can't book.
+  if (authLoading) {
+    return (
+      <div className="bg-white rounded-xl md:rounded-2xl border border-gray-100 p-6 md:p-8 text-center text-sm text-gray-400">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <>
+        <div className="bg-white rounded-xl md:rounded-2xl border border-gray-100 p-6 md:p-8 text-center">
+          <div className="w-12 h-12 md:w-14 md:h-14 mx-auto bg-yellow-50 rounded-full flex items-center justify-center mb-4">
+            <i className="ri-lock-line text-yellow-500 text-2xl"></i>
+          </div>
+          <h3 className="text-base md:text-lg font-bold text-gray-900 mb-2">
+            Sign in to book this experience
+          </h3>
+          <p className="text-xs md:text-sm text-gray-500 max-w-sm mx-auto mb-5">
+            We need a verified account so we can confirm your booking and stay in touch.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button
+              onClick={() => setShowLogin(true)}
+              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg cursor-pointer whitespace-nowrap"
+            >
+              Log in
+            </button>
+            <button
+              onClick={() => setShowSignup(true)}
+              className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-medium rounded-lg cursor-pointer whitespace-nowrap"
+            >
+              Create account
+            </button>
+          </div>
+        </div>
+        <AuthModals
+          showLogin={showLogin}
+          showSignup={showSignup}
+          onCloseLogin={() => setShowLogin(false)}
+          onCloseSignup={() => setShowSignup(false)}
+          onSwitchToSignup={() => { setShowLogin(false); setShowSignup(true); }}
+          onSwitchToLogin={() => { setShowSignup(false); setShowLogin(true); }}
+        />
+      </>
+    );
+  }
 
   if (success) {
     return (
