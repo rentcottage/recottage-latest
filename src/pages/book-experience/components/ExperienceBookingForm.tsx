@@ -42,14 +42,22 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
     if (parseInt(form.guests, 10) < 1) { setError('Guests must be at least 1.'); return; }
 
     setSubmitting(true);
-    const dbType =
-      experienceType === 'wine'
-        ? 'wine_tasting'
-        : experienceType === 'cooking'
-        ? 'cooking_class'
-        : experienceType;
+    // Legacy short codes used to be the only experiences. New experiences come
+    // from the `experiences` table and pass their UUID. Detect that and store
+    // the UUID in experience_id, while keeping a friendly category in
+    // experience_type ('custom' for DB-backed, legacy values otherwise).
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(experienceType);
+    const dbType = isUuid
+      ? 'custom'
+      : experienceType === 'wine'
+      ? 'wine_tasting'
+      : experienceType === 'cooking'
+      ? 'cooking_class'
+      : experienceType;
     const { error: sbErr } = await supabase.from('experience_bookings').insert({
       experience_type: dbType,
+      experience_id: isUuid ? experienceType : null,
       customer_name: form.customer_name.trim(),
       customer_email: form.customer_email.trim() || null,
       customer_phone: form.customer_phone.trim(),
