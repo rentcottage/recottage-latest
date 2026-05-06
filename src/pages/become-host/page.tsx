@@ -55,13 +55,13 @@ export default function BecomeHost() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorDetail, setErrorDetail] = useState<string>('');
   const [showContactModal, setShowContactModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [pricingType, setPricingType] = useState<'fixed' | 'per_guest'>('fixed');
   const [guestTierPrices, setGuestTierPrices] = useState<Record<number, string>>({});
   const [hostCaptchaToken, setHostCaptchaToken] = useState('');
   const hostCaptchaRef = useRef<HCaptchaLib>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     propertyType: '',
@@ -139,40 +139,43 @@ export default function BecomeHost() {
   };
 
   const nextStep = () => {
-    // Validate Step 1 - Property Details (all fields mandatory)
+    const fail = (msg: string) => {
+      setErrorDetail(msg);
+      setSubmitStatus('error');
+    };
+
     if (currentStep === 1) {
-      if (!formData.propertyType || !formData.location || !formData.bedrooms || !formData.bathrooms || !formData.guests) {
-        setSubmitStatus('error');
-        return;
-      }
+      const missing: string[] = [];
+      if (!formData.propertyType) missing.push('Property Type');
+      if (!formData.location) missing.push('Location');
+      if (!formData.bedrooms) missing.push('Bedrooms');
+      if (!formData.bathrooms) missing.push('Bathrooms');
+      if (!formData.guests) missing.push('Guests');
+      if (missing.length) { fail('Step 1 missing: ' + missing.join(', ')); return; }
     }
-    
-    // Validate Step 3 - Photos (at least 3 photos required)
+
     if (currentStep === 3) {
       if (formData.photos.length < 3) {
-        setSubmitStatus('error');
+        fail(`Step 3: need 3 photos, have ${formData.photos.length}`);
         return;
       }
     }
-    
-    // Validate Step 4 - Property Description (all fields mandatory)
+
     if (currentStep === 4) {
-      if (!formData.title || !formData.description) {
-        setSubmitStatus('error');
-        return;
-      }
-      if (formData.description.length > 2000) {
-        setSubmitStatus('error');
-        return;
-      }
+      const missing: string[] = [];
+      if (!formData.title) missing.push('Title');
+      if (!formData.description) missing.push('Description');
+      if (formData.description.length > 2000) missing.push('Description too long (max 2000)');
       if (pricingType === 'fixed') {
-        if (!formData.price) { setSubmitStatus('error'); return; }
+        if (!formData.price) missing.push('Price');
       } else {
         const hasEmpty = guestRange.some(n => !guestTierPrices[n] || parseFloat(guestTierPrices[n]) <= 0);
-        if (hasEmpty || guestRange.length === 0) { setSubmitStatus('error'); return; }
+        if (hasEmpty || guestRange.length === 0) missing.push('Per-guest price');
       }
+      if (missing.length) { fail('Step 4 missing: ' + missing.join(', ')); return; }
     }
-    
+
+    setErrorDetail('');
     setSubmitStatus('idle');
     if (currentStep < 5) setCurrentStep(currentStep + 1);
   };
@@ -185,6 +188,7 @@ export default function BecomeHost() {
     if (isSubmitting) return;
 
     if (!hostCaptchaToken) {
+      setErrorDetail('Please complete the CAPTCHA before submitting.');
       setSubmitStatus('error');
       return;
     }
@@ -193,21 +197,23 @@ export default function BecomeHost() {
       ? !!formData.price
       : guestRange.every(n => guestTierPrices[n] && parseFloat(guestTierPrices[n]) > 0);
 
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.propertyType ||
-      !formData.location ||
-      !formData.bedrooms ||
-      !formData.bathrooms ||
-      !formData.guests ||
-      !formData.title ||
-      !formData.description ||
-      !priceValid ||
-      formData.photos.length < 3
-    ) {
+    const missing: string[] = [];
+    if (!formData.firstName) missing.push('First Name');
+    if (!formData.lastName) missing.push('Last Name');
+    if (!formData.email) missing.push('Email');
+    if (!formData.phone) missing.push('Phone');
+    if (!formData.propertyType) missing.push('Property Type (step 1)');
+    if (!formData.location) missing.push('Location (step 1)');
+    if (!formData.bedrooms) missing.push('Bedrooms (step 1)');
+    if (!formData.bathrooms) missing.push('Bathrooms (step 1)');
+    if (!formData.guests) missing.push('Guests (step 1)');
+    if (!formData.title) missing.push('Title (step 4)');
+    if (!formData.description) missing.push('Description (step 4)');
+    if (!priceValid) missing.push('Price (step 4)');
+    if (formData.photos.length < 3) missing.push(`Photos (step 3) — have ${formData.photos.length}, need 3`);
+
+    if (missing.length > 0) {
+      setErrorDetail('Missing: ' + missing.join(', '));
       setSubmitStatus('error');
       return;
     }
@@ -383,7 +389,9 @@ export default function BecomeHost() {
               <div>
                 <h3 className="text-sm md:text-base font-semibold text-red-800 mb-1">Please Complete Required Fields</h3>
                 <p className="text-red-700 text-sm">
-                  {currentStep === 3 && formData.photos.length < 3 
+                  {errorDetail
+                    ? errorDetail
+                    : currentStep === 3 && formData.photos.length < 3
                     ? 'Please upload at least 3 photos of your cottage to continue.'
                     : 'All fields marked with * are required. Please fill out all required information to continue.'
                   }
@@ -615,7 +623,6 @@ export default function BecomeHost() {
                   
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-red-400 transition-colors">
                     <input
-                      ref={photoInputRef}
                       type="file"
                       multiple
                       accept="image/*"
@@ -623,7 +630,7 @@ export default function BecomeHost() {
                       className="hidden"
                       id="photo-upload"
                     />
-                    <div className="cursor-pointer">
+                    <label htmlFor="photo-upload" className="cursor-pointer">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 flex items-center justify-center">
                           <i className="ri-camera-line text-2xl text-gray-400"></i>
@@ -633,17 +640,10 @@ export default function BecomeHost() {
                       <p className="text-gray-600 mb-4">
                         Drag and drop your photos here, or click to browse
                       </p>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          photoInputRef.current?.click();
-                        }}
-                        className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer whitespace-nowrap"
-                      >
+                      <span className="inline-block px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer whitespace-nowrap">
                         Choose Files
-                      </button>
-                    </div>
+                      </span>
+                    </label>
                   </div>
 
                   <p className="text-sm text-gray-500 mt-2">
