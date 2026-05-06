@@ -61,6 +61,7 @@ export default function BecomeHost() {
   const [guestTierPrices, setGuestTierPrices] = useState<Record<number, string>>({});
   const [hostCaptchaToken, setHostCaptchaToken] = useState('');
   const hostCaptchaRef = useRef<HCaptchaLib>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     propertyType: '',
@@ -614,6 +615,7 @@ export default function BecomeHost() {
                   
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-red-400 transition-colors">
                     <input
+                      ref={photoInputRef}
                       type="file"
                       multiple
                       accept="image/*"
@@ -621,7 +623,7 @@ export default function BecomeHost() {
                       className="hidden"
                       id="photo-upload"
                     />
-                    <label htmlFor="photo-upload" className="cursor-pointer">
+                    <div className="cursor-pointer">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 flex items-center justify-center">
                           <i className="ri-camera-line text-2xl text-gray-400"></i>
@@ -633,11 +635,15 @@ export default function BecomeHost() {
                       </p>
                       <button
                         type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          photoInputRef.current?.click();
+                        }}
                         className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer whitespace-nowrap"
                       >
                         Choose Files
                       </button>
-                    </label>
+                    </div>
                   </div>
 
                   <p className="text-sm text-gray-500 mt-2">

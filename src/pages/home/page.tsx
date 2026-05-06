@@ -138,7 +138,7 @@ export default function HomePage() {
           {
             step: 'Host Cancellation',
             description:
-              'If a host cancels, you receive a full refund.',
+              'If a host cancels, you receive a full refund (applies on online payments).',
           },
         ],
       },
