@@ -704,6 +704,9 @@ export default function HomePage() {
                 <a href="/terms" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
                   Terms &amp; Conditions
                 </a>
+                <a href="/corporate" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
+                  Corporate
+                </a>
                 <a href="/sitemap" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
                   Site Map
                 </a>

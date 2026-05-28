@@ -745,6 +745,7 @@ export default function PropertyDetail() {
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 <a href="/privacy" className="text-xs md:text-sm text-gray-300 hover:text-white">Privacy</a>
                 <a href="/terms" className="text-xs md:text-sm text-gray-300 hover:text-white">Terms &amp; Conditions</a>
+                <a href="/corporate" className="text-xs md:text-sm text-gray-300 hover:text-white">Corporate</a>
                 <a href="/sitemap" className="text-xs md:text-sm text-gray-300 hover:text-white">Site Map</a>
               </div>
             </div>
