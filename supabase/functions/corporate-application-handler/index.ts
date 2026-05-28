@@ -222,7 +222,7 @@ Deno.serve(async (req: Request) => {
   const email = String(body.email ?? '').trim().toLowerCase();
   const phone = String(body.phone ?? '').trim();
 
-  if (!agency_name || !tax_id || !rep_first_name || !rep_last_name || !email) {
+  if (!agency_name || !tax_id || !rep_first_name || !rep_last_name || !email || !phone) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
   }
 
@@ -249,7 +249,7 @@ Deno.serve(async (req: Request) => {
       rep_first_name,
       rep_last_name,
       email,
-      phone: phone || null,
+      phone,
       status: 'pending',
     })
     .select()

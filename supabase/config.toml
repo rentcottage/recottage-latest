@@ -1,0 +1,10 @@
+# Per-function deploy settings.
+# Functions reachable from anonymous (not signed-in) visitors must skip the JWT
+# enforcement, otherwise Supabase rejects the request with INVALID_JWT_FORMAT
+# when the frontend sends the new `sb_publishable_*` key as a bearer token.
+
+[functions.corporate-application-handler]
+verify_jwt = false
+
+[functions.property-application-handler]
+verify_jwt = false

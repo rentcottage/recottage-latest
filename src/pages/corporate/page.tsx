@@ -86,7 +86,7 @@ export default function CorporatePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
-    if (!form.agency_name || !form.tax_id || !form.rep_first_name || !form.rep_last_name || !form.email) {
+    if (!form.agency_name || !form.tax_id || !form.rep_first_name || !form.rep_last_name || !form.email || !form.phone.trim()) {
       setSubmitError('Please fill in all required fields.');
       return;
     }
@@ -190,7 +190,7 @@ export default function CorporatePage() {
                 <Field label="Representative last name *" value={form.rep_last_name} onChange={update('rep_last_name')} placeholder="Last name" />
               </div>
               <Field label="Email *" type="email" value={form.email} onChange={update('email')} placeholder="agency@example.com" />
-              <Field label="Phone" type="tel" value={form.phone} onChange={update('phone')} placeholder="+995 555 12 34 56" />
+              <Field label="Phone *" type="tel" value={form.phone} onChange={update('phone')} placeholder="+995 555 12 34 56" />
 
               {submitError && (
                 <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
