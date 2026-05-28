@@ -29,6 +29,7 @@ interface BookingWidgetProps {
     rating: number;
     reviews: number;
     maxGuests?: number;
+    accepted_payment_methods?: 'online_only' | 'pay_at_property_only' | 'both';
   };
   pricingType: 'fixed' | 'per_guest';
   guestPricingTiers: Array<{ min_guests: number; max_guests: number; price_per_night: number }>;
