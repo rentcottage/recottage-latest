@@ -285,8 +285,8 @@ export default function ExperienceBookingsPanel() {
       ) : (
         <div className="divide-y divide-gray-50">
           {filtered.map((b) => {
-            const expCfg = EXP_CONFIG[b.experience_type];
-            const stCfg = STATUS_CONFIG[b.status];
+            const expCfg = EXP_CONFIG[b.experience_type] ?? { label: b.experience_type ?? 'Experience', icon: 'ri-star-line', color: 'text-gray-600', bg: 'bg-gray-100' };
+            const stCfg = STATUS_CONFIG[b.status] ?? { label: b.status ?? 'Unknown', badgeClass: 'bg-gray-100 text-gray-700', icon: 'ri-question-line' };
             const isExpanded = expandedId === b.id;
             return (
               <div key={b.id}>

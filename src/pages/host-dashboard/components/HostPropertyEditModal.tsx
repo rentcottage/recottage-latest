@@ -20,6 +20,7 @@ interface Property {
   longitude?: number | null;
   address?: string;
   booking_approval_mode?: string | null;
+  accepted_payment_methods?: string | null;
   photo_urls?: string[];
   cover_photo_url?: string | null;
   cover_photo_position?: string | null;
@@ -64,6 +65,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
   const [longitude, setLongitude] = useState(property.longitude != null ? String(property.longitude) : '');
   const [address, setAddress] = useState(property.address || '');
   const [approvalMode, setApprovalMode] = useState(property.booking_approval_mode || 'manual_24h');
+  const [acceptedPaymentMethods, setAcceptedPaymentMethods] = useState(property.accepted_payment_methods || 'both');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -103,6 +105,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     setLongitude(property.longitude != null ? String(property.longitude) : '');
     setAddress(property.address || '');
     setApprovalMode(property.booking_approval_mode || 'manual_24h');
+    setAcceptedPaymentMethods(property.accepted_payment_methods || 'both');
     setPricingType((property.pricing_type as 'fixed' | 'per_guest') || 'fixed');
     setGuestTiers(
       property.guest_pricing_tiers && property.guest_pricing_tiers.length > 0
@@ -185,6 +188,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
         booking_approval_mode: approvalMode,
         pricing_type: pricingType,
         guest_pricing_tiers: pricingType === 'per_guest' ? guestTiers : null,
+        accepted_payment_methods: acceptedPaymentMethods,
       })
       .eq('id', property.id);
 
@@ -726,6 +730,46 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       Host approval required
                     </span>
                   </button>
+                </div>
+              </div>
+
+              {/* Accepted Payment Methods */}
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-4 h-4 flex items-center justify-center">
+                    <i className="ri-bank-card-2-line text-blue-600 text-sm"></i>
+                  </div>
+                  <label className="text-sm font-semibold text-gray-900">Accepted Payment Methods</label>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Choose how guests can pay for this property.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {([
+                    { value: 'both', label: 'Both', desc: 'Guests can choose either option.' },
+                    { value: 'online_only', label: 'Online only', desc: 'Card payment only.' },
+                    { value: 'pay_at_property_only', label: 'Pay at property only', desc: 'Cash on arrival only.' },
+                  ] as const).map((opt) => {
+                    const selected = acceptedPaymentMethods === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setAcceptedPaymentMethods(opt.value)}
+                        className={`relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
+                          selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                            {selected && <i className="ri-check-line text-white text-[10px]"></i>}
+                          </div>
+                          <span className={`text-sm font-semibold ${selected ? 'text-blue-800' : 'text-gray-700'}`}>{opt.label}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">{opt.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

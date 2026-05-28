@@ -93,7 +93,12 @@ export default function PropertyDetail() {
         latitude: app.latitude ?? null,
         longitude: app.longitude ?? null,
         address: app.address || null,
+        accepted_payment_methods: app.accepted_payment_methods || 'both',
       });
+      // Default payment method to whichever the property accepts.
+      const acceptedPm = app.accepted_payment_methods || 'both';
+      if (acceptedPm === 'online_only') setPaymentMethod('pay_now');
+      else setPaymentMethod('pay_at_property');
       setPricingType((app.pricing_type as 'fixed' | 'per_guest') || 'fixed');
       setGuestPricingTiers(app.guest_pricing_tiers || []);
       setIsDbProperty(true);

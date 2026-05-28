@@ -78,7 +78,8 @@ export default function BecomeHost() {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    acceptedPaymentMethods: 'both',
   });
 
   const maxGuestsNum = parseInt(formData.guests) || 0;
@@ -271,6 +272,7 @@ export default function BecomeHost() {
             : (buildGuestTiers()[0]?.price_per_night ?? 0),
           pricing_type: pricingType,
           guest_pricing_tiers: pricingType === 'per_guest' ? buildGuestTiers() : null,
+          accepted_payment_methods: formData.acceptedPaymentMethods,
           captcha_token: hostCaptchaToken,
         }),
       });
@@ -295,18 +297,26 @@ export default function BecomeHost() {
           firstName: '',
           lastName: '',
           email: '',
-          phone: ''
+          phone: '',
+          acceptedPaymentMethods: 'both',
         });
         setPricingType('fixed');
         setGuestTierPrices({});
         setCurrentStep(1);
       } else {
+        let serverMsg = '';
+        try {
+          const txt = await response.text();
+          try { serverMsg = (JSON.parse(txt).error as string) || txt; } catch { serverMsg = txt; }
+        } catch { /* ignore */ }
+        setErrorDetail(`Server rejected the submission (HTTP ${response.status})${serverMsg ? ': ' + serverMsg : ''}`);
         setSubmitStatus('error');
         hostCaptchaRef.current?.resetCaptcha();
         setHostCaptchaToken('');
       }
     } catch (error) {
       console.error('Submit error:', error);
+      setErrorDetail(`Network error: ${error instanceof Error ? error.message : String(error)}`);
       setSubmitStatus('error');
       hostCaptchaRef.current?.resetCaptcha();
       setHostCaptchaToken('');
@@ -871,6 +881,39 @@ export default function BecomeHost() {
                       )}
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Accepted Payment Methods *</label>
+                  <p className="text-xs text-gray-500 mb-3">Choose how guests can pay for this cottage. You can change this later from your host dashboard.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {([
+                      { value: 'both', label: 'Both', desc: 'Guests choose online or pay at property.', icon: 'ri-bank-card-2-line' },
+                      { value: 'online_only', label: 'Online only', desc: 'Card payment only, guests pay when booking.', icon: 'ri-bank-card-line' },
+                      { value: 'pay_at_property_only', label: 'Pay at property only', desc: 'Guests pay you on arrival.', icon: 'ri-home-heart-line' },
+                    ] as const).map((opt) => {
+                      const selected = formData.acceptedPaymentMethods === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleInputChange('acceptedPaymentMethods', opt.value)}
+                          className={`flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
+                            selected ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-red-500 bg-red-500' : 'border-gray-300'}`}>
+                              {selected && <i className="ri-check-line text-white text-[10px]"></i>}
+                            </div>
+                            <span className={`text-sm font-semibold ${selected ? 'text-red-700' : 'text-gray-700'}`}>{opt.label}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 leading-relaxed">{opt.desc}</p>
+                          <i className={`${opt.icon} ${selected ? 'text-red-500' : 'text-gray-400'}`}></i>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

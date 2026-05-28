@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ── BOG API constants ────────────────────────────────────────────────────
-const BOG_AUTH_URL = 'https://account.bog.ge/auth/realms/bog/protocol/openid-connect/token';
+const BOG_AUTH_URL = 'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token';
 const BOG_ORDERS_URL = 'https://api.bog.ge/payments/v1/ecommerce/orders';
 const SITE_URL = 'https://rentcottage.ge';
 const COMPANY_EMAIL = 'info.rentcottage@gmail.com';
@@ -82,13 +82,15 @@ async function getBogToken(): Promise<{ token: string | null; errorDetail: strin
   }
   console.log(`[getBogToken] Requesting token → ${BOG_AUTH_URL}`);
   const formBody = new URLSearchParams();
-  formBody.set('grant_type',   'client_credentials');
-  formBody.set('client_id',    clientId);
-  formBody.set('client_secret', secretKey);
+  formBody.set('grant_type', 'client_credentials');
+  const basicAuth = btoa(`${clientId}:${secretKey}`);
   try {
     const res = await fetch(BOG_AUTH_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${basicAuth}`,
+      },
       body: formBody.toString(),
     });
     const responseText = await res.text();
@@ -127,37 +129,97 @@ async function createBogOrder(
   callbackUrl: string,
   successUrl: string,
   failUrl: string,
+  productDescription: string,
 ): Promise<BogOrderCreateResult> {
+  const amount = Number(totalAmount.toFixed(2));
   const payload = {
     callback_url: callbackUrl,
-    shop_order_id: shopOrderId,
+    external_order_id: shopOrderId,
+    application_type: 'web',
     redirect_urls: { success: successUrl, fail: failUrl },
-    purchase_units: [{ amount: { currency_code: 'GEL', value: totalAmount.toFixed(2) } }],
-    locale: 'en-US',
+    purchase_units: {
+      currency: 'GEL',
+      total_amount: amount,
+      basket: [
+        {
+          product_id: shopOrderId,
+          description: productDescription,
+          quantity: 1,
+          unit_price: amount,
+        },
+      ],
+    },
   };
   try {
     const res = await fetch(BOG_ORDERS_URL, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept-Language': 'en',
+      },
       body: JSON.stringify(payload),
     });
     const responseText = await res.text();
-    if (!res.ok) return { order: null, errorDetail: `BOG order creation failed: HTTP ${res.status} — ${responseText}` };
+    if (!res.ok) return { order: null, errorDetail: `BOG order creation failed: HTTP ${res.status} — ${responseText} — payload sent: ${JSON.stringify(payload)}` };
     return { order: JSON.parse(responseText) as BogOrderResult, errorDetail: '' };
   } catch (e) {
     return { order: null, errorDetail: `BOG order creation exception: ${String(e)}` };
   }
 }
 
+async function bogCapturePayment(token: string, bogOrderId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`https://api.bog.ge/payments/v1/payment/authorization/approve/${bogOrderId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const text = await res.text();
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    return { ok: true };
+  } catch (e) { return { ok: false, error: String(e) }; }
+}
+
+async function bogReleasePayment(token: string, bogOrderId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`https://api.bog.ge/payments/v1/payment/authorization/cancel/${bogOrderId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const text = await res.text();
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    return { ok: true };
+  } catch (e) { return { ok: false, error: String(e) }; }
+}
+
+async function bogRefundPayment(token: string, bogOrderId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`https://api.bog.ge/payments/v1/payment/refund/${bogOrderId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const text = await res.text();
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    return { ok: true };
+  } catch (e) { return { ok: false, error: String(e) }; }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getBogOrderDetails(token: string, bogOrderId: string): Promise<Record<string, any> | null> {
   try {
-    const res = await fetch(`${BOG_ORDERS_URL}/${bogOrderId}`, {
+    const res = await fetch(`https://api.bog.ge/payments/v1/receipt/${bogOrderId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[getBogOrderDetails] HTTP ${res.status} for order ${bogOrderId}: ${await res.text()}`);
+      return null;
+    }
     return await res.json();
-  } catch {
+  } catch (e) {
+    console.error('[getBogOrderDetails] Exception:', e);
     return null;
   }
 }
@@ -369,7 +431,7 @@ Deno.serve(async (req: Request) => {
         if (token) {
           const orderDetails = await getBogOrderDetails(token, String(booking.payment_transaction_id));
           if (orderDetails) {
-            const bogStatus = String(orderDetails.status ?? orderDetails.order_status ?? '');
+            const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
             const mapped = mapBogPaymentStatus(bogStatus);
             if (mapped.paymentStatus === 'paid') {
               return jsonOk({ bookingId, updated: false, actualStatus: 'paid', message: 'Payment is actually successful — redirect to success page' });
@@ -386,6 +448,55 @@ Deno.serve(async (req: Request) => {
       return jsonOk({ bookingId, updated: true, paymentStatus: finalPaymentStatus, bookingStatus: finalBookingStatus });
     }
     return jsonOk({ bookingId, updated: false, paymentStatus: booking.payment_status, bookingStatus: booking.status });
+  }
+
+  // ── ACTION: internal-capture / internal-release / internal-refund ────────
+  // Called by booking-handler when host approves/rejects, or on cancel/expire.
+  // Gated by INTERNAL_API_KEY header. Looks up booking's payment_transaction_id
+  // and calls the matching BOG API.
+  if (req.method === 'POST' && (action === 'internal-capture' || action === 'internal-release' || action === 'internal-refund')) {
+    const headerKey = req.headers.get('x-internal-key') ?? '';
+    const expectedKey = Deno.env.get('INTERNAL_API_KEY') ?? '';
+    if (!expectedKey || headerKey !== expectedKey) return jsonErr('Forbidden', 403);
+
+    let body: Record<string, unknown>;
+    try { body = await req.json(); } catch { return jsonErr('Invalid JSON body'); }
+    const bookingId = String(body.bookingId ?? '');
+    if (!bookingId) return jsonErr('Missing bookingId');
+
+    const { data: booking } = await supabase.from('bookings').select('id, payment_transaction_id, payment_status, payment_method').eq('id', bookingId).maybeSingle();
+    if (!booking) return jsonErr('Booking not found', 404);
+    if (booking.payment_method !== 'pay_now' || !booking.payment_transaction_id) {
+      return jsonOk({ success: true, skipped: 'not_online_payment' });
+    }
+
+    const { token } = await getBogToken();
+    if (!token) return jsonErr('Could not authenticate with BOG', 500);
+
+    const orderId = String(booking.payment_transaction_id);
+    let result: { ok: boolean; error?: string };
+    let newPaymentStatus = booking.payment_status as string;
+
+    if (action === 'internal-capture') {
+      result = await bogCapturePayment(token, orderId);
+      if (result.ok) newPaymentStatus = 'paid';
+    } else if (action === 'internal-release') {
+      result = await bogReleasePayment(token, orderId);
+      if (result.ok) newPaymentStatus = 'canceled';
+    } else {
+      result = await bogRefundPayment(token, orderId);
+      if (result.ok) newPaymentStatus = 'refund_pending';
+    }
+
+    if (!result.ok) {
+      console.error(`[${action}] BOG call failed for ${orderId}: ${result.error}`);
+      await logEvent(supabase, bookingId, `bog_${action}_failed`, booking.payment_status, booking.payment_status, 'system', String(result.error ?? '').slice(0, 500));
+      return jsonErr(`BOG ${action} failed: ${result.error}`, 500);
+    }
+
+    await supabase.from('bookings').update({ payment_status: newPaymentStatus }).eq('id', bookingId);
+    await logEvent(supabase, bookingId, `bog_${action}_ok`, booking.payment_status, newPaymentStatus, 'system');
+    return jsonOk({ success: true, paymentStatus: newPaymentStatus });
   }
 
   // ── ACTION: create-order ──────────────────────────────────────────────────
@@ -426,6 +537,22 @@ Deno.serve(async (req: Request) => {
     if (checkOutDate <= checkInDate)  return jsonErr('Check-out date must be after check-in date.');
 
     const chosenMethod = String(payment_method ?? 'pay_now');
+
+    // Reject if the property doesn't accept the chosen payment method.
+    if (property_id) {
+      const { data: propAccepts } = await supabase
+        .from('property_applications')
+        .select('accepted_payment_methods')
+        .eq('id', String(property_id))
+        .maybeSingle();
+      const accepted = propAccepts?.accepted_payment_methods ?? 'both';
+      if (accepted === 'online_only' && chosenMethod !== 'pay_now') {
+        return jsonErr('This property only accepts online payment.');
+      }
+      if (accepted === 'pay_at_property_only' && chosenMethod !== 'pay_at_property') {
+        return jsonErr('This property only accepts pay-at-property.');
+      }
+    }
 
     // ── PAY AT PROPERTY ───────────────────────────────────────────────────
     if (chosenMethod === 'pay_at_property') {
@@ -528,6 +655,7 @@ Deno.serve(async (req: Request) => {
 
     const { order: bogOrder, errorDetail: orderErr } = await createBogOrder(
       token, booking.id, totalAmount, callbackUrl, successUrl, failUrl,
+      `${String(property_title)} — ${check_in} to ${check_out}`,
     );
 
     if (!bogOrder?.id) {
@@ -549,9 +677,33 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── ACTION: callback ──────────────────────────────────────────────────────
-  if (req.method === 'POST' && action === 'callback') {
-    let body: Record<string, unknown>;
-    try { body = await req.json(); } catch { return new Response('ok', { status: 200, headers: corsHeaders }); }
+  // BOG may POST to either /bog-payment?action=callback or /bog-payment (some
+  // gateways strip query strings). Detect by body shape too: the canonical
+  // BOG callback payload has `event: 'order_payment'`.
+  let bogCallbackBody: Record<string, unknown> | null = null;
+  if (req.method === 'POST' && action !== 'create-order' && !action?.startsWith('internal-')) {
+    try {
+      const peek = await req.clone().json();
+      if (peek && typeof peek === 'object' && (peek.event === 'order_payment' || peek.body || peek.order_id)) {
+        bogCallbackBody = peek;
+      }
+    } catch { /* not JSON, ignore */ }
+  }
+
+  if (req.method === 'POST' && (action === 'callback' || bogCallbackBody)) {
+    let rawBody: Record<string, unknown>;
+    if (bogCallbackBody) {
+      rawBody = bogCallbackBody;
+    } else {
+      try { rawBody = await req.json(); } catch { return new Response('ok', { status: 200, headers: corsHeaders }); }
+    }
+    console.log(`[callback] received. action=${action} bodyKeys=${Object.keys(rawBody).join(',')}`);
+
+    // BOG wraps the payment details inside { event, zoned_request_time, body: {...} }
+    const innerBody = (rawBody.body && typeof rawBody.body === 'object')
+      ? rawBody.body as Record<string, unknown>
+      : rawBody;
+    const body = innerBody;
 
     const bogOrderId      = String(body.order_id ?? body.id ?? '');
     const externalOrderId = String(body.external_order_id ?? body.shop_order_id ?? '');
@@ -587,7 +739,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Use BOG API response as the only source of truth — ignore callback body status
-    const bogStatus = String(orderDetails.status ?? orderDetails.order_status ?? '');
+    const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
     console.log(`[callback] BOG verified status for order ${bogOrderId}: ${bogStatus}`);
 
     const { paymentStatus, defaultBookingStatus } = mapBogPaymentStatus(bogStatus);
@@ -645,7 +797,7 @@ Deno.serve(async (req: Request) => {
     } else {
       const adminHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">Payment Received — Awaiting Host Approval ⏳</h2>${bookingTable([['Booking ID', String(bookingRow.id)], ['Customer Name', String(bookingRow.user_name ?? '—')], ['Customer Email', String(bookingRow.user_email)], ['Cottage', String(bookingRow.property_title)], ['Location', String(bookingRow.property_location ?? '—')], ['Check-in', String(bookingRow.check_in)], ['Check-out', String(bookingRow.check_out)], ['Guests', String(bookingRow.guests)], ['Total Price', '₾' + String(bookingRow.total_price)], ['Payment Method', 'Pay Now (Bank of Georgia)'], ['Payment Status', 'Paid ✅'], ['Booking Status', 'Awaiting Host Approval ⏳'], ['Approval Deadline', approvalDeadline ?? '—'], ['BOG Order ID', bogOrderId]])}`);
       await sendEmail(COMPANY_EMAIL, `Payment Received (Awaiting Host Approval): ${bookingRow.property_title}`, adminHtml);
-      const customerHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">Payment Successful — Booking Request Received! ✅</h2><p style="color:#374151;line-height:1.6">Hi <strong>${bookingRow.user_name ?? 'there'}</strong>,</p><p style="color:#374151;line-height:1.6">Your payment was <strong>successful</strong> and your booking request has been <strong>received</strong>. The host has <strong>24 hours</strong> to review your request.</p>${bookingTable([['Booking ID', String(bookingRow.id)], ['Cottage', String(bookingRow.property_title)], ['Location', String(bookingRow.property_location ?? '—')], ['Check-in', String(bookingRow.check_in)], ['Check-out', String(bookingRow.check_out)], ['Guests', String(bookingRow.guests)], ['Total Price', '₾' + String(bookingRow.total_price)], ['Payment Method', 'Pay Now (Bank of Georgia)'], ['Payment Status', 'Paid ✅'], ['Booking Status', 'Awaiting Host Approval ⏳']])}<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>What happens next?</strong> The host will review your request within 24 hours.</div><div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/profile" style="display:inline-block;background:#e53e3e;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">View My Bookings</a></div>`);
+      const customerHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">Payment Successful — Booking Request Received! ✅</h2><p style="color:#374151;line-height:1.6">Hi <strong>${bookingRow.user_name ?? 'there'}</strong>,</p><p style="color:#374151;line-height:1.6">Your payment was <strong>successful</strong> and your booking request has been <strong>received</strong>. The host has <strong>24 hours</strong> to review your request. If the host rejects or doesn't respond, your payment will be automatically refunded (usually within 5–10 business days).</p>${bookingTable([['Booking ID', String(bookingRow.id)], ['Cottage', String(bookingRow.property_title)], ['Location', String(bookingRow.property_location ?? '—')], ['Check-in', String(bookingRow.check_in)], ['Check-out', String(bookingRow.check_out)], ['Guests', String(bookingRow.guests)], ['Total Price', '₾' + String(bookingRow.total_price)], ['Payment Method', 'Pay Now (Bank of Georgia)'], ['Payment Status', 'Paid ✅'], ['Booking Status', 'Awaiting Host Approval ⏳']])}<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>What happens next?</strong> The host will review your request within 24 hours.</div><div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/profile" style="display:inline-block;background:#e53e3e;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">View My Bookings</a></div>`);
       await sendEmail(String(bookingRow.user_email), `Booking Request Received – ${bookingRow.property_title}`, customerHtml);
       if (hostEmailForProp && hostEmailForProp !== COMPANY_EMAIL) {
         const hostHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">ახალი გადახდილი ჯავშნის მოთხოვნა — საჭიროა მოქმედება 🏡</h2><p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p><p style="color:#374151;line-height:1.6">ახალი <strong>გადახდილი ჯავშნის მოთხოვნა</strong> ობიექტისთვის <strong>${bookingRow.property_title}</strong>. სტუმარმა უკვე გადაიხადა.</p>${bookingTable([['ჯავშნის ID', String(bookingRow.id)], ['კოტეჯი', String(bookingRow.property_title)], ['ჩასვლის თარიღი', String(bookingRow.check_in)], ['გასვლის თარიღი', String(bookingRow.check_out)], ['სტუმრების რაოდენობა', String(bookingRow.guests)], ['ჯამური ფასი', '₾' + String(bookingRow.total_price)], ['გადახდის სტატუსი', 'გადახდილია ✅'], ['დადასტურების ბოლო ვადა', approvalDeadline ?? '—']])}<div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/host-dashboard" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">გადადით მასპინძლის პანელში</a></div>`);
@@ -723,7 +875,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const bogStatus = String(orderDetails.status ?? orderDetails.order_status ?? '');
+    const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
     console.log(`[verify] BOG live status for order ${booking.payment_transaction_id}: ${bogStatus}`);
     const { paymentStatus, defaultBookingStatus } = mapBogPaymentStatus(bogStatus);
 

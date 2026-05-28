@@ -128,11 +128,16 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
     try {
       // Get current user session to retrieve email
       const { data: sessionData } = await supabase.auth.getSession();
-      const userEmail = sessionData?.session?.user?.email ?? booking.user_email;
+      const session = sessionData?.session;
+      const userEmail = session?.user?.email ?? booking.user_email;
 
       const res = await fetch(BOOKING_HANDLER_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          'apikey': import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        },
         body: JSON.stringify({
           action: 'cancel',
           bookingId: booking.id,

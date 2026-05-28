@@ -341,6 +341,27 @@ async function logEvent(supabase: any, bookingId: string, eventType: string, fro
   } catch (_e) { /* non-fatal */ }
 }
 
+// Trigger bog-payment to capture, release, or refund the BOG order tied to this booking.
+// Only meaningful for payment_method='pay_now' bookings. Silently no-ops otherwise.
+async function triggerBogPaymentAction(action: 'internal-capture' | 'internal-release' | 'internal-refund', bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  const key = Deno.env.get('INTERNAL_API_KEY') ?? '';
+  if (!key) {
+    console.error('[triggerBogPaymentAction] INTERNAL_API_KEY missing — cannot call bog-payment');
+    return { ok: false, error: 'INTERNAL_API_KEY missing' };
+  }
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/bog-payment?action=${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Key': key },
+      body: JSON.stringify({ bookingId }),
+    });
+    const text = await res.text();
+    if (!res.ok) { console.error(`[triggerBogPaymentAction] ${action} failed: ${text}`); return { ok: false, error: text }; }
+    return { ok: true };
+  } catch (e) { return { ok: false, error: String(e) }; }
+}
+
 function htmlPage(title: string, message: string, color = '#e53e3e') {
   const icon = color === '#38a169' ? '✅' : color === '#e53e3e' ? '❌' : 'ℹ️';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${title}</title><style>*{box-sizing:border-box}body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f3f4f6}.card{background:#fff;border-radius:16px;padding:48px 56px;text-align:center;max-width:440px;width:90%;border:1px solid #e5e7eb}.icon{font-size:52px;margin-bottom:20px}h1{color:${color};margin:0 0 14px;font-size:24px;font-weight:700}p{color:#6b7280;margin:0;line-height:1.7;font-size:15px}</style></head><body><div class="card"><div class="icon">${icon}</div><h1>${title}</h1><p>${message}</p></div></body></html>`;
@@ -681,6 +702,8 @@ async function applyHostApproveBooking(supabase: any, bookingId: string, hostEma
   if (booking.status === 'confirmed') return { ok: true, booking };
   if (['cancelled', 'cancelled_by_host', 'rejected'].includes(booking.status)) return { ok: false, error: 'Cannot approve a cancelled or rejected booking' };
   const prevStatus = booking.status;
+  // Note: in auto-capture mode the payment is already captured when customer paid.
+  // No BOG-side action needed on host approval — just mark booking confirmed.
   const { error: updateErr } = await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId);
   if (updateErr) return { ok: false, error: 'Failed to update' };
   await logEvent(supabase, bookingId, 'host_approved', prevStatus, 'confirmed', 'host', `host: ${hostEmail}`);
@@ -774,9 +797,13 @@ async function applyHostRejectBooking(supabase: any, bookingId: string, hostEmai
   if (['rejected', 'cancelled', 'cancelled_by_host'].includes(booking.status)) return { ok: true, booking };
   if (booking.status === 'confirmed') return { ok: false, error: 'Cannot reject a confirmed booking — use Cancel instead' };
   const prevStatus = booking.status;
-  const paymentUpdate = booking.payment_status === 'paid' ? 'refund_pending' : 'cancelled';
+  // Payment was captured immediately on submission → issue refund on rejection.
+  if (booking.payment_method === 'pay_now' && booking.payment_status === 'paid' && booking.payment_transaction_id) {
+    const refund = await triggerBogPaymentAction('internal-refund', bookingId);
+    if (!refund.ok) console.error(`[host-reject] BOG refund failed for ${bookingId}: ${refund.error}`);
+  }
   const now = new Date().toISOString();
-  const updatePayload: Record<string, unknown> = { status: 'rejected', payment_status: paymentUpdate, canceled_by: 'host', canceled_at: now };
+  const updatePayload: Record<string, unknown> = { status: 'rejected', canceled_by: 'host', canceled_at: now };
   if (rejectionNote) updatePayload.rejection_note = rejectionNote;
   const { error: updateErr } = await supabase.from('bookings').update(updatePayload).eq('id', bookingId);
   if (updateErr) return { ok: false, error: 'Failed to update' };
@@ -796,12 +823,16 @@ async function applyHostCancelBooking(supabase: any, bookingId: string, hostEmai
   if (booking.status === 'cancelled' || booking.status === 'cancelled_by_host') return { ok: false, error: 'Booking is already cancelled' };
   if (booking.status !== 'confirmed') return { ok: false, error: 'Only confirmed bookings can be cancelled by the host' };
   const wasPaidOnline = booking.payment_status === 'paid';
-  const newPaymentStatus = wasPaidOnline ? 'refund_pending' : 'cancelled';
   const now = new Date().toISOString();
-  const { error: updateErr } = await supabase.from('bookings').update({ status: 'cancelled_by_host', payment_status: newPaymentStatus, canceled_by: 'host', canceled_at: now }).eq('id', bookingId);
+  // Booking was confirmed → payment was already captured → issue refund.
+  if (wasPaidOnline && booking.payment_method === 'pay_now' && booking.payment_transaction_id) {
+    const refund = await triggerBogPaymentAction('internal-refund', bookingId);
+    if (!refund.ok) console.error(`[host-cancel] BOG refund failed for ${bookingId}: ${refund.error}`);
+  }
+  const { error: updateErr } = await supabase.from('bookings').update({ status: 'cancelled_by_host', canceled_by: 'host', canceled_at: now }).eq('id', bookingId);
   if (updateErr) return { ok: false, error: 'Failed to cancel booking' };
-  await logEvent(supabase, bookingId, 'host_cancelled', 'confirmed', 'cancelled_by_host', 'host', `host: ${hostEmail}${wasPaidOnline ? ' | paid online → refund_pending' : ' | pay at property'}`);
-  const refundNote = wasPaidOnline ? 'Since you paid online, a refund will be processed within 5–10 business days.' : '';
+  await logEvent(supabase, bookingId, 'host_cancelled', 'confirmed', 'cancelled_by_host', 'host', `host: ${hostEmail}${wasPaidOnline ? ' | paid online → refund issued' : ' | pay at property'}`);
+  const refundNote = wasPaidOnline ? 'Since you paid online, a refund has been issued to your card. It typically appears within 5–10 business days.' : '';
   await sendEmail(supabase, booking.user_email, `Important: Your booking at ${booking.property_title} has been cancelled`, buildHostCancelCustomerEmailHtml(booking, refundNote), 'booking_cancelled_by_host', bookingId);
   return { ok: true, booking };
 }
@@ -860,9 +891,13 @@ async function applyExpirePendingApprovals(supabase: any, hostEmail?: string): P
 
   let expiredCount = 0;
   for (const booking of expiredBookings) {
-    const paymentUpdate = booking.payment_status === 'paid' ? 'refund_pending' : 'cancelled';
+    // Payment was captured at submission → refund on expire.
+    if (booking.payment_method === 'pay_now' && booking.payment_status === 'paid' && booking.payment_transaction_id) {
+      const refund = await triggerBogPaymentAction('internal-refund', String(booking.id));
+      if (!refund.ok) console.error(`[expire] BOG refund failed for ${booking.id}: ${refund.error}`);
+    }
     const { error: updateErr } = await supabase.from('bookings').update({
-      status: 'rejected', payment_status: paymentUpdate, canceled_by: 'system', canceled_at: now,
+      status: 'rejected', canceled_by: 'system', canceled_at: now,
     }).eq('id', booking.id);
     if (updateErr) continue;
     await logEvent(supabase, booking.id, 'expired_auto_rejected', 'pending_host_approval', 'rejected', 'system', 'Auto-rejected: 24h approval window expired');
@@ -1118,7 +1153,15 @@ Deno.serve(async (req: Request) => {
       if (booking.status === 'cancelled' || booking.status === 'cancelled_by_host') return jsonErr('Booking already cancelled');
       const prevStatus = booking.status;
       const now = new Date().toISOString();
-      const { error: updateErr } = await supabase.from('bookings').update({ status: 'cancelled', payment_status: 'cancelled', canceled_by: 'customer', canceled_at: now }).eq('id', bId);
+      // In auto-capture mode, customer cancellation always issues a refund.
+      const isPaidOnline = booking.payment_method === 'pay_now' && booking.payment_status === 'paid' && booking.payment_transaction_id;
+      if (isPaidOnline) {
+        const r = await triggerBogPaymentAction('internal-refund', bId);
+        if (!r.ok) console.error(`[customer-cancel] BOG refund failed for ${bId}: ${r.error}`);
+      }
+      const cancelUpdate: Record<string, unknown> = { status: 'cancelled', canceled_by: 'customer', canceled_at: now };
+      if (!isPaidOnline) cancelUpdate.payment_status = 'cancelled';
+      const { error: updateErr } = await supabase.from('bookings').update(cancelUpdate).eq('id', bId);
       if (updateErr) return jsonErr('Failed to cancel', 500);
       await logEvent(supabase, bId, 'cancelled', prevStatus, 'cancelled', 'customer');
       await sendEmail(supabase, booking.user_email, `Booking Cancelled – ${booking.property_title}`,

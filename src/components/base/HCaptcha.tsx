@@ -1,9 +1,7 @@
 import { useRef, useImperativeHandle, forwardRef } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 
-// hCaptcha test sitekey — works on any domain, free tier
-// Replace with your own sitekey from hcaptcha.com when going to production
-export const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
+export const HCAPTCHA_SITE_KEY = '525e8946-9664-4210-8c24-6e9e1a4057ca';
 
 export interface HCaptchaHandle {
   execute: () => void;

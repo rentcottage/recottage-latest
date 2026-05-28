@@ -67,7 +67,7 @@ export async function signInWithGoogle(): Promise<void> {
   await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'https://rentcottage.ge/auth/callback',
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
 }
@@ -76,7 +76,7 @@ export async function signInWithFacebook(): Promise<void> {
   await supabase.auth.signInWithOAuth({
     provider: 'facebook',
     options: {
-      redirectTo: 'https://rentcottage.ge/auth/callback',
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
 }
@@ -204,7 +204,7 @@ export async function signUpWithEmail(
         full_name: fullName,
       },
       // Redirect target after clicking the confirmation link in email
-      emailRedirectTo: 'https://rentcottage.ge/auth/callback',
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
       ...(captchaToken ? { captchaToken } : {}),
     },
   });
@@ -268,7 +268,7 @@ export async function sendPasswordReset(
   captchaToken?: string,
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: 'https://rentcottage.ge/auth/reset-password',
+    redirectTo: `${window.location.origin}/auth/reset-password`,
     ...(captchaToken ? { captchaToken } : {}),
   });
   if (error) return { error: error.message };

@@ -401,8 +401,13 @@ Deno.serve(async (req: Request) => {
       host_first_name, host_last_name, host_email, host_phone,
       property_type, location, bedrooms, bathrooms, max_guests,
       amenities, categories, photo_urls, title, description, price_per_night,
-      pricing_type, guest_pricing_tiers,
+      pricing_type, guest_pricing_tiers, accepted_payment_methods,
     } = body;
+
+    const allowedPaymentMethods = ['online_only', 'pay_at_property_only', 'both'];
+    const acceptedPm = allowedPaymentMethods.includes(String(accepted_payment_methods))
+      ? String(accepted_payment_methods)
+      : 'both';
 
     if (!host_email || !title || !location || !price_per_night) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -425,6 +430,7 @@ Deno.serve(async (req: Request) => {
         price_per_night: Number(price_per_night),
         pricing_type: pricing_type || 'fixed',
         guest_pricing_tiers: guest_pricing_tiers || null,
+        accepted_payment_methods: acceptedPm,
         status: 'pending',
       })
       .select()

@@ -341,75 +341,53 @@ function BookingForm({
       </div>
 
       {/* Payment Method */}
-      <div className="mb-5">
-        <label className="block text-xs font-semibold text-gray-700 mb-2">Payment Method</label>
-        <div className={`grid gap-2 ${FEATURE_FLAGS.ENABLE_PAY_NOW ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          {FEATURE_FLAGS.ENABLE_PAY_NOW && (
-            <button
-              type="button"
-              onClick={() => onPaymentMethodChange('pay_now')}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all cursor-pointer ${
-                paymentMethod === 'pay_now'
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 flex items-center justify-center ${
-                  paymentMethod === 'pay_now' ? 'text-red-500' : 'text-gray-400'
-                }`}
-              >
-                <i className="ri-bank-card-line text-base"></i>
-              </div>
-              <span
-                className={`text-xs font-semibold ${
-                  paymentMethod === 'pay_now' ? 'text-red-600' : 'text-gray-600'
-                }`}
-              >
-                Pay Now
-              </span>
-              <span
-                className={`text-xs leading-tight text-center ${
-                  paymentMethod === 'pay_now' ? 'text-red-400' : 'text-gray-400'
-                }`}
-              >
-                Online payment
-              </span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => onPaymentMethodChange('pay_at_property')}
-            className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all cursor-pointer ${
-              paymentMethod === 'pay_at_property'
-                ? 'border-red-500 bg-red-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 flex items-center justify-center ${
-                paymentMethod === 'pay_at_property' ? 'text-red-500' : 'text-gray-400'
-              }`}
-            >
-              <i className="ri-home-heart-line text-base"></i>
+      {(() => {
+        const accepted = (property?.accepted_payment_methods as 'online_only' | 'pay_at_property_only' | 'both') || 'both';
+        const showOnline = FEATURE_FLAGS.ENABLE_PAY_NOW && (accepted === 'online_only' || accepted === 'both');
+        const showAtProperty = accepted === 'pay_at_property_only' || accepted === 'both';
+        const optionCount = (showOnline ? 1 : 0) + (showAtProperty ? 1 : 0);
+        return (
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Payment Method</label>
+            <div className={`grid gap-2 ${optionCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {showOnline && (
+                <button
+                  type="button"
+                  onClick={() => onPaymentMethodChange('pay_now')}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                    paymentMethod === 'pay_now'
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-5 h-5 flex items-center justify-center ${paymentMethod === 'pay_now' ? 'text-red-500' : 'text-gray-400'}`}>
+                    <i className="ri-bank-card-line text-base"></i>
+                  </div>
+                  <span className={`text-xs font-semibold ${paymentMethod === 'pay_now' ? 'text-red-600' : 'text-gray-600'}`}>Pay Now</span>
+                  <span className={`text-xs leading-tight text-center ${paymentMethod === 'pay_now' ? 'text-red-400' : 'text-gray-400'}`}>Online payment</span>
+                </button>
+              )}
+              {showAtProperty && (
+                <button
+                  type="button"
+                  onClick={() => onPaymentMethodChange('pay_at_property')}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                    paymentMethod === 'pay_at_property'
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-5 h-5 flex items-center justify-center ${paymentMethod === 'pay_at_property' ? 'text-red-500' : 'text-gray-400'}`}>
+                    <i className="ri-home-heart-line text-base"></i>
+                  </div>
+                  <span className={`text-xs font-semibold ${paymentMethod === 'pay_at_property' ? 'text-red-600' : 'text-gray-600'}`}>Pay at Property</span>
+                  <span className={`text-xs leading-tight text-center ${paymentMethod === 'pay_at_property' ? 'text-red-400' : 'text-gray-400'}`}>Pay on arrival</span>
+                </button>
+              )}
             </div>
-            <span
-              className={`text-xs font-semibold ${
-                paymentMethod === 'pay_at_property' ? 'text-red-600' : 'text-gray-600'
-              }`}
-            >
-              Pay at Property
-            </span>
-            <span
-              className={`text-xs leading-tight text-center ${
-                paymentMethod === 'pay_at_property' ? 'text-red-400' : 'text-gray-400'
-              }`}
-            >
-              Pay on arrival
-            </span>
-          </button>
-        </div>
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Price breakdown */}
       {checkIn && checkOut && nights > 0 && (
