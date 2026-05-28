@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
 
 const CORPORATE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/corporate-application-handler`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -47,11 +46,23 @@ export default function CorporateApplications() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('corporate_applications')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (!error && data) setApps(data as CorporateApplication[]);
+    try {
+      const res = await fetch(CORPORATE_FN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ action: 'admin-list' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.applications)) {
+        setApps(data.applications as CorporateApplication[]);
+      }
+    } catch (err) {
+      console.error('[CorporateApplications] load failed', err);
+    }
     setLoading(false);
   }, []);
 

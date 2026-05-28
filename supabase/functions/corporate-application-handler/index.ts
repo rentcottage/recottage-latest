@@ -133,6 +133,16 @@ Deno.serve(async (req: Request) => {
 
   const action = body.action as string | undefined;
 
+  // ── Admin list (service-role bypass; RLS hides rows from the anon client) ──
+  if (action === 'admin-list') {
+    const { data, error } = await supabase
+      .from('corporate_applications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) return jsonResponse({ error: error.message }, 500);
+    return jsonResponse({ applications: data ?? [] });
+  }
+
   // ── Admin approve ──────────────────────────────────────────────────
   if (action === 'admin-approve') {
     const applicationId = body.applicationId as string;
