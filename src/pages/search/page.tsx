@@ -856,8 +856,8 @@ export default function SearchResults() {
               <div className="flex space-x-4 md:space-x-6">
                 <a href="/privacy" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Privacy</a>
                 <a href="/terms" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Terms &amp; Conditions</a>
-                <a href="/corporate" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Corporate</a>
                 <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Site Map</a>
+                <a href="/corporate" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Corporate</a>
               </div>
             </div>
             <p className="text-gray-400 text-xs md:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>

@@ -256,11 +256,11 @@ export default function SiteMap() {
                 <a href="/terms" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
                   Terms &amp; Conditions
                 </a>
-                <a href="/corporate" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
-                  Corporate
-                </a>
                 <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
                   Site Map
+                </a>
+                <a href="/corporate" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
+                  Corporate
                 </a>
               </div>
             </div>
