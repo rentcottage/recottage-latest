@@ -159,13 +159,22 @@ Deno.serve(async (req: Request) => {
     // Find or create the auth user for this agency.
     let userId: string | null = app.user_id ?? null;
     if (!userId) {
-      // Try locating by email first.
-      const { data: existing } = await supabase.auth.admin.listUsers();
-      const match = existing?.users.find((u) => (u.email ?? '').toLowerCase() === String(app.email).toLowerCase());
-      if (match) {
-        userId = match.id;
-      } else {
-        // Create a fresh auth user. They'll need to use "Forgot password" to set a password.
+      const targetEmail = String(app.email).toLowerCase();
+      // listUsers paginates (default 50) and has no working email filter — walk the pages.
+      const findExistingUserId = async (): Promise<string | null> => {
+        for (let page = 1; page <= 50; page++) {
+          const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+          if (error || !data?.users?.length) return null;
+          const match = data.users.find((u) => (u.email ?? '').toLowerCase() === targetEmail);
+          if (match) return match.id;
+          if (data.users.length < 200) return null; // last page
+        }
+        return null;
+      };
+
+      userId = await findExistingUserId();
+
+      if (!userId) {
         const { data: created, error: createErr } = await supabase.auth.admin.createUser({
           email: String(app.email),
           email_confirm: true,
@@ -177,9 +186,17 @@ Deno.serve(async (req: Request) => {
         });
         if (createErr || !created.user) {
           console.error('[corporate-handler] createUser failed', createErr);
-          return jsonResponse({ error: 'Failed to create auth user' }, 500);
+          // Race: maybe the user was created between our search and our create call. Try once more.
+          const retryId = await findExistingUserId();
+          if (retryId) {
+            userId = retryId;
+          } else {
+            const msg = createErr?.message ?? 'Unknown auth error';
+            return jsonResponse({ error: `Failed to create auth user: ${msg}` }, 500);
+          }
+        } else {
+          userId = created.user.id;
         }
-        userId = created.user.id;
       }
     }
 
