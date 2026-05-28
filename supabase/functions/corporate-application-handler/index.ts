@@ -133,6 +133,47 @@ Deno.serve(async (req: Request) => {
 
   const action = body.action as string | undefined;
 
+  // ── Corporate login (tax_id + password → magic-link token the client consumes) ──
+  if (action === 'corporate-login') {
+    const taxIdRaw = String(body.tax_id ?? '').trim();
+    const pwd = String(body.password ?? '');
+    if (!taxIdRaw || !pwd) return jsonResponse({ error: 'Tax ID and password are required.' }, 400);
+
+    const { data: agency } = await supabase
+      .from('corporate_applications')
+      .select('id, email, status, agency_name')
+      .eq('tax_id', taxIdRaw)
+      .maybeSingle();
+    if (!agency) return jsonResponse({ error: 'No agency found with that tax ID.' }, 401);
+
+    const { data: matchedId, error: verifyErr } = await supabase.rpc('verify_corporate_login', {
+      p_email: agency.email,
+      p_password: pwd,
+    });
+    if (verifyErr) {
+      console.error('[corporate-handler] verify_corporate_login error', verifyErr);
+      return jsonResponse({ error: 'Login service unavailable. Please try again.' }, 500);
+    }
+    if (!matchedId) return jsonResponse({ error: 'Incorrect tax ID or password.' }, 401);
+
+    // Mint a magic-link token the browser will consume via supabase.auth.verifyOtp.
+    // Admin-issued, so no captcha is required to redeem it.
+    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: String(agency.email),
+    });
+    if (linkErr || !linkData?.properties?.hashed_token) {
+      console.error('[corporate-handler] generateLink failed', linkErr);
+      return jsonResponse({ error: 'Failed to issue session token.' }, 500);
+    }
+    return jsonResponse({
+      success: true,
+      hashed_token: linkData.properties.hashed_token,
+      status: agency.status,
+      agencyId: agency.id,
+    });
+  }
+
   // ── Admin list (service-role bypass; RLS hides rows from the anon client) ──
   if (action === 'admin-list') {
     const { data, error } = await supabase
@@ -248,9 +289,24 @@ Deno.serve(async (req: Request) => {
   const rep_last_name = String(body.rep_last_name ?? '').trim();
   const email = String(body.email ?? '').trim().toLowerCase();
   const phone = String(body.phone ?? '').trim();
+  const password = String(body.password ?? '');
 
-  if (!agency_name || !tax_id || !rep_first_name || !rep_last_name || !email || !phone) {
+  if (!agency_name || !tax_id || !rep_first_name || !rep_last_name || !email || !phone || !password) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
+  }
+  if (password.length < 8) {
+    return jsonResponse({ error: 'Password must be at least 8 characters.' }, 400);
+  }
+
+  // Tax ID is what they sign in with, so it must be unique across pending/approved agencies.
+  const { data: existingTaxId } = await supabase
+    .from('corporate_applications')
+    .select('id, status')
+    .eq('tax_id', tax_id)
+    .in('status', ['pending', 'approved'])
+    .maybeSingle();
+  if (existingTaxId) {
+    return jsonResponse({ error: 'An application with this tax ID is already on file.' }, 409);
   }
 
   // Prevent duplicate pending/approved applications for the same email.
@@ -268,6 +324,50 @@ Deno.serve(async (req: Request) => {
     }, 409);
   }
 
+  // Provision the auth user now (with the password) so the agency can sign in
+  // immediately to check status. The dashboard is still gated by status='approved'.
+  let provisionedUserId: string | null = null;
+  {
+    const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: `${rep_first_name} ${rep_last_name}`,
+        agency_name,
+        tax_id,
+        role: 'corporate',
+      },
+    });
+    if (createErr || !created.user) {
+      // If the email is already a Supabase auth user, fall back to updating their password.
+      const msg = (createErr?.message ?? '').toLowerCase();
+      if (msg.includes('already') || msg.includes('exists') || msg.includes('registered')) {
+        // Find and update their password so the agency can log in.
+        for (let page = 1; page <= 50; page++) {
+          const { data: ls } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+          if (!ls?.users?.length) break;
+          const match = ls.users.find((u) => (u.email ?? '').toLowerCase() === email);
+          if (match) {
+            const { error: updErr } = await supabase.auth.admin.updateUserById(match.id, {
+              password,
+              user_metadata: { ...match.user_metadata, agency_name, tax_id, role: 'corporate' },
+            });
+            if (updErr) return jsonResponse({ error: `Failed to update existing user: ${updErr.message}` }, 500);
+            provisionedUserId = match.id;
+            break;
+          }
+          if (ls.users.length < 200) break;
+        }
+        if (!provisionedUserId) return jsonResponse({ error: 'User exists but could not be located.' }, 500);
+      } else {
+        return jsonResponse({ error: `Failed to provision login: ${createErr?.message ?? 'unknown error'}` }, 500);
+      }
+    } else {
+      provisionedUserId = created.user.id;
+    }
+  }
+
   const { data: app, error: insErr } = await supabase
     .from('corporate_applications')
     .insert({
@@ -278,6 +378,7 @@ Deno.serve(async (req: Request) => {
       email,
       phone,
       status: 'pending',
+      user_id: provisionedUserId,
     })
     .select()
     .maybeSingle();

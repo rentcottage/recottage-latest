@@ -17,13 +17,17 @@ interface CorporateApplication {
   rejection_note: string | null;
 }
 
+type Mode = 'apply' | 'signin';
+
 export default function CorporatePage() {
   const { user, isLoggedIn, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  const [mode, setMode] = useState<Mode>('apply');
   const [appLoading, setAppLoading] = useState(true);
   const [existing, setExisting] = useState<CorporateApplication | null>(null);
 
+  // Apply form
   const [form, setForm] = useState({
     agency_name: '',
     tax_id: '',
@@ -31,10 +35,17 @@ export default function CorporatePage() {
     rep_last_name: '',
     email: '',
     phone: '',
+    password: '',
+    confirm_password: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  // Sign-in form
+  const [signin, setSignin] = useState({ tax_id: '', password: '' });
+  const [signinError, setSigninError] = useState('');
+  const [signinLoading, setSigninLoading] = useState(false);
 
   // Look up an existing application for the signed-in user.
   useEffect(() => {
@@ -56,19 +67,6 @@ export default function CorporatePage() {
         if (data.status === 'approved') {
           navigate('/corporate/dashboard', { replace: true });
         }
-      } else if (user.email) {
-        // Fall back to email lookup for applications submitted before the auth user was created.
-        const { data: byEmail } = await supabase
-          .from('corporate_applications')
-          .select('id, agency_name, status, rejection_note')
-          .ilike('email', user.email)
-          .maybeSingle();
-        if (!cancelled && byEmail) {
-          setExisting(byEmail as CorporateApplication);
-          if (byEmail.status === 'approved') {
-            navigate('/corporate/dashboard', { replace: true });
-          }
-        }
       }
       setAppLoading(false);
     }
@@ -76,7 +74,7 @@ export default function CorporatePage() {
     return () => { cancelled = true; };
   }, [authLoading, isLoggedIn, user, navigate]);
 
-  // Pre-fill the email from the logged-in user.
+  // Pre-fill the email from the logged-in user (for apply mode only).
   useEffect(() => {
     if (user?.email && !form.email) {
       setForm((f) => ({ ...f, email: user.email ?? '' }));
@@ -86,12 +84,22 @@ export default function CorporatePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
-    if (!form.agency_name || !form.tax_id || !form.rep_first_name || !form.rep_last_name || !form.email || !form.phone.trim()) {
+    if (!form.agency_name || !form.tax_id || !form.rep_first_name || !form.rep_last_name || !form.email || !form.phone.trim() || !form.password) {
       setSubmitError('Please fill in all required fields.');
+      return;
+    }
+    if (form.password.length < 8) {
+      setSubmitError('Password must be at least 8 characters.');
+      return;
+    }
+    if (form.password !== form.confirm_password) {
+      setSubmitError('Passwords do not match.');
       return;
     }
     setSubmitting(true);
     try {
+      const { confirm_password: _confirm, ...payload } = form;
+      void _confirm;
       const res = await fetch(CORPORATE_FN_URL, {
         method: 'POST',
         headers: {
@@ -99,7 +107,7 @@ export default function CorporatePage() {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -112,6 +120,52 @@ export default function CorporatePage() {
       setSubmitError('Network error. Please try again.');
     }
     setSubmitting(false);
+  };
+
+  const handleSignin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSigninError('');
+    if (!signin.tax_id.trim() || !signin.password) {
+      setSigninError('Please enter your tax ID and password.');
+      return;
+    }
+    setSigninLoading(true);
+    try {
+      const res = await fetch(CORPORATE_FN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ action: 'corporate-login', tax_id: signin.tax_id, password: signin.password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setSigninError((data.error as string) ?? `Sign-in failed (${res.status})`);
+        setSigninLoading(false);
+        return;
+      }
+      // Consume the admin-issued magic-link token to set the session client-side.
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        token_hash: data.hashed_token,
+        type: 'magiclink',
+      });
+      if (otpErr) {
+        setSigninError(otpErr.message);
+        setSigninLoading(false);
+        return;
+      }
+      if (data.status === 'approved') {
+        navigate('/corporate/dashboard', { replace: true });
+      } else {
+        // Refresh the page so the pending/rejected status banner renders.
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error(err);
+      setSigninError('Network error. Please try again.');
+    }
   };
 
   const update = (key: keyof typeof form) =>
@@ -176,50 +230,127 @@ export default function CorporatePage() {
             color="emerald"
             icon="ri-checkbox-circle-line"
             title="Application received"
-            message="Thanks for applying. We'll review your details and email you within 24 hours."
+            message="Thanks for applying. We'll review your details and email you within 24 hours. You can now sign in with your tax ID and password to check your status."
           />
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Apply as an agency</h2>
-            <p className="text-sm text-gray-500 mb-6">All fields marked with * are required.</p>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <Field label="Agency name *" value={form.agency_name} onChange={update('agency_name')} placeholder="e.g. Tbilisi Travel LLC" />
-              <Field label="Tax / company ID number *" value={form.tax_id} onChange={update('tax_id')} placeholder="e.g. 405123456" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Representative first name *" value={form.rep_first_name} onChange={update('rep_first_name')} placeholder="First name" />
-                <Field label="Representative last name *" value={form.rep_last_name} onChange={update('rep_last_name')} placeholder="Last name" />
-              </div>
-              <Field label="Email *" type="email" value={form.email} onChange={update('email')} placeholder="agency@example.com" />
-              <Field label="Phone *" type="tel" value={form.phone} onChange={update('phone')} placeholder="+995 555 12 34 56" />
-
-              {submitError && (
-                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  {submitError}
-                </div>
-              )}
-
+            {/* Mode toggle */}
+            <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl mb-6">
               <button
-                type="submit"
-                disabled={submitting}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                type="button"
+                onClick={() => setMode('apply')}
+                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${mode === 'apply' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 animate-spin"><i className="ri-loader-4-line"></i></div>
-                    Submitting…
-                  </>
-                ) : (
-                  <>
-                    <i className="ri-send-plane-line"></i>
-                    Submit application
-                  </>
-                )}
+                Apply as an agency
               </button>
+              <button
+                type="button"
+                onClick={() => setMode('signin')}
+                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${mode === 'signin' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Sign in
+              </button>
+            </div>
 
-              <p className="text-xs text-gray-400 text-center">
-                Already approved? <a href="/auth/callback" className="text-emerald-700 hover:underline">Sign in here</a> and you'll be redirected to your dashboard.
-              </p>
-            </form>
+            {mode === 'apply' ? (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <p className="text-sm text-gray-500">All fields marked with <span className="text-red-500">*</span> are required.</p>
+                <Field label="Agency name *" value={form.agency_name} onChange={update('agency_name')} placeholder="e.g. Tbilisi Travel LLC" />
+                <Field label="Tax / company ID number *" value={form.tax_id} onChange={update('tax_id')} placeholder="e.g. 405123456" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Representative first name *" value={form.rep_first_name} onChange={update('rep_first_name')} placeholder="First name" />
+                  <Field label="Representative last name *" value={form.rep_last_name} onChange={update('rep_last_name')} placeholder="Last name" />
+                </div>
+                <Field label="Email *" type="email" value={form.email} onChange={update('email')} placeholder="agency@example.com" />
+                <Field label="Phone *" type="tel" value={form.phone} onChange={update('phone')} placeholder="+995 555 12 34 56" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Password * (min. 8 chars)" type="password" value={form.password} onChange={update('password')} placeholder="••••••••" />
+                  <Field label="Confirm password *" type="password" value={form.confirm_password} onChange={update('confirm_password')} placeholder="••••••••" />
+                </div>
+
+                {submitError && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-4 h-4 animate-spin"><i className="ri-loader-4-line"></i></div>
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-send-plane-line"></i>
+                      Submit application
+                    </>
+                  )}
+                </button>
+
+                <p className="text-xs text-gray-400 text-center">
+                  Already have an account?{' '}
+                  <button type="button" onClick={() => setMode('signin')} className="text-emerald-700 hover:underline cursor-pointer">
+                    Sign in with your tax ID
+                  </button>
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleSignin} className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Sign in as an agency</h2>
+                  <p className="text-sm text-gray-500">Use the tax ID and password you registered with.</p>
+                </div>
+                <Field
+                  label="Tax ID *"
+                  value={signin.tax_id}
+                  onChange={(e) => setSignin((s) => ({ ...s, tax_id: e.target.value }))}
+                  placeholder="e.g. 405123456"
+                />
+                <Field
+                  label="Password *"
+                  type="password"
+                  value={signin.password}
+                  onChange={(e) => setSignin((s) => ({ ...s, password: e.target.value }))}
+                  placeholder="••••••••"
+                />
+
+                {signinError && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                    {signinError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={signinLoading}
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  {signinLoading ? (
+                    <>
+                      <div className="w-4 h-4 animate-spin"><i className="ri-loader-4-line"></i></div>
+                      Signing in…
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-login-circle-line"></i>
+                      Sign in
+                    </>
+                  )}
+                </button>
+
+                <p className="text-xs text-gray-400 text-center">
+                  New here?{' '}
+                  <button type="button" onClick={() => setMode('apply')} className="text-emerald-700 hover:underline cursor-pointer">
+                    Apply as an agency
+                  </button>
+                </p>
+              </form>
+            )}
           </div>
         )}
       </section>
