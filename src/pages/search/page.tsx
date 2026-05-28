@@ -229,16 +229,6 @@ export default function SearchResults() {
     setSearchParams(newParams);
   };
 
-  const updateSearchParams = (key: string, value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value) {
-      newParams.set(key, value);
-    } else {
-      newParams.delete(key);
-    }
-    setSearchParams(newParams);
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);

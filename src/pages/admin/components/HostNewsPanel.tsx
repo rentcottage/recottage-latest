@@ -318,7 +318,7 @@ export default function HostNewsPanel() {
     fetchHistory();
   }, [fetchHistory]);
 
-  const handleSent = (count: number) => {
+  const handleSent = (_count: number) => {
     // Refresh history after a short delay to let DB write settle
     setTimeout(() => {
       fetchHistory();

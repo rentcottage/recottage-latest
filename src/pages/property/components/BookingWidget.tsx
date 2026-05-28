@@ -99,7 +99,7 @@ interface BookingFormProps {
   onCaptchaVerify: (token: string) => void;
   onCaptchaExpire: () => void;
   captchaToken: string;
-  captchaRef: React.RefObject<HCaptchaLib>;
+  captchaRef: React.RefObject<HCaptchaLib | null>;
   /** 'ka' for Georgian, 'en' for English, etc. */
   lang: string;
 }
@@ -107,7 +107,6 @@ interface BookingFormProps {
 function BookingForm({
   property,
   blockedRanges,
-  icalBlockedRanges,
   checkIn,
   checkOut,
   guests,
@@ -460,7 +459,6 @@ function BookingForm({
 export default function BookingWidget({
   property,
   pricingType,
-  guestPricingTiers,
   blockedRanges,
   icalBlockedRanges,
   checkIn,

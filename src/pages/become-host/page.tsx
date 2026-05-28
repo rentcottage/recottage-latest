@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import Header from '../../components/feature/Header';
-import Button from '../../components/base/Button';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import AutocompleteInput from '../../components/base/AutocompleteInput';

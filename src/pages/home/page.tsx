@@ -27,9 +27,7 @@ export default function HomePage() {
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [showCookingModal, setShowCookingModal] = useState(false);
   const [showBookingForm, setShowBookingForm] = useState(false);
-  const [isCookingModalOpen, setIsCookingModalOpen] = useState(false);
   const [isWineTastingModalOpen, setIsWineTastingModalOpen] = useState(false);
-  const [isCookingBookingOpen, setIsCookingBookingOpen] = useState(false);
   const [isWineTastingBookingOpen, setIsWineTastingBookingOpen] = useState(false);
 
   const [experiences, setExperiences] = useState<HomeExperience[]>([]);
@@ -174,10 +172,6 @@ export default function HomePage() {
       },
     };
     return content[topic as keyof typeof content];
-  };
-
-  const openTermsModal = () => {
-    navigate('/terms');
   };
 
   const handleWineTastingBooking = () => {

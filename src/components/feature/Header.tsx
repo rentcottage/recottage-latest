@@ -10,7 +10,7 @@ interface HeaderProps {
   onExperiencesClick?: () => void;
 }
 
-export default function Header({ onStaysClick, onExperiencesClick }: HeaderProps) {
+export default function Header({}: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);

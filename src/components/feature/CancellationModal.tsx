@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 interface CancellationModalProps {
   isOpen: boolean;
   onClose: () => void;

@@ -36,16 +36,6 @@ type FilterStatus = 'pending' | 'all' | 'confirmed' | 'cancelled';
 const SUPABASE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/booking-handler`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
-// Returns badge style class string
-function statusBadgeClass(status: string): string {
-  if (status === 'confirmed') return 'bg-green-100 text-green-700';
-  if (status === 'cancelled' || status === 'cancelled_by_host') return 'bg-red-100 text-red-600';
-  if (status === 'rejected') return 'bg-rose-100 text-rose-700';
-  if (status === 'pending_host_approval') return 'bg-amber-100 text-amber-700';
-  if (status === 'pending') return 'bg-amber-100 text-amber-700';
-  return 'bg-gray-100 text-gray-600';
-}
-
 interface StatusDisplay {
   icon: string;
   label: string;

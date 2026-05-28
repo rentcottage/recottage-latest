@@ -51,12 +51,13 @@ interface ActionMenuProps {
 function ActionMenu({ booking, onStatusChange, loading }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
 
-  const actions: { status: ExperienceBooking['status']; label: string; icon: string; color: string }[] = [
+  const actions = ([
     { status: 'confirmed', label: 'Confirm', icon: 'ri-checkbox-circle-line', color: 'text-green-600' },
     { status: 'completed', label: 'Mark Completed', icon: 'ri-check-double-line', color: 'text-blue-600' },
     { status: 'cancelled', label: 'Cancel', icon: 'ri-close-circle-line', color: 'text-red-500' },
     { status: 'pending', label: 'Reset to Pending', icon: 'ri-restart-line', color: 'text-gray-500' },
-  ].filter((a) => a.status !== booking.status);
+  ] as { status: ExperienceBooking['status']; label: string; icon: string; color: string }[])
+    .filter((a) => a.status !== booking.status);
 
   return (
     <div className="relative">

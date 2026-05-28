@@ -21,12 +21,6 @@ function formatDate(str: string) {
   });
 }
 
-function formatDateTime(str: string) {
-  return new Date(str).toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
 function paymentMethodLabel(method: string | null): string {
   if (!method) return '—';
   if (method === 'bog') return 'BOG Pay';

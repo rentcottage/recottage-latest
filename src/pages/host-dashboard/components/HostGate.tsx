@@ -8,7 +8,9 @@ interface Props {
 
 export default function HostGate({ children }: Props) {
   const { isLoggedIn, loading, user } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const openAuth = () => setShowLogin(true);
 
   if (loading) {
     return (
@@ -37,7 +39,7 @@ export default function HostGate({ children }: Props) {
             Sign in to access your host dashboard, manage bookings, and track your earnings.
           </p>
           <button
-            onClick={() => setShowAuth(true)}
+            onClick={openAuth}
             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
           >
             <div className="w-4 h-4 flex items-center justify-center">
@@ -48,14 +50,21 @@ export default function HostGate({ children }: Props) {
           <p className="text-xs text-gray-400 mt-4">
             Don&apos;t have an account?{' '}
             <button
-              onClick={() => setShowAuth(true)}
+              onClick={openAuth}
               className="text-emerald-600 hover:underline cursor-pointer whitespace-nowrap"
             >
               Create one
             </button>
           </p>
         </div>
-        {showAuth && <AuthModals onClose={() => setShowAuth(false)} />}
+        <AuthModals
+          showLogin={showLogin}
+          showSignup={showSignup}
+          onCloseLogin={() => setShowLogin(false)}
+          onCloseSignup={() => setShowSignup(false)}
+          onSwitchToSignup={() => { setShowLogin(false); setShowSignup(true); }}
+          onSwitchToLogin={() => { setShowSignup(false); setShowLogin(true); }}
+        />
       </div>
     );
   }

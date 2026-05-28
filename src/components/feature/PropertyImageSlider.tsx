@@ -13,7 +13,6 @@ interface PropertyImageSliderProps {
 export default function PropertyImageSlider({
   images,
   title,
-  isRealListing,
   coverPosition = 'center',
   onFavoriteClick,
 }: PropertyImageSliderProps) {

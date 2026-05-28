@@ -94,7 +94,6 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
   const [blockedRanges, setBlockedRanges] = useState<BlockedRange[]>([]);
   const [blockedLoading, setBlockedLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
   const fetchBlocked = useCallback(async () => {
     if (!user?.email || properties.length === 0) return;
@@ -182,7 +181,6 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
   const today = new Date().toISOString().split('T')[0];
 
   const selectedDayData = selectedDay ? calendarData[selectedDay] : null;
-  const hoveredDayData = hoveredDay ? calendarData[hoveredDay] : null;
 
   const propMap = Object.fromEntries(properties.map((p) => [p.id, p.title]));
 
@@ -322,27 +320,22 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
 
                   let cellBg = '';
                   let cellText = isPast ? 'text-gray-300' : 'text-gray-700';
-                  let dotColor = '';
 
                   if (isBlocked && hasConfirmed) {
                     cellBg = 'bg-green-200';
                     cellText = 'text-green-900';
-                    dotColor = 'bg-red-500';
                   } else if (isBlocked) {
                     cellBg = 'bg-red-100';
                     cellText = 'text-red-600';
                   } else if (hasConfirmed) {
                     cellBg = 'bg-green-100';
                     cellText = 'text-green-800';
-                    dotColor = 'bg-green-500';
                   } else if (hasPending) {
                     cellBg = 'bg-amber-100';
                     cellText = 'text-amber-800';
-                    dotColor = 'bg-amber-500';
                   } else if (hasCompleted) {
                     cellBg = 'bg-gray-100';
                     cellText = 'text-gray-600';
-                    dotColor = 'bg-gray-400';
                   }
 
                   if (isSelected) cellBg = 'ring-2 ring-emerald-500 ' + cellBg;
@@ -351,8 +344,6 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                     <button
                       key={idx}
                       onClick={() => setSelectedDay(isSelected ? null : dateStr)}
-                      onMouseEnter={() => setHoveredDay(dateStr)}
-                      onMouseLeave={() => setHoveredDay(null)}
                       className={`aspect-square flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer relative text-xs ${cellBg} ${cellText} ${!cellBg && !isPast ? 'hover:bg-gray-50' : ''} ${isSelected ? 'ring-2 ring-emerald-500' : ''}`}
                     >
                       <span className={`font-medium ${isToday ? 'underline decoration-2' : ''}`}>{day}</span>

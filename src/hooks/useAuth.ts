@@ -34,15 +34,18 @@ export function useAuth(): AuthState {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === 'TOKEN_REFRESHED') {
+      // 'TOKEN_REFRESH_FAILED' is emitted by supabase-js at runtime but isn't yet
+      // in the typed AuthChangeEvent union — widen the comparison via `as string`.
+      const evt = event as string;
+      if (evt === 'TOKEN_REFRESHED') {
         setSession(s);
-      } else if (event === 'TOKEN_REFRESH_FAILED') {
+      } else if (evt === 'TOKEN_REFRESH_FAILED') {
         // Refresh token is invalid/expired — sign out to clear the stale session
         localStorage.removeItem('rc_session');
         localStorage.removeItem('userProfile');
         setSession(null);
         supabase.auth.signOut().catch(() => {});
-      } else if (event === 'SIGNED_OUT') {
+      } else if (evt === 'SIGNED_OUT') {
         // Just clear local state — do NOT call signOut() here, that causes a loop
         localStorage.removeItem('rc_session');
         localStorage.removeItem('userProfile');

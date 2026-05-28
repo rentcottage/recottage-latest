@@ -15,10 +15,10 @@ interface Property {
   amenities: string[];
   location: string;
   property_type: string;
-  google_maps_url?: string;
+  google_maps_url?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  address?: string;
+  address?: string | null;
   booking_approval_mode?: string | null;
   accepted_payment_methods?: string | null;
   photo_urls?: string[];

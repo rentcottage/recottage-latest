@@ -1229,7 +1229,6 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                   const isApproved = app.status === 'approved';
                   const isHidden = app.status === 'hidden';
                   const isPending = app.status === 'pending';
-                  const agCfg = agreementStatusConfig(app.agreement_status);
                   const showAgreement = isApproved || isHidden;
 
                   return (

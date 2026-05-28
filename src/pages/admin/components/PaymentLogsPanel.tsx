@@ -419,7 +419,7 @@ export default function PaymentLogsPanel() {
       if (silent) {
         setLogs((prev) => {
           const prevIds = new Set(prev.map((l) => l.id));
-          const incoming = data as StatusLog[];
+          const incoming = data as unknown as StatusLog[];
           const fresh = incoming.filter((l) => !prevIds.has(l.id));
           if (fresh.length > 0) {
             setNewCount((c) => c + fresh.length);
@@ -430,7 +430,7 @@ export default function PaymentLogsPanel() {
           return incoming;
         });
       } else {
-        setLogs(data as StatusLog[]);
+        setLogs(data as unknown as StatusLog[]);
       }
       setLastRefreshed(new Date());
     }
