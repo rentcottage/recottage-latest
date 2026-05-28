@@ -49,6 +49,27 @@ export default function PropertyDetail() {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [bookingCaptchaToken, setBookingCaptchaToken] = useState('');
+  const [corporateId, setCorporateId] = useState<string | null>(null);
+  const [corporateClientName, setCorporateClientName] = useState('');
+
+  // Detect whether the signed-in user is an approved travel agency.
+  useEffect(() => {
+    let cancelled = false;
+    async function detectCorporate() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { if (!cancelled) setCorporateId(null); return; }
+      const { data } = await supabase
+        .from('corporate_applications')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('status', 'approved')
+        .maybeSingle();
+      if (!cancelled) setCorporateId(data?.id ?? null);
+    }
+    detectCorporate();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => detectCorporate());
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     async function loadProperty() {
@@ -253,7 +274,10 @@ export default function PropertyDetail() {
 
     const user = session.user;
     const meta = user.user_metadata ?? {};
-    const fullName = meta.full_name ?? meta.name ?? `${meta.first_name ?? ''} ${meta.last_name ?? ''}`.trim();
+    const ownName = meta.full_name ?? meta.name ?? `${meta.first_name ?? ''} ${meta.last_name ?? ''}`.trim();
+    const trimmedClientName = corporateClientName.trim();
+    // Agencies stamp the booking with the client's name; their own email stays so confirmations land with them.
+    const fullName = corporateId && trimmedClientName ? trimmedClientName : ownName;
     const email = user.email ?? '';
 
     setIsSubmitting(true);
@@ -282,6 +306,7 @@ export default function PropertyDetail() {
           total_price: getTotalPrice(),
           payment_method: paymentMethod,
           captcha_token: bookingCaptchaToken,
+          corporate_id: corporateId,
         }),
       });
 
@@ -659,6 +684,9 @@ export default function PropertyDetail() {
               onCaptchaVerify={(token) => setBookingCaptchaToken(token)}
               onCaptchaExpire={() => setBookingCaptchaToken('')}
               captchaToken={bookingCaptchaToken}
+              corporateMode={!!corporateId}
+              corporateClientName={corporateClientName}
+              onCorporateClientNameChange={setCorporateClientName}
             />
           </div>
         </div>

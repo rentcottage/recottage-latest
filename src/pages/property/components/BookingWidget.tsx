@@ -55,6 +55,11 @@ interface BookingWidgetProps {
   onCaptchaVerify: (token: string) => void;
   onCaptchaExpire: () => void;
   captchaToken: string;
+  /** When true, the logged-in user is an approved travel agency. */
+  corporateMode?: boolean;
+  /** Client name override used for agency bookings (the host sees this as the guest). */
+  corporateClientName?: string;
+  onCorporateClientNameChange?: (v: string) => void;
 }
 
 /** Detect the active Google Translate language from the cookie */
@@ -102,6 +107,9 @@ interface BookingFormProps {
   captchaRef: React.RefObject<HCaptchaLib | null>;
   /** 'ka' for Georgian, 'en' for English, etc. */
   lang: string;
+  corporateMode?: boolean;
+  corporateClientName?: string;
+  onCorporateClientNameChange?: (v: string) => void;
 }
 
 function BookingForm({
@@ -129,6 +137,9 @@ function BookingForm({
   captchaToken,
   captchaRef,
   lang,
+  corporateMode,
+  corporateClientName,
+  onCorporateClientNameChange,
 }: BookingFormProps) {
   const nights = calculateNights();
   const isBlocked = checkIn && checkOut ? isDateRangeBlocked(checkIn, checkOut) : false;
@@ -149,6 +160,34 @@ function BookingForm({
 
   return (
     <form data-readdy-form id="cottage-booking">
+      {corporateMode && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3.5 mb-4">
+          <div className="flex items-start gap-2.5">
+            <div className="w-5 h-5 mt-0.5 flex items-center justify-center text-emerald-600 flex-shrink-0">
+              <i className="ri-briefcase-line text-base"></i>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-emerald-900 font-semibold text-xs leading-tight mb-0.5">
+                Booking on behalf of your client
+              </p>
+              <p className="text-emerald-700 text-[11px] leading-snug">
+                5% commission will be credited to your agency dashboard.
+              </p>
+              <div className="mt-2.5">
+                <label className="block text-[11px] font-semibold text-emerald-900 mb-1">Client name (optional)</label>
+                <input
+                  type="text"
+                  value={corporateClientName ?? ''}
+                  onChange={(e) => onCorporateClientNameChange?.(e.target.value)}
+                  placeholder="e.g. John Smith"
+                  className="w-full px-2.5 py-1.5 text-xs border border-emerald-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status messages */}
       {submitStatus === 'success' && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-5">
@@ -481,6 +520,9 @@ export default function BookingWidget({
   onCaptchaVerify,
   onCaptchaExpire,
   captchaToken,
+  corporateMode,
+  corporateClientName,
+  onCorporateClientNameChange,
 }: BookingWidgetProps) {
   const captchaRef = useRef<HCaptchaLib>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -537,6 +579,9 @@ export default function BookingWidget({
     captchaToken,
     captchaRef,
     lang,
+    corporateMode,
+    corporateClientName,
+    onCorporateClientNameChange,
   };
 
   // "Reserve" sticky bar label

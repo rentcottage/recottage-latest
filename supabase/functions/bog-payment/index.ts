@@ -517,8 +517,22 @@ Deno.serve(async (req: Request) => {
     const {
       user_email, user_name, customer_id, property_id, property_title,
       property_location, check_in, check_out, guests, price_per_night,
-      total_price, payment_method,
+      total_price, payment_method, corporate_id,
     } = body as Record<string, unknown>;
+
+    // Validate corporate_id (if provided) refers to an approved agency owned by this customer.
+    let resolvedCorporateId: string | null = null;
+    if (corporate_id && customer_id) {
+      const { data: corp } = await supabase
+        .from('corporate_applications')
+        .select('id, status')
+        .eq('id', String(corporate_id))
+        .eq('user_id', String(customer_id))
+        .maybeSingle();
+      if (corp && corp.status === 'approved') {
+        resolvedCorporateId = String(corp.id);
+      }
+    }
 
     if (!user_email)     return jsonErr('Missing required field: user_email');
     if (!property_title) return jsonErr('Missing required field: property_title');
@@ -590,6 +604,7 @@ Deno.serve(async (req: Request) => {
           payment_status: 'pending_on_arrival',
           payment_method: 'pay_at_property',
           approval_deadline: approvalDeadline,
+          corporate_id: resolvedCorporateId,
         })
         .select().maybeSingle();
 
@@ -634,6 +649,7 @@ Deno.serve(async (req: Request) => {
         status: 'pending_payment',
         payment_status: 'pending_payment',
         payment_method: 'pay_now',
+        corporate_id: resolvedCorporateId,
       })
       .select().maybeSingle();
 

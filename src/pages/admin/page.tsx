@@ -4,6 +4,7 @@ import BookingHistoryPanel from './components/BookingHistoryPanel';
 import AdminGate from './components/AdminGate';
 import DateChangeRequests from './components/DateChangeRequests';
 import HostApplications from './components/HostApplications';
+import CorporateApplications from './components/CorporateApplications';
 import ExperienceBookingsPanel from './components/ExperienceBookingsPanel';
 import CompletedBookingsPanel from './components/CompletedBookingsPanel';
 import UserManagementPanel from './components/UserManagementPanel';
@@ -635,6 +636,11 @@ export default function AdminBookings() {
           {/* Host Applications section */}
           <div className="mt-8">
             <HostApplications onPendingCountChange={setPendingApplicationsCount} />
+          </div>
+
+          {/* Corporate / Travel-Agency Applications section */}
+          <div className="mt-8">
+            <CorporateApplications />
           </div>
 
           {/* Experiences (homepage cards) management */}

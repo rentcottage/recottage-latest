@@ -18,6 +18,8 @@ import AdminBookings from '../pages/admin/page';
 import HostDashboard from '../pages/host-dashboard/page';
 import PaymentSuccess from '../pages/payment-success/page';
 import PaymentFailed from '../pages/payment-failed/page';
+import CorporatePage from '../pages/corporate/page';
+import CorporateDashboard from '../pages/corporate/dashboard/page';
 
 const routes: RouteObject[] = [
   {
@@ -83,6 +85,14 @@ const routes: RouteObject[] = [
   {
     path: '/host-dashboard',
     element: <HostDashboard />
+  },
+  {
+    path: '/corporate',
+    element: <CorporatePage />
+  },
+  {
+    path: '/corporate/dashboard',
+    element: <CorporateDashboard />
   },
   {
     path: '/payment/success',
