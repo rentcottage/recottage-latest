@@ -917,7 +917,6 @@ export default function Profile() {
                 <a href="/privacy" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Privacy</a>
                 <a href="/terms" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Terms &amp; Conditions</a>
                 <a href="/sitemap" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Site Map</a>
-                <a href="/corporate" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Corporate</a>
               </div>
             </div>
             <p className="text-xs md:text-sm text-gray-400">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>

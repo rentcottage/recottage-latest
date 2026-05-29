@@ -259,9 +259,6 @@ export default function SiteMap() {
                 <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
                   Site Map
                 </a>
-                <a href="/corporate" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
-                  Corporate
-                </a>
               </div>
             </div>
             <p className="text-gray-400 text-xs md:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
