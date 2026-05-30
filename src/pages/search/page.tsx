@@ -282,7 +282,7 @@ export default function SearchResults() {
       <Header />
       
       {/* Search Header — shared background image for ALL screen sizes */}
-      <section className="relative overflow-hidden">
+      <section className="relative z-20">
         {/* Background image — same on mobile and desktop */}
         <div
           className="absolute inset-0 bg-cover bg-center"
