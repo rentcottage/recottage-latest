@@ -342,8 +342,8 @@ export default function SearchResults() {
             {/* Guests */}
             <div className="flex-1 min-w-0 px-2.5 py-2.5 text-left">
               <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Guests</div>
-              <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                {guests} guest{guests !== '1' ? 's' : ''}
+              <div className="text-[10px] font-medium text-gray-800 truncate leading-none" translate="no">
+                {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
               </div>
             </div>
             {/* Search icon */}
@@ -370,7 +370,7 @@ export default function SearchResults() {
             {checkIn && checkOut && (
               <span>{formatDate(checkIn)} - {formatDate(checkOut)}</span>
             )}
-            <span>{guests} guest{guests !== '1' ? 's' : ''}</span>
+            <span translate="no">{`${guests} ${guests === '1' ? 'guest' : 'guests'}`}</span>
             {selectedRegions.map(region => (
               <button
                 key={region}
@@ -644,8 +644,8 @@ export default function SearchResults() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Guests</label>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
-                    <span className="text-sm text-gray-800">
-                      {modalGuests} guest{modalGuests !== '1' ? 's' : ''}
+                    <span className="text-sm text-gray-800" translate="no">
+                      {`${modalGuests} ${modalGuests === '1' ? 'guest' : 'guests'}`}
                     </span>
                     <div className="flex items-center gap-3">
                       <button
@@ -659,7 +659,7 @@ export default function SearchResults() {
                       >
                         <i className="ri-subtract-line text-sm"></i>
                       </button>
-                      <span className="w-6 text-center text-sm font-medium text-gray-900">{modalGuests}</span>
+                      <span className="w-6 text-center text-sm font-medium text-gray-900" translate="no">{modalGuests}</span>
                       <button
                         onClick={() => setModalGuests(Math.min(12, parseInt(modalGuests) + 1).toString())}
                         disabled={modalGuests === '12'}

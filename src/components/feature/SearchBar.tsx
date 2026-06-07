@@ -198,8 +198,8 @@ export default function SearchBar() {
         >
           <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">Guests</span>
           <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
-          <span className="text-xs text-gray-600 flex-1">
-            {guests} guest{guests !== '1' ? 's' : ''}
+          <span className="text-xs text-gray-600 flex-1" translate="no">
+            {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
           </span>
           <div className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0">
             <i className="ri-arrow-down-s-line text-sm"></i>
@@ -227,7 +227,7 @@ export default function SearchBar() {
                     >
                       <i className="ri-subtract-line text-xs"></i>
                     </button>
-                    <span className="w-6 text-center text-sm font-medium">{guests}</span>
+                    <span className="w-6 text-center text-sm font-medium" translate="no">{guests}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -386,8 +386,8 @@ export default function SearchBar() {
               }}
             >
               <div className="text-xs font-semibold text-gray-900 mb-1">Guests</div>
-              <div className="text-sm text-gray-600">
-                {guests} guest{guests !== '1' ? 's' : ''}
+              <div className="text-sm text-gray-600" translate="no">
+                {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
               </div>
             </div>
 
@@ -413,7 +413,7 @@ export default function SearchBar() {
                           <i className="ri-subtract-line"></i>
                         </div>
                       </button>
-                      <span className="w-8 text-center font-medium">{guests}</span>
+                      <span className="w-8 text-center font-medium" translate="no">{guests}</span>
                       <button
                         onClick={() => setGuests(Math.min(12, parseInt(guests) + 1).toString())}
                         disabled={guests === '12'}
