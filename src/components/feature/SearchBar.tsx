@@ -231,11 +231,11 @@ export default function SearchBar() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setGuests(Math.min(12, parseInt(guests) + 1).toString());
+                        setGuests(Math.min(15, parseInt(guests) + 1).toString());
                       }}
-                      disabled={guests === '12'}
+                      disabled={guests === '15'}
                       className={`w-7 h-7 rounded-full border flex items-center justify-center cursor-pointer ${
-                        guests === '12'
+                        guests === '15'
                           ? 'border-gray-200 text-gray-300'
                           : 'border-gray-400 text-gray-600 hover:border-gray-600'
                       }`}
@@ -415,10 +415,10 @@ export default function SearchBar() {
                       </button>
                       <span className="w-8 text-center font-medium" translate="no">{guests}</span>
                       <button
-                        onClick={() => setGuests(Math.min(12, parseInt(guests) + 1).toString())}
-                        disabled={guests === '12'}
+                        onClick={() => setGuests(Math.min(15, parseInt(guests) + 1).toString())}
+                        disabled={guests === '15'}
                         className={`w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer ${
-                          guests === '12'
+                          guests === '15'
                             ? 'border-gray-200 text-gray-300'
                             : 'border-gray-400 text-gray-600 hover:border-gray-600'
                         }`}

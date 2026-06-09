@@ -210,9 +210,9 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const maxSize = 10 * 1024 * 1024;
+    const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
-      setPhotoError('File is too large. Maximum size is 10MB.');
+      setPhotoError('File is too large. Maximum size is 15MB.');
       return;
     }
 
@@ -831,7 +831,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       <div className="w-4 h-4 flex items-center justify-center">
                         <i className="ri-upload-cloud-line"></i>
                       </div>
-                      Upload Photo (max 10MB)
+                      Upload Photo (max 15MB)
                     </>
                   )}
                 </button>

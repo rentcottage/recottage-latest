@@ -309,7 +309,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
           <span className="text-base font-semibold text-gray-900 w-6 text-center">{form.guests}</span>
           <button
             type="button"
-            onClick={() => set('guests', String(Math.min(12, parseInt(form.guests, 10) + 1)))}
+            onClick={() => set('guests', String(Math.min(15, parseInt(form.guests, 10) + 1)))}
             className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors flex-shrink-0"
           >
             <i className="ri-add-line text-sm"></i>

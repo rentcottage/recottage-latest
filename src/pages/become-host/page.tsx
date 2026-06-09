@@ -121,7 +121,7 @@ export default function BecomeHost() {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => {
       const isValidType = file.type.startsWith('image/');
-      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      const isValidSize = file.size <= 15 * 1024 * 1024; // 15MB limit
       return isValidType && isValidSize;
     });
 
@@ -551,7 +551,7 @@ export default function BecomeHost() {
                       required
                     >
                       <option value="">Select</option>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => (
+                      {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(num => (
                         <option key={num} value={num}>{num}</option>
                       ))}
                     </select>
@@ -618,7 +618,7 @@ export default function BecomeHost() {
                       <ul className="text-blue-800 text-sm space-y-1">
                         <li>• Upload at least 3 photos (maximum 10)</li>
                         <li>• Include exterior, interior, and key amenity photos</li>
-                        <li>• Use high-quality images (max 10MB each)</li>
+                        <li>• Use high-quality images (max 15MB each)</li>
                         <li>• Show your cottage in the best light</li>
                       </ul>
                     </div>
@@ -656,7 +656,7 @@ export default function BecomeHost() {
                   </div>
 
                   <p className="text-sm text-gray-500 mt-2">
-                    Supported formats: JPG, PNG, GIF. Maximum file size: 10MB per image.
+                    Supported formats: JPG, PNG, GIF. Maximum file size: 15MB per image.
                   </p>
                 </div>
 

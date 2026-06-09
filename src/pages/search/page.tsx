@@ -661,10 +661,10 @@ export default function SearchResults() {
                       </button>
                       <span className="w-6 text-center text-sm font-medium text-gray-900" translate="no">{modalGuests}</span>
                       <button
-                        onClick={() => setModalGuests(Math.min(12, parseInt(modalGuests) + 1).toString())}
-                        disabled={modalGuests === '12'}
+                        onClick={() => setModalGuests(Math.min(15, parseInt(modalGuests) + 1).toString())}
+                        disabled={modalGuests === '15'}
                         className={`w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer ${
-                          modalGuests === '12'
+                          modalGuests === '15'
                             ? 'border-gray-200 text-gray-300'
                             : 'border-gray-400 text-gray-600 hover:border-gray-800'
                         }`}
