@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import PropertyCard from '../../components/feature/PropertyCard';
@@ -47,14 +47,36 @@ export default function SearchResults() {
   // How many items are currently visible (display-slice pagination)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const [sortBy, setSortBy] = useState('recommended');
   const [showFilters, setShowFilters] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
-  const [priceRange, setPriceRange] = useState([0, 1000]);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([]);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+
+  // ── Filters live in the URL so they survive navigating into a property and back ──
+  // (and make filtered searches shareable/bookmarkable)
+  const sortBy = searchParams.get('sort') || 'recommended';
+  const amenitiesParam = searchParams.get('amenities') || '';
+  const typesParam = searchParams.get('types') || '';
+  const regionsParam = searchParams.get('regions') || '';
+  const priceParam = searchParams.get('price');
+
+  // Memoized so their array identity is stable across renders (keeps the filter effect from looping)
+  const selectedAmenities = useMemo(() => (amenitiesParam ? amenitiesParam.split(',') : []), [amenitiesParam]);
+  const selectedPropertyTypes = useMemo(() => (typesParam ? typesParam.split(',') : []), [typesParam]);
+  const selectedRegions = useMemo(() => (regionsParam ? regionsParam.split(',') : []), [regionsParam]);
+  // No price param means "no upper limit" → upper bound tracks the dynamic maxPrice
+  const priceRange = useMemo<[number, number]>(
+    () => [0, priceParam !== null ? parseInt(priceParam, 10) : maxPrice],
+    [priceParam, maxPrice]
+  );
+
+  // Write one filter value into the URL. `replace` so each toggle doesn't add a
+  // history step, and so the latest filters ride along when navigating to a property.
+  const updateFilterParam = (key: string, value: string | string[]) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || (Array.isArray(value) && value.length === 0)) next.delete(key);
+    else next.set(key, Array.isArray(value) ? value.join(',') : value);
+    setSearchParams(next, { replace: true });
+  };
 
   // Generate a stable random seed once per page session
   const sessionSeedRef = useRef<number>(Math.floor(Math.random() * 2147483647));
@@ -70,8 +92,7 @@ export default function SearchResults() {
       const highest = Math.max(...dbProperties.map((p) => p.price));
       const newMax = Math.ceil(highest / 100) * 100 + 100; // round up to next 100
       setMaxPrice(newMax);
-      // Only expand the range if user hasn't manually adjusted it
-      setPriceRange((prev) => [prev[0], Math.max(prev[1], newMax)]);
+      // No setPriceRange needed: with no `price` param the upper bound derives from maxPrice
     }
   }, [dbProperties]);
 
@@ -189,44 +210,41 @@ export default function SearchResults() {
   }, [location, guests, category, priceRange, maxPrice, selectedAmenities, selectedPropertyTypes, selectedRegions, sortBy, dbProperties]);
 
   const handleAmenityToggle = (amenity: string) => {
-    setSelectedAmenities(prev => 
-      prev.includes(amenity) 
-        ? prev.filter(a => a !== amenity)
-        : [...prev, amenity]
+    updateFilterParam(
+      'amenities',
+      selectedAmenities.includes(amenity)
+        ? selectedAmenities.filter(a => a !== amenity)
+        : [...selectedAmenities, amenity]
     );
   };
 
   const handlePropertyTypeToggle = (type: string) => {
-    setSelectedPropertyTypes(prev => 
-      prev.includes(type) 
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
+    updateFilterParam(
+      'types',
+      selectedPropertyTypes.includes(type)
+        ? selectedPropertyTypes.filter(t => t !== type)
+        : [...selectedPropertyTypes, type]
     );
   };
 
   const handleRegionToggle = (region: string) => {
-    setSelectedRegions(prev =>
-      prev.includes(region)
-        ? prev.filter(r => r !== region)
-        : [...prev, region]
+    updateFilterParam(
+      'regions',
+      selectedRegions.includes(region)
+        ? selectedRegions.filter(r => r !== region)
+        : [...selectedRegions, region]
     );
   };
 
   const clearFilters = () => {
-    setPriceRange([0, maxPrice]);
-    setSelectedAmenities([]);
-    setSelectedPropertyTypes([]);
-    setSelectedRegions([]);
-    setSortBy('recommended');
-    
-    // Clear URL parameters except core search criteria
+    // Drop all filter params, keep only core search criteria
     const newParams = new URLSearchParams();
     if (location) newParams.set('location', location);
     if (checkIn) newParams.set('checkIn', checkIn);
     if (checkOut) newParams.set('checkOut', checkOut);
     if (guests) newParams.set('guests', guests);
-    
-    setSearchParams(newParams);
+
+    setSearchParams(newParams, { replace: true });
   };
 
   const formatDate = (dateString: string) => {
@@ -432,7 +450,10 @@ export default function SearchResults() {
                     min="0"
                     max={maxPrice}
                     value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      updateFilterParam('price', v >= maxPrice ? '' : String(v));
+                    }}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                   />
                   <div className="flex items-center justify-between text-sm">
@@ -521,7 +542,7 @@ export default function SearchResults() {
                 <span className="text-sm text-gray-600">Sort by:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => updateFilterParam('sort', e.target.value === 'recommended' ? '' : e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer pr-8"
                 >
                   <option value="recommended">Recommended</option>
@@ -718,7 +739,10 @@ export default function SearchResults() {
                       min="0"
                       max={maxPrice}
                       value={priceRange[1]}
-                      onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                      onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      updateFilterParam('price', v >= maxPrice ? '' : String(v));
+                    }}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex items-center justify-between text-sm">
