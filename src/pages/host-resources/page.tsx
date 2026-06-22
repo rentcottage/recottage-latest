@@ -3,7 +3,6 @@ import Header from '../../components/feature/Header';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
-import Reveal from '../../components/base/Reveal';
 
 export default function HostResources() {
   const [showContactModal, setShowContactModal] = useState(false);
@@ -82,7 +81,7 @@ export default function HostResources() {
         </div>
 
         {/* Getting Started Section */}
-        <Reveal as="section" id="getting-started" className="mb-10 sm:mb-16">
+        <section id="getting-started" className="mb-10 sm:mb-16">
           <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Getting Started as a Host</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-12">
@@ -146,10 +145,10 @@ export default function HostResources() {
               </div>
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Listing Tips Section */}
-        <Reveal as="section" id="listing-tips" className="mb-10 sm:mb-16">
+        <section id="listing-tips" className="mb-10 sm:mb-16">
           <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Optimize Your Listing</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
@@ -216,10 +215,10 @@ export default function HostResources() {
               ))}
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Guest Communication Section */}
-        <Reveal as="section" id="guest-communication" className="mb-10 sm:mb-16">
+        <section id="guest-communication" className="mb-10 sm:mb-16">
           <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Guest Communication Excellence</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
@@ -308,10 +307,10 @@ export default function HostResources() {
               </div>
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Safety Guidelines Section */}
-        <Reveal as="section" id="safety-guidelines" className="mb-10 sm:mb-16">
+        <section id="safety-guidelines" className="mb-10 sm:mb-16">
           <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Safety &amp; Security Guidelines</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
@@ -377,10 +376,10 @@ export default function HostResources() {
               </div>
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Support Section */}
-        <Reveal as="section" className="bg-gray-50 rounded-2xl p-4 sm:p-8">
+        <section className="bg-gray-50 rounded-2xl p-4 sm:p-8">
           <div className="text-center mb-5 sm:mb-8">
             <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Need More Help?</h2>
             <p className="text-gray-600 text-xs sm:text-base">Our hosting support team is here to assist you</p>
@@ -423,7 +422,7 @@ export default function HostResources() {
               </button>
             </div>
           </div>
-        </Reveal>
+        </section>
       </div>
 
       {/* Footer */}

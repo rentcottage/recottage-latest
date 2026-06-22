@@ -4,8 +4,6 @@ import Header from '../../components/feature/Header';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
-import Reveal from '../../components/base/Reveal';
-import CountUp from '../../components/base/CountUp';
 
 export default function AboutGeorgia() {
   const [showContactModal, setShowContactModal] = useState(false);
@@ -103,7 +101,7 @@ export default function AboutGeorgia() {
         </div>
 
         {/* Introduction */}
-        <Reveal as="section" className="mb-6 sm:mb-8 md:mb-16">
+        <section className="mb-6 sm:mb-8 md:mb-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 md:gap-12 items-center">
             <div>
               <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-6">Welcome to Georgia</h2>
@@ -119,11 +117,11 @@ export default function AboutGeorgia() {
               </p>
               <div className="grid grid-cols-2 gap-4 sm:gap-6">
                 <div className="text-center">
-                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1"><CountUp end={8000} suffix="+" /></div>
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1">8,000+</div>
                   <div className="text-xs sm:text-sm text-gray-600">Years of History</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1"><CountUp end={525} suffix="+" /></div>
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1">525+</div>
                   <div className="text-xs sm:text-sm text-gray-600">Native Grape Varieties</div>
                 </div>
               </div>
@@ -136,10 +134,10 @@ export default function AboutGeorgia() {
               />
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Culture & History Section */}
-        <Reveal as="section" id="culture" className="mb-6 sm:mb-8 md:mb-16">
+        <section id="culture" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">Rich Culture &amp; Ancient History</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-6 sm:mb-8 md:mb-12">
@@ -193,10 +191,10 @@ export default function AboutGeorgia() {
               ))}
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Natural Beauty Section */}
-        <Reveal as="section" id="nature" className="mb-6 sm:mb-8 md:mb-16">
+        <section id="nature" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">Spectacular Natural Beauty</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 md:gap-8 mb-6 sm:mb-8 md:mb-12">
@@ -247,10 +245,10 @@ export default function AboutGeorgia() {
               </div>
             ))}
           </div>
-        </Reveal>
+        </section>
 
         {/* Cuisine & Wine Section */}
-        <Reveal as="section" id="cuisine" className="mb-6 sm:mb-8 md:mb-16">
+        <section id="cuisine" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">World-Renowned Cuisine &amp; Wine</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 md:gap-12 items-center mb-6 sm:mb-8 md:mb-12">
@@ -320,10 +318,10 @@ export default function AboutGeorgia() {
               ))}
             </div>
           </div>
-        </Reveal>
+        </section>
 
         {/* Regions Section */}
-        <Reveal as="section" id="regions" className="mb-6 sm:mb-8 md:mb-16">
+        <section id="regions" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">Regions to Explore</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
@@ -391,10 +389,10 @@ export default function AboutGeorgia() {
               </div>
             ))}
           </div>
-        </Reveal>
+        </section>
 
         {/* Travel Tips */}
-        <Reveal as="section" className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-6 sm:mb-8 md:mb-16">
+        <section className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-base sm:text-lg md:text-3xl font-bold text-gray-900 text-center mb-4 sm:mb-5 md:mb-8">Essential Travel Information</h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-8">
@@ -415,10 +413,10 @@ export default function AboutGeorgia() {
               </div>
             ))}
           </div>
-        </Reveal>
+        </section>
 
         {/* Call to Action */}
-        <Reveal as="section" className="text-center">
+        <section className="text-center">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">Ready to Experience Georgia?</h2>
           <p className="text-xs sm:text-sm md:text-lg text-gray-600 mb-4 sm:mb-6 md:mb-8 max-w-2xl mx-auto">
             Discover the magic of Georgia by staying in authentic cottages that connect you with local culture and stunning landscapes
@@ -429,7 +427,7 @@ export default function AboutGeorgia() {
           >
             Find Your Georgian Cottage
           </button>
-        </Reveal>
+        </section>
       </div>
 
       {/* Footer */}

@@ -7,8 +7,6 @@ import PropertyReviews from './components/PropertyReviews';
 import PropertyGallery from './components/PropertyGallery';
 import BookingWidget from './components/BookingWidget';
 import SEO from '../../components/feature/SEO';
-import Reveal from '../../components/base/Reveal';
-import PhoneVerifyModal from '../../components/feature/PhoneVerifyModal';
 import { supabase } from '../../lib/supabase';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
@@ -53,10 +51,6 @@ export default function PropertyDetail() {
   const [bookingCaptchaToken, setBookingCaptchaToken] = useState('');
   const [corporateId, setCorporateId] = useState<string | null>(null);
   const [corporateClientName, setCorporateClientName] = useState('');
-  // Phone-verification gate: a renter must have an SMS-verified phone to book.
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const [verifyUserId, setVerifyUserId] = useState('');
-  const [verifyPhone, setVerifyPhone] = useState('');
 
   // Detect whether the signed-in user is an approved travel agency.
   useEffect(() => {
@@ -264,20 +258,17 @@ export default function PropertyDetail() {
       return;
     }
 
-    // Require an SMS-verified phone number before booking. Covers users with no
-    // phone AND users whose phone was never verified (older accounts, Google sign-ups).
+    // Check if user has a phone number saved — required before booking
     const { data: profile } = await supabase
       .from('profiles')
-      .select('phone, phone_verified')
+      .select('phone')
       .eq('id', session.user.id)
       .maybeSingle();
 
-    if (!profile?.phone_verified) {
-      // Open the verification modal, pre-filled with any phone on file. Once
-      // verified, handlePhoneVerified() resumes this booking automatically.
-      setVerifyUserId(session.user.id);
-      setVerifyPhone(profile?.phone?.trim() ?? '');
-      setVerifyOpen(true);
+    const hasPhone = profile?.phone && profile.phone.trim().length > 0;
+    if (!hasPhone) {
+      setSubmitStatus('error');
+      setBookingError('Please add a phone number to your profile before making a booking. Go to My Profile to complete your account.');
       return;
     }
 
@@ -342,15 +333,8 @@ export default function PropertyDetail() {
           try { errMsg = await response.text(); } catch { /* ignore */ }
         }
         console.error('[handleBooking] Backend error:', errMsg);
-        if (errMsg === 'PHONE_NOT_VERIFIED') {
-          // Server backstop fired — open the verification modal instead of showing a raw error.
-          setVerifyUserId(session.user.id);
-          setVerifyPhone('');
-          setVerifyOpen(true);
-        } else {
-          setBookingError(errMsg);
-          setSubmitStatus('error');
-        }
+        setBookingError(errMsg);
+        setSubmitStatus('error');
         setBookingCaptchaToken('');
       }
     } catch (err) {
@@ -362,13 +346,6 @@ export default function PropertyDetail() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Called by PhoneVerifyModal once the renter's phone is SMS-verified.
-  // Resume the booking automatically — the gate above will now pass.
-  const handlePhoneVerified = () => {
-    setVerifyOpen(false);
-    void handleBooking();
   };
 
   if (!property) {
@@ -548,7 +525,7 @@ export default function PropertyDetail() {
 
             {/* What this place offers — amenities */}
             {property.amenities && property.amenities.length > 0 && (
-              <Reveal as="div" className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
+              <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
                 <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">What this place offers</h3>
                 <div className="grid grid-cols-2 gap-2 md:gap-3">
                   {property.amenities.map((amenity: string) => (
@@ -574,12 +551,12 @@ export default function PropertyDetail() {
                     </div>
                   ))}
                 </div>
-              </Reveal>
+              </div>
             )}
 
             {/* Location Section */}
             {hasLocation && (
-              <Reveal as="div" className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
+              <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
                 <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">Where you&apos;ll be</h3>
 
                 {/* Address text */}
@@ -625,12 +602,12 @@ export default function PropertyDetail() {
                     </div>
                   </a>
                 )}
-              </Reveal>
+              </div>
             )}
 
             {/* Per-guest pricing breakdown — fully interactive selector */}
             {pricingType === 'per_guest' && guestPricingTiers.length > 0 && (
-              <Reveal as="div" className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
+              <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
                   <h3 className="text-sm md:text-xl font-semibold text-gray-900">Pricing by Guest Count</h3>
                   <span className="text-xs text-gray-400">Tap to select</span>
@@ -670,7 +647,7 @@ export default function PropertyDetail() {
                   <i className="ri-information-line"></i>
                   Selecting a tier updates guest count and price in the booking form below.
                 </p>
-              </Reveal>
+              </div>
             )}
 
             {/* Reviews */}
@@ -780,16 +757,6 @@ export default function PropertyDetail() {
       {showCancellationModal && (
         <CancellationModal isOpen={showCancellationModal} onClose={() => setShowCancellationModal(false)} />
       )}
-
-      <PhoneVerifyModal
-        open={verifyOpen}
-        userId={verifyUserId}
-        initialPhone={verifyPhone}
-        title="Verify your phone to book"
-        reason="For your security, RentCottage requires a verified phone number before you can rent a cottage. We'll text you a 6-digit code."
-        onVerified={handlePhoneVerified}
-        onClose={() => setVerifyOpen(false)}
-      />
     </div>
   );
 }

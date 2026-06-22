@@ -4,7 +4,6 @@ import Header from '../../components/feature/Header';
 import PropertyCard from '../../components/feature/PropertyCard';
 import SearchBar from '../../components/feature/SearchBar';
 import SEO from '../../components/feature/SEO';
-import Reveal from '../../components/base/Reveal';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
 
@@ -558,10 +557,8 @@ export default function SearchResults() {
             {/* Results Grid */}
             {filteredProperties.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {filteredProperties.map((property, i) => (
-                  <Reveal key={property.id} delay={(i % 3) * 80}>
-                    <PropertyCard {...property} />
-                  </Reveal>
+                {filteredProperties.map((property) => (
+                  <PropertyCard key={property.id} {...property} />
                 ))}
               </div>
             ) : (

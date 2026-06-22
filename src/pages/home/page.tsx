@@ -6,7 +6,6 @@ import PropertyCard from '../../components/feature/PropertyCard';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
-import Reveal from '../../components/base/Reveal';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { supabase } from '../../lib/supabase';
 
@@ -287,7 +286,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-black/35 pointer-events-none"></div>
 
         {/* Hero content — centered, Airbnb style */}
-        <Reveal className="relative z-10 w-full flex flex-col items-center text-center px-4">
+        <div className="relative z-10 w-full flex flex-col items-center text-center px-4">
           <h1 className="text-2xl md:text-6xl font-bold text-white mb-3 md:mb-5 leading-tight drop-shadow-md">
             Find Your Perfect
             <br />
@@ -299,7 +298,7 @@ export default function HomePage() {
           <div className="w-full max-w-4xl">
             <SearchBar />
           </div>
-        </Reveal>
+        </div>
       </section>
 
       {/* Categories */}
@@ -327,8 +326,7 @@ export default function HomePage() {
         </div>
 
         {/* Featured Properties */}
-        <div id="property-listings">
-          <Reveal className="mb-5 md:mb-8">
+        <div id="property-listings" className="mb-5 md:mb-8">
           <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">Featured Cottages</h2>
           <div className="flex items-center gap-3">
             <p className="text-gray-600">Handpicked cottages for your perfect Georgian getaway</p>
@@ -346,7 +344,6 @@ export default function HomePage() {
               </span>
             ) : null}
           </div>
-          </Reveal>
         </div>
 
         {dbLoading ? (
@@ -360,10 +357,8 @@ export default function HomePage() {
           </div>
         ) : featuredProperties.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-16">
-            {featuredProperties.map((property, i) => (
-              <Reveal key={property.id} delay={(i % 3) * 90}>
-                <PropertyCard {...property} />
-              </Reveal>
+            {featuredProperties.map((property) => (
+              <PropertyCard key={property.id} {...property} />
             ))}
           </div>
         ) : (
@@ -388,12 +383,12 @@ export default function HomePage() {
 
         {/* Unique Experiences Section */}
         <section className="mb-8 md:mb-16">
-          <Reveal className="text-center mb-6 md:mb-12">
+          <div className="text-center mb-6 md:mb-12">
             <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Unique Georgian Experiences</h2>
             <p className="text-sm md:text-lg text-gray-600 max-w-2xl mx-auto">
               Immerse yourself in authentic Georgian culture with these unforgettable experiences
             </p>
-          </Reveal>
+          </div>
 
           {experiencesLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-8 items-stretch">
@@ -413,16 +408,16 @@ export default function HomePage() {
             <div className="text-center text-gray-400 py-8 text-sm">No experiences yet. Check back soon.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-8 items-stretch">
-              {experiences.map((exp, i) => {
+              {experiences.map((exp) => {
                 const isComingSoon = exp.status === 'coming_soon';
                 const titleColor = isComingSoon ? 'text-gray-400' : 'text-gray-900';
                 const descColor = isComingSoon ? 'text-gray-400' : 'text-gray-500';
                 const priceColor = isComingSoon ? 'text-gray-300' : 'text-red-500';
                 const priceLabelColor = isComingSoon ? 'text-gray-300' : 'text-gray-400';
                 return (
-                  <Reveal key={exp.id} delay={(i % 3) * 90} className="flex">
                   <div
-                    className={`bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col sm:flex-col w-full ${
+                    key={exp.id}
+                    className={`bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col sm:flex-col ${
                       isComingSoon ? '' : 'hover:border-gray-200 transition-all cursor-pointer'
                     }`}
                     onClick={() => {
@@ -492,7 +487,6 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                  </Reveal>
                 );
               })}
             </div>
