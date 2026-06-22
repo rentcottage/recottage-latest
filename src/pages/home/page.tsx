@@ -287,7 +287,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-black/35 pointer-events-none"></div>
 
         {/* Hero content — centered, Airbnb style */}
-        <div className="relative z-10 w-full flex flex-col items-center text-center px-4">
+        <Reveal className="relative z-10 w-full flex flex-col items-center text-center px-4">
           <h1 className="text-2xl md:text-6xl font-bold text-white mb-3 md:mb-5 leading-tight drop-shadow-md">
             Find Your Perfect
             <br />
@@ -299,7 +299,7 @@ export default function HomePage() {
           <div className="w-full max-w-4xl">
             <SearchBar />
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* Categories */}

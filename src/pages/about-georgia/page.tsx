@@ -5,6 +5,7 @@ import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
 import Reveal from '../../components/base/Reveal';
+import CountUp from '../../components/base/CountUp';
 
 export default function AboutGeorgia() {
   const [showContactModal, setShowContactModal] = useState(false);
@@ -118,11 +119,11 @@ export default function AboutGeorgia() {
               </p>
               <div className="grid grid-cols-2 gap-4 sm:gap-6">
                 <div className="text-center">
-                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1">8,000+</div>
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1"><CountUp end={8000} suffix="+" /></div>
                   <div className="text-xs sm:text-sm text-gray-600">Years of History</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1">525+</div>
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 mb-1"><CountUp end={525} suffix="+" /></div>
                   <div className="text-xs sm:text-sm text-gray-600">Native Grape Varieties</div>
                 </div>
               </div>
