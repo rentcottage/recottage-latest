@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <div
+    class="h-captcha"
+    data-sitekey="525e8946-9664-4210-8c24-6e9e1a4057ca"
+    data-callback="onCaptchaSuccess"
+  ></div>
+  <script>
+    function onCaptchaSuccess(token) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(token);
+      }
+    }
+  </script>
+</body>
+</html>
