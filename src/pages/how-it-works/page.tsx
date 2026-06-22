@@ -4,6 +4,7 @@ import Header from '../../components/feature/Header';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
+import Reveal from '../../components/base/Reveal';
 
 export default function HowItWorks() {
   const [showContactModal, setShowContactModal] = useState(false);
@@ -158,7 +159,7 @@ export default function HowItWorks() {
                   color: 'purple'
                 }
               ].map((item, index) => (
-                <div key={index} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-4 md:gap-12`}>
+                <Reveal key={index} as="div" delay={index % 2 ? 70 : 0} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-4 md:gap-12`}>
                   <div className="flex-1 w-full">
                     <div className="flex items-center mb-3 md:mb-6">
                       <div className={`w-10 h-10 md:w-16 md:h-16 bg-${item.color}-100 rounded-full flex items-center justify-center mr-3 md:mr-6 flex-shrink-0`}>
@@ -181,13 +182,13 @@ export default function HowItWorks() {
                     </ul>
                   </div>
                   <div className="flex-1 w-full">
-                    <img 
-                      src={item.image} 
+                    <img
+                      src={item.image}
                       alt={item.title}
                       className="w-full h-40 md:h-80 object-cover object-top rounded-xl"
                     />
                   </div>
-                </div>
+                </Reveal>
               ))}
             </div>
 
@@ -291,7 +292,7 @@ export default function HowItWorks() {
                   color: 'purple'
                 }
               ].map((item, index) => (
-                <div key={index} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-4 md:gap-12`}>
+                <Reveal key={index} as="div" delay={index % 2 ? 70 : 0} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-4 md:gap-12`}>
                   <div className="flex-1 w-full">
                     <div className="flex items-center mb-3 md:mb-6">
                       <div className={`w-10 h-10 md:w-16 md:h-16 bg-${item.color}-100 rounded-full flex items-center justify-center mr-3 md:mr-6 flex-shrink-0`}>
@@ -314,13 +315,13 @@ export default function HowItWorks() {
                     </ul>
                   </div>
                   <div className="flex-1 w-full">
-                    <img 
-                      src={item.image} 
+                    <img
+                      src={item.image}
                       alt={item.title}
                       className="w-full h-40 md:h-80 object-cover object-top rounded-xl"
                     />
                   </div>
-                </div>
+                </Reveal>
               ))}
             </div>
 
