@@ -8,7 +8,9 @@ interface RevealProps {
   /** Render as a different element (default: div). */
   as?: ElementType;
   className?: string;
-  /** Fraction of the element visible before it triggers (0–1, default 0.15). */
+  /** Forwarded to the rendered element — preserves anchor-scroll targets. */
+  id?: string;
+  /** Fraction of the element visible before it triggers (0–1, default 0.1). */
   threshold?: number;
 }
 
@@ -23,6 +25,7 @@ export default function Reveal({
   delay = 0,
   as: Tag = 'div',
   className = '',
+  id,
   threshold,
 }: RevealProps) {
   const { ref, visible } = useReveal<HTMLElement>({ threshold });
@@ -30,6 +33,7 @@ export default function Reveal({
   return (
     <Tag
       ref={ref}
+      id={id}
       className={`reveal ${visible ? 'reveal-in' : ''} ${className}`.trim()}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >

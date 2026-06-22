@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import Header from '../../components/feature/Header';
 import ExperienceBookingForm from './components/ExperienceBookingForm';
 import SEO from '../../components/feature/SEO';
+import Reveal from '../../components/base/Reveal';
 
 interface Experience {
   id: string;
@@ -115,7 +116,7 @@ export default function BookExperiencePage() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-16">
+      <Reveal as="section" className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-16">
         {loading ? (
           <div className="text-center py-16 text-gray-400 text-sm">Loading experiences…</div>
         ) : experiences.length === 0 ? (
@@ -236,7 +237,7 @@ export default function BookExperiencePage() {
             </div>
           </div>
         )}
-      </section>
+      </Reveal>
     </div>
   );
 }

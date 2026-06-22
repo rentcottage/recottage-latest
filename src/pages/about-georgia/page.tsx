@@ -4,6 +4,7 @@ import Header from '../../components/feature/Header';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
+import Reveal from '../../components/base/Reveal';
 
 export default function AboutGeorgia() {
   const [showContactModal, setShowContactModal] = useState(false);
@@ -101,7 +102,7 @@ export default function AboutGeorgia() {
         </div>
 
         {/* Introduction */}
-        <section className="mb-6 sm:mb-8 md:mb-16">
+        <Reveal as="section" className="mb-6 sm:mb-8 md:mb-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 md:gap-12 items-center">
             <div>
               <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-6">Welcome to Georgia</h2>
@@ -134,10 +135,10 @@ export default function AboutGeorgia() {
               />
             </div>
           </div>
-        </section>
+        </Reveal>
 
         {/* Culture & History Section */}
-        <section id="culture" className="mb-6 sm:mb-8 md:mb-16">
+        <Reveal as="section" id="culture" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">Rich Culture &amp; Ancient History</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-6 sm:mb-8 md:mb-12">
@@ -191,10 +192,10 @@ export default function AboutGeorgia() {
               ))}
             </div>
           </div>
-        </section>
+        </Reveal>
 
         {/* Natural Beauty Section */}
-        <section id="nature" className="mb-6 sm:mb-8 md:mb-16">
+        <Reveal as="section" id="nature" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">Spectacular Natural Beauty</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 md:gap-8 mb-6 sm:mb-8 md:mb-12">
@@ -245,10 +246,10 @@ export default function AboutGeorgia() {
               </div>
             ))}
           </div>
-        </section>
+        </Reveal>
 
         {/* Cuisine & Wine Section */}
-        <section id="cuisine" className="mb-6 sm:mb-8 md:mb-16">
+        <Reveal as="section" id="cuisine" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">World-Renowned Cuisine &amp; Wine</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 md:gap-12 items-center mb-6 sm:mb-8 md:mb-12">
@@ -318,10 +319,10 @@ export default function AboutGeorgia() {
               ))}
             </div>
           </div>
-        </section>
+        </Reveal>
 
         {/* Regions Section */}
-        <section id="regions" className="mb-6 sm:mb-8 md:mb-16">
+        <Reveal as="section" id="regions" className="mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-8">Regions to Explore</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
@@ -389,10 +390,10 @@ export default function AboutGeorgia() {
               </div>
             ))}
           </div>
-        </section>
+        </Reveal>
 
         {/* Travel Tips */}
-        <section className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-6 sm:mb-8 md:mb-16">
+        <Reveal as="section" className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-6 sm:mb-8 md:mb-16">
           <h2 className="text-base sm:text-lg md:text-3xl font-bold text-gray-900 text-center mb-4 sm:mb-5 md:mb-8">Essential Travel Information</h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-8">
@@ -413,10 +414,10 @@ export default function AboutGeorgia() {
               </div>
             ))}
           </div>
-        </section>
+        </Reveal>
 
         {/* Call to Action */}
-        <section className="text-center">
+        <Reveal as="section" className="text-center">
           <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">Ready to Experience Georgia?</h2>
           <p className="text-xs sm:text-sm md:text-lg text-gray-600 mb-4 sm:mb-6 md:mb-8 max-w-2xl mx-auto">
             Discover the magic of Georgia by staying in authentic cottages that connect you with local culture and stunning landscapes
@@ -427,7 +428,7 @@ export default function AboutGeorgia() {
           >
             Find Your Georgian Cottage
           </button>
-        </section>
+        </Reveal>
       </div>
 
       {/* Footer */}

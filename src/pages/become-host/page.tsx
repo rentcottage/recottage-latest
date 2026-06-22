@@ -5,6 +5,7 @@ import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import AutocompleteInput from '../../components/base/AutocompleteInput';
 import SEO from '../../components/feature/SEO';
+import Reveal from '../../components/base/Reveal';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { supabase } from '../../lib/supabase';
 
@@ -1054,16 +1055,16 @@ export default function BecomeHost() {
         )}
 
         {/* Benefits Section */}
-        <section className="mt-6 md:mt-16 bg-gray-50 rounded-2xl p-4 md:p-8">
+        <Reveal as="section" className="mt-6 md:mt-16 bg-gray-50 rounded-2xl p-4 md:p-8">
           <h2 className="text-base md:text-3xl font-bold text-gray-900 text-center mb-4 md:mb-8">Why host with us?</h2>
-          
+
           <div className="flex flex-col md:grid md:grid-cols-3 gap-3 md:gap-8">
             {[
               { icon: 'ri-money-dollar-circle-line', title: 'Earn Extra Income', desc: 'Turn your unused space into a profitable income stream with our competitive commission rates' },
               { icon: 'ri-shield-check-line', title: 'Host Protection', desc: 'We provide a secure booking platform and user verification to support safe stays' },
               { icon: 'ri-customer-service-2-line', title: 'Support Available All Week', desc: 'Our dedicated support team is always here to help you succeed as a host' },
-            ].map(({ icon, title, desc }) => (
-              <div key={title} className="flex items-start gap-3 md:flex-col md:items-center md:text-center">
+            ].map(({ icon, title, desc }, i) => (
+              <Reveal key={title} delay={i * 90} className="flex items-start gap-3 md:flex-col md:items-center md:text-center">
                 <div className="w-9 h-9 md:w-16 md:h-16 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 md:mx-auto md:mb-4">
                   <i className={`${icon} text-base md:text-2xl text-red-500`}></i>
                 </div>
@@ -1071,10 +1072,10 @@ export default function BecomeHost() {
                   <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-0.5 md:mb-2">{title}</h3>
                   <p className="text-xs md:text-base text-gray-600 leading-snug">{desc}</p>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
-        </section>
+        </Reveal>
       </div>
 
       {/* Footer */}
