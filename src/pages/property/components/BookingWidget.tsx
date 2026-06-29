@@ -467,11 +467,12 @@ function BookingForm({
         type="button"
         onClick={onBook}
         disabled={isSubmitting || !captchaToken}
-        className={`w-full py-3 rounded-lg font-medium cursor-pointer whitespace-nowrap transition-colors ${
+        className={`notranslate w-full py-3 rounded-lg font-medium cursor-pointer whitespace-nowrap transition-colors ${
           isSubmitting || !captchaToken
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
             : 'bg-red-500 hover:bg-red-600 text-white'
         }`}
+        translate="no"
       >
         {isSubmitting ? submittingLabel : bookBtnLabel}
       </button>
@@ -641,7 +642,8 @@ export default function BookingWidget({
           </div>
           <button
             onClick={handleOpenSheet}
-            className="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+            className="notranslate flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+            translate="no"
           >
             {reserveLabel}
           </button>
