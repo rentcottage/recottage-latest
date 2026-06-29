@@ -12,21 +12,24 @@ import { upsertProfile, checkEmailBlocked } from '../../hooks/useAuth';
 async function savePendingPhone(userId: string): Promise<void> {
   const pending = localStorage.getItem('rc_pending_phone');
   if (!pending) return;
+  const verified = localStorage.getItem('rc_pending_phone_verified') === '1';
+  const payload = verified ? { phone: pending, phone_verified: true } : { phone: pending };
   try {
     // First try update (profile row should exist after upsertProfile)
     const { error: updateErr } = await supabase
       .from('profiles')
-      .update({ phone: pending })
+      .update(payload)
       .eq('id', userId);
 
     if (updateErr) {
       // Fallback: upsert in case the row doesn't exist yet
       await supabase
         .from('profiles')
-        .upsert({ id: userId, phone: pending, role: 'customer' }, { onConflict: 'id' });
+        .upsert({ id: userId, role: 'customer', ...payload }, { onConflict: 'id' });
     }
 
     localStorage.removeItem('rc_pending_phone');
+    localStorage.removeItem('rc_pending_phone_verified');
   } catch {
     // non-fatal — ProfileCompletionGate will catch it if phone is still missing
   }

@@ -124,7 +124,7 @@ export async function upsertProfile(user: User): Promise<void> {
     .eq('id', user.id)
     .maybeSingle();
 
-  const updatePayload: Record<string, string> = {
+  const updatePayload: Record<string, string | boolean> = {
     email: user.email ?? '',
   };
 
@@ -143,7 +143,11 @@ export async function upsertProfile(user: User): Promise<void> {
   const pendingPhone = localStorage.getItem('rc_pending_phone');
   if (!existing?.phone && pendingPhone) {
     updatePayload.phone = pendingPhone;
+    if (localStorage.getItem('rc_pending_phone_verified') === '1') {
+      updatePayload.phone_verified = true;
+    }
     localStorage.removeItem('rc_pending_phone');
+    localStorage.removeItem('rc_pending_phone_verified');
   }
 
   const { error: updateErr } = await supabase
@@ -177,6 +181,7 @@ export async function signUpWithEmail(
   password: string,
   phone?: string,
   captchaToken?: string,
+  phoneVerified = false,
 ): Promise<{
   session: import('@supabase/supabase-js').Session | null;
   user: User | null;
@@ -225,6 +230,7 @@ export async function signUpWithEmail(
         full_name: fullName,
         email: email.trim(),
         phone: phone?.trim() ?? '',
+        phone_verified: phoneVerified,
         role: 'customer',
         created_at: new Date().toISOString(),
       },
@@ -236,9 +242,10 @@ export async function signUpWithEmail(
 
   // "Confirm email" ENABLED → user exists but no session yet; confirmation email was sent
   if (data.user && !data.session) {
-    // Stash the phone so the auth-callback can save it after confirmation
+    // Stash the phone (and its verified status) so auth-callback can save it after confirmation
     if (phone?.trim()) {
       localStorage.setItem('rc_pending_phone', phone.trim());
+      if (phoneVerified) localStorage.setItem('rc_pending_phone_verified', '1');
     }
     return { session: null, user: data.user, error: null, confirmationRequired: true };
   }

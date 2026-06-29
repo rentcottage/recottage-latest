@@ -543,6 +543,23 @@ Deno.serve(async (req: Request) => {
     const totalAmount = Number(total_price);
     if (isNaN(totalAmount) || totalAmount <= 0) return jsonErr(`Invalid total_price value: ${total_price}`);
 
+    // ── Require a verified phone number before any cottage booking ──────────
+    // profiles.phone_verified is set only by the phone-otp function after a real
+    // SMS code match, so this can't be bypassed by skipping the client UI.
+    if (!customer_id) {
+      return jsonErr('You must be signed in with a verified phone number to book.', 403);
+    }
+    {
+      const { data: renter } = await supabase
+        .from('profiles')
+        .select('phone_verified')
+        .eq('id', String(customer_id))
+        .maybeSingle();
+      if (!renter?.phone_verified) {
+        return jsonErr('PHONE_NOT_VERIFIED', 403);
+      }
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkInDate  = new Date(String(check_in)  + 'T00:00:00');

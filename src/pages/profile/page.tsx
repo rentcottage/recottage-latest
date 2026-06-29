@@ -5,7 +5,9 @@ import Button from '../../components/base/Button';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import BookingCard from './components/BookingCard';
+import PhoneVerifyModal from '../../components/feature/PhoneVerifyModal';
 import { supabase } from '../../lib/supabase';
+import { normalizeGeoPhone } from '../../lib/otp';
 import { useAuth } from '../../hooks/useAuth';
 import type { Booking } from '../../lib/supabase';
 
@@ -50,6 +52,10 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
+  // Phone verification: changing the number requires re-verifying it by SMS.
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyPhone, setVerifyPhone] = useState('');
 
   const defaultProfile: UserProfile = {
     firstName: '',
@@ -71,7 +77,7 @@ export default function Profile() {
   const loadProfileFromSupabase = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('avatar_url, phone, first_name, last_name, full_name, email')
+      .select('avatar_url, phone, phone_verified, first_name, last_name, full_name, email')
       .eq('id', userId)
       .maybeSingle();
 
@@ -80,6 +86,8 @@ export default function Profile() {
     if (data.avatar_url) {
       setAvatarUrl(data.avatar_url);
     }
+
+    setPhoneVerified(!!data.phone_verified);
 
     // Always sync phone from Supabase — this is the authoritative source
     // regardless of what's in localStorage
@@ -308,54 +316,85 @@ export default function Profile() {
       return;
     }
 
-    // Phone is required — matches the registration requirement.
-    const phoneClean = editForm.phone.replace(/[\s\-\(\)]/g, '');
-    if (!phoneClean) {
-      setSaveProfileError('Phone number is required.');
-      return;
-    }
-    if (!/^\+?[\d]{7,15}$/.test(phoneClean)) {
-      setSaveProfileError('Please enter a valid phone number (e.g. +995 555 000 000).');
+    // Phone is required and must be a valid Georgian number (so it can be SMS-verified).
+    const normalizedNew = normalizeGeoPhone(editForm.phone);
+    if (!normalizedNew) {
+      setSaveProfileError('Please enter a valid Georgian phone number (e.g. +995 555 12 34 56).');
       return;
     }
 
     const email = user?.email;
     if (!email || !user) return;
 
+    // Did the number change from the one already on file?
+    const normalizedCurrent = normalizeGeoPhone(userProfile.phone) ?? '';
+    const phoneChanged = normalizedNew !== normalizedCurrent;
+
     setSaveProfileError('');
     setSaveProfileLoading(true);
     try {
-      // Save to Supabase
+      // Save name + email now. The phone is written here ONLY if it didn't change
+      // (an unchanged number keeps its verified status). A changed number is saved
+      // by the verification step below — never before the new number is verified.
+      const payload: Record<string, string> = {
+        id: user.id,
+        first_name: editForm.firstName.trim(),
+        last_name: editForm.lastName.trim(),
+        full_name: `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim(),
+        email: editForm.email.trim(),
+      };
+      if (!phoneChanged) payload.phone = normalizedNew;
+
       const { error } = await supabase
         .from('profiles')
-        .upsert(
-          {
-            id: user.id,
-            first_name: editForm.firstName.trim(),
-            last_name: editForm.lastName.trim(),
-            full_name: `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim(),
-            email: editForm.email.trim(),
-            phone: editForm.phone.trim(),
-          },
-          { onConflict: 'id' }
-        );
+        .upsert(payload, { onConflict: 'id' });
       if (error) {
         setSaveProfileError('Failed to save. Please try again.');
         return;
       }
 
-      // Keep localStorage in sync
-      const users = getAllUsers();
-      if (users[email]) {
-        users[email] = { ...users[email], ...editForm };
-        saveAllUsers(users);
+      if (phoneChanged) {
+        // Reflect the saved name/email locally but keep the OLD phone until the
+        // new one is verified, then open the SMS verification modal.
+        const pending = { ...editForm, phone: userProfile.phone };
+        setUserProfile(pending);
+        localStorage.setItem('userProfile', JSON.stringify(pending));
+        const users = getAllUsers();
+        if (users[email]) { users[email] = { ...users[email], ...pending }; saveAllUsers(users); }
+        setVerifyPhone(normalizedNew);
+        setVerifyOpen(true);
+        return;
       }
-      localStorage.setItem('userProfile', JSON.stringify(editForm));
-      setUserProfile(editForm);
+
+      // Unchanged number — finish up.
+      const merged = { ...editForm, phone: normalizedNew };
+      const users = getAllUsers();
+      if (users[email]) { users[email] = { ...users[email], ...merged }; saveAllUsers(users); }
+      localStorage.setItem('userProfile', JSON.stringify(merged));
+      setUserProfile(merged);
       setIsEditing(false);
     } finally {
       setSaveProfileLoading(false);
     }
+  };
+
+  // Called by PhoneVerifyModal once the NEW number is verified. The phone-otp
+  // function has already written phone + phone_verified=true for this user.
+  const handleProfilePhoneVerified = (normalizedPhone: string) => {
+    setVerifyOpen(false);
+    setPhoneVerified(true);
+    // Base on userProfile so this works both from Edit Profile and the read-view
+    // "Verify now" button.
+    const merged = { ...userProfile, phone: normalizedPhone };
+    setEditForm(merged);
+    setUserProfile(merged);
+    const emailKey = user?.email;
+    if (emailKey) {
+      const users = getAllUsers();
+      if (users[emailKey]) { users[emailKey] = { ...users[emailKey], ...merged }; saveAllUsers(users); }
+    }
+    localStorage.setItem('userProfile', JSON.stringify(merged));
+    setIsEditing(false);
   };
 
   const handleCancelEdit = () => {
@@ -702,7 +741,7 @@ export default function Profile() {
                             className="w-full pl-9 pr-3 py-2.5 md:py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           />
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Required — include country code (e.g. +995)</p>
+                        <p className="text-xs text-gray-400 mt-1">Georgian number. Changing it requires SMS verification.</p>
                       </div>
                     </div>
 
@@ -768,7 +807,30 @@ export default function Profile() {
 
                       <div>
                         <label className="block text-xs md:text-sm font-medium text-gray-500">Phone</label>
-                        <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.phone || '—'}</p>
+                        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                          <p className="text-sm md:text-base text-gray-900">{userProfile.phone || '—'}</p>
+                          {userProfile.phone && (phoneVerified ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                              <i className="ri-checkbox-circle-line"></i> Verified
+                            </span>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                                <i className="ri-error-warning-line"></i> Not verified
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setVerifyPhone(normalizeGeoPhone(userProfile.phone) ?? userProfile.phone);
+                                  setVerifyOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer"
+                              >
+                                <i className="ri-shield-check-line"></i> Verify now
+                              </button>
+                            </>
+                          ))}
+                        </div>
                       </div>
 
                       <div>
@@ -926,6 +988,16 @@ export default function Profile() {
 
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
       {showCancellationModal && <CancellationModal isOpen={showCancellationModal} onClose={() => setShowCancellationModal(false)} />}
+
+      <PhoneVerifyModal
+        open={verifyOpen}
+        userId={user?.id ?? ''}
+        initialPhone={verifyPhone}
+        title="Verify your phone number"
+        reason="We'll text a 6-digit code to confirm this number is yours."
+        onVerified={handleProfilePhoneVerified}
+        onClose={() => setVerifyOpen(false)}
+      />
     </div>
   );
 }

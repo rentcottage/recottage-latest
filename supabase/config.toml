@@ -8,3 +8,18 @@ verify_jwt = false
 
 [functions.property-application-handler]
 verify_jwt = false
+
+# Called from the signup form before the visitor has a session.
+[functions.phone-otp]
+verify_jwt = false
+
+# Receives anonymous BOG payment callbacks + verify/mark-failed from redirect pages.
+[functions.bog-payment]
+verify_jwt = false
+
+# NOTE: currently public to preserve the signup email-block check (checkEmailBlocked,
+# which calls it unauthenticated). SECURITY TODO: this exposes fetch-users (all PII)
+# and delete-user/block-email to anyone. Needs in-function admin authorization
+# (verify caller's session JWT + profiles.role='admin') before it can be locked down.
+[functions.admin-user-management]
+verify_jwt = false
