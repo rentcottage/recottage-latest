@@ -8,6 +8,8 @@ function adminFetchHeaders() {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    // Server-side admin secret, held in sessionStorage by AdminGate after login.
+    'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
   } as const;
 }
 
@@ -16,6 +18,7 @@ interface UserRecord {
   email: string;
   full_name: string;
   phone: string;
+  phone_verified: boolean;
   role: string;
   provider: string;
   created_at: string;
@@ -264,6 +267,12 @@ export default function UserManagementPanel() {
             />
           </div>
 
+          {!loading && users.length > 0 && (
+            <p className="text-xs text-gray-400 mb-3">
+              <span className="font-semibold text-green-600">{users.filter((u) => u.phone_verified).length}</span> of {users.length} users have a verified phone
+            </p>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-16 text-gray-400">
               <div className="w-5 h-5 flex items-center justify-center animate-spin mr-2">
@@ -306,6 +315,14 @@ export default function UserManagementPanel() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-gray-600">{u.phone || '—'}</p>
+                        {u.phone && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded mt-0.5 inline-flex items-center gap-1 ${
+                            u.phone_verified ? 'text-green-700 bg-green-50' : 'text-amber-600 bg-amber-50'
+                          }`}>
+                            <i className={u.phone_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}></i>
+                            {u.phone_verified ? 'Verified' : 'Not verified'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${

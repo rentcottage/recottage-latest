@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 
-const SESSION_KEY = 'rc_admin_auth';
-const CORRECT = 'Gfwdr234.sdse!@4r456as.dwr';
+const ADMIN_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-user-management`;
+const PW_KEY = 'rc_admin_pw';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -9,8 +9,10 @@ interface Props {
   children: React.ReactNode;
 }
 
+// The admin password is verified server-side and held (session-scoped) so the
+// panel can authorize its API calls. It is never hard-coded in the bundle.
 function isAuthed() {
-  return sessionStorage.getItem(SESSION_KEY) === '1';
+  return !!sessionStorage.getItem(PW_KEY);
 }
 
 export default function AdminGate({ children }: Props) {
@@ -21,6 +23,7 @@ export default function AdminGate({ children }: Props) {
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [showPw, setShowPw] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,27 +47,47 @@ export default function AdminGate({ children }: Props) {
     return () => clearInterval(tick);
   }, [lockedUntil]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockedUntil || verifying) return;
 
-    if (lockedUntil) return;
+    setVerifying(true);
+    try {
+      const res = await fetch(ADMIN_FN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify-admin', adminPassword: value }),
+      });
 
-    if (value === CORRECT) {
-      sessionStorage.setItem(SESSION_KEY, '1');
-      setAuthed(true);
-      setError('');
-    } else {
-      const next = attempts + 1;
-      setAttempts(next);
-      setValue('');
-      if (next >= MAX_ATTEMPTS) {
-        const until = Date.now() + LOCKOUT_MS;
-        setLockedUntil(until);
-        setRemaining(Math.ceil(LOCKOUT_MS / 1000));
-        setError('Too many failed attempts. Access locked for 2 minutes.');
-      } else {
-        setError(`Incorrect password. ${MAX_ATTEMPTS - next} attempt${MAX_ATTEMPTS - next === 1 ? '' : 's'} remaining.`);
+      if (res.ok) {
+        // Hold the password (session-scoped) so the panel can authorize its calls.
+        sessionStorage.setItem(PW_KEY, value);
+        setAuthed(true);
+        setError('');
+        setAttempts(0);
+        return;
       }
+
+      // 401 = wrong password; anything else is a server/network problem.
+      if (res.status === 401) {
+        const next = attempts + 1;
+        setAttempts(next);
+        setValue('');
+        if (next >= MAX_ATTEMPTS) {
+          const until = Date.now() + LOCKOUT_MS;
+          setLockedUntil(until);
+          setRemaining(Math.ceil(LOCKOUT_MS / 1000));
+          setError('Too many failed attempts. Access locked for 2 minutes.');
+        } else {
+          setError(`Incorrect password. ${MAX_ATTEMPTS - next} attempt${MAX_ATTEMPTS - next === 1 ? '' : 's'} remaining.`);
+        }
+      } else {
+        setError('Could not verify right now. Please try again.');
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -75,7 +98,7 @@ export default function AdminGate({ children }: Props) {
         {/* Subtle sign-out button */}
         <button
           onClick={() => {
-            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(PW_KEY);
             setAuthed(false);
             setValue('');
             setError('');
@@ -159,13 +182,13 @@ export default function AdminGate({ children }: Props) {
 
             <button
               type="submit"
-              disabled={!value.trim() || !!lockedUntil}
+              disabled={!value.trim() || !!lockedUntil || verifying}
               className="w-full flex items-center justify-center gap-2 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
             >
               <div className="w-4 h-4 flex items-center justify-center">
-                <i className="ri-shield-check-line"></i>
+                <i className={verifying ? 'ri-loader-4-line animate-spin' : 'ri-shield-check-line'}></i>
               </div>
-              Unlock Admin Panel
+              {verifying ? 'Verifying…' : 'Unlock Admin Panel'}
             </button>
           </form>
         </div>

@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-password',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -44,6 +44,31 @@ Deno.serve(async (req: Request) => {
 
   const { action } = body as { action?: string };
 
+  // ── Admin authorization ─────────────────────────────────────────────────────
+  // Sensitive actions require the server-side admin secret, which is NOT shipped
+  // in the client bundle. Only `check-email` (used by the public signup flow) and
+  // `verify-admin` (the login check) are reachable without it.
+  const ADMIN_PASSWORD = Deno.env.get('ADMIN_PANEL_PASSWORD') ?? '';
+  const provided = (body.adminPassword as string | undefined) ?? req.headers.get('x-admin-password') ?? '';
+
+  const timingSafeEqual = (a: string, b: string): boolean => {
+    if (a.length !== b.length || a.length === 0) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  };
+  const isAdmin = ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD);
+
+  // Login check used by the admin gate — returns whether the password is valid.
+  if (action === 'verify-admin') {
+    return isAdmin ? jsonOk({ success: true }) : jsonErr('Invalid password', 401);
+  }
+
+  // Everything except the public signup email-check requires admin.
+  if (action !== 'check-email' && !isAdmin) {
+    return jsonErr('Unauthorized', 401);
+  }
+
   // ── Fetch all users ────────────────────────────────────────────────────────
   if (action === 'fetch-users') {
     const { data: authData, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
@@ -51,7 +76,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, first_name, last_name, phone, role, created_at');
+      .select('id, full_name, first_name, last_name, phone, phone_verified, role, created_at');
 
     const profileMap = new Map((profiles ?? []).map((p: Record<string, unknown>) => [p.id, p]));
 
@@ -62,6 +87,7 @@ Deno.serve(async (req: Request) => {
         email: u.email ?? '',
         full_name: (profile?.full_name as string) ?? (u.user_metadata?.full_name as string) ?? '',
         phone: (profile?.phone as string) ?? '',
+        phone_verified: !!profile?.phone_verified,
         role: (profile?.role as string) ?? 'customer',
         provider: u.app_metadata?.provider ?? 'email',
         created_at: u.created_at,
