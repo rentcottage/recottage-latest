@@ -236,11 +236,19 @@ export default function AdminBookings() {
 
   // Fetch pending experience bookings count
   useEffect(() => {
-    supabase
-      .from('experience_bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .then(({ count }) => setPendingExperienceCount(count ?? 0));
+    fetch(ADMIN_HOST_ACTIONS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+      },
+      body: JSON.stringify({ action: 'experience-bookings-pending-count' }),
+    })
+      .then((r) => r.json())
+      .catch(() => ({}))
+      .then((d) => setPendingExperienceCount(d?.count ?? 0));
   }, []);
 
   const showToast = (msg: string, type: 'success' | 'error') => {

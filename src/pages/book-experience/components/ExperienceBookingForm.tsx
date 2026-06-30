@@ -71,7 +71,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       : experienceType === 'cooking'
       ? 'cooking_class'
       : experienceType;
-    const { data: inserted, error: sbErr } = await supabase
+    const { error: sbErr } = await supabase
       .from('experience_bookings')
       .insert({
         experience_type: dbType,
@@ -84,9 +84,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
         guests: parseInt(form.guests, 10),
         message: form.message.trim() || null,
         status: 'pending',
-      })
-      .select()
-      .maybeSingle();
+      });
     setSubmitting(false);
 
     if (sbErr) {
@@ -114,7 +112,6 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
         preferredTime: form.preferred_time || null,
         guests: parseInt(form.guests, 10),
         message: form.message.trim() || null,
-        bookingId: inserted?.id,
       }),
     }).catch((e) => console.error('[experience-booking-notify] failed:', e));
 

@@ -17,6 +17,20 @@ export interface Experience {
 
 const BUCKET = 'experience-photos';
 const MAX_IMAGES = 10;
+// experiences writes are RLS-locked; admins write through the password-gated function.
+const ADMIN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
+const ANON = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
+const adminPost = (payload: Record<string, unknown>) =>
+  fetch(ADMIN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': ANON,
+      'Authorization': `Bearer ${ANON}`,
+      'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+    },
+    body: JSON.stringify(payload),
+  });
 
 type ImageEntry = {
   // existing/pasted URL — empty string if entry is a pending file upload
@@ -191,10 +205,8 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
         image_url: cover ?? null,
         gallery_urls: rest,
       };
-      const { error: dbErr } = initial
-        ? await supabase.from('experiences').update(payload).eq('id', initial.id)
-        : await supabase.from('experiences').insert(payload);
-      if (dbErr) throw dbErr;
+      const res = await adminPost({ action: 'save-experience', experience: payload, experienceId: initial?.id });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Failed to save.');
       onSaved();
       onClose();
     } catch (e: unknown) {
@@ -467,10 +479,11 @@ export default function ExperiencesPanel() {
   const handleDelete = async (exp: Experience) => {
     if (!confirm(`Delete "${exp.title}"? This cannot be undone.`)) return;
     setDeleting(exp.id);
-    const { error: dbErr } = await supabase.from('experiences').delete().eq('id', exp.id);
+    const res = await adminPost({ action: 'delete-experience', experienceId: exp.id });
     setDeleting(null);
-    if (dbErr) {
-      alert(`Failed to delete: ${dbErr.message}`);
+    if (!res.ok) {
+      const msg = ((await res.json().catch(() => ({}))) as { error?: string }).error || 'Unknown error';
+      alert(`Failed to delete: ${msg}`);
       return;
     }
     void load();

@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../../lib/supabase';
+const ADMIN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
+const ANON = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
+const adminHeaders = () => ({
+  'Content-Type': 'application/json',
+  'apikey': ANON,
+  'Authorization': `Bearer ${ANON}`,
+  'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+});
 
 interface ExperienceBooking {
   id: string;
@@ -117,11 +124,9 @@ export default function ExperienceBookingsPanel() {
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('experience_bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (!error && data) setBookings(data as ExperienceBooking[]);
+    const res = await fetch(ADMIN_URL, { method: 'POST', headers: adminHeaders(), body: JSON.stringify({ action: 'fetch-experience-bookings' }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.bookings)) setBookings(data.bookings as ExperienceBooking[]);
     setLoading(false);
   }, []);
 
@@ -131,11 +136,8 @@ export default function ExperienceBookingsPanel() {
 
   const handleStatusChange = async (id: string, status: ExperienceBooking['status']) => {
     setActionLoading(id);
-    const { error } = await supabase
-      .from('experience_bookings')
-      .update({ status })
-      .eq('id', id);
-    if (!error) {
+    const res = await fetch(ADMIN_URL, { method: 'POST', headers: adminHeaders(), body: JSON.stringify({ action: 'update-experience-booking-status', experienceBookingId: id, experienceStatus: status }) });
+    if (res.ok) {
       setBookings((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status } : b))
       );

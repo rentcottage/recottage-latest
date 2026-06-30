@@ -190,6 +190,44 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ── Experience bookings (admin) — RLS-locked table; gated reads/writes ─────
+  if (action === 'fetch-experience-bookings') {
+    const { data, error } = await supabase.from('experience_bookings').select('*').order('created_at', { ascending: false });
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ bookings: data ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (action === 'experience-bookings-pending-count') {
+    const { count } = await supabase.from('experience_bookings').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+    return new Response(JSON.stringify({ count: count ?? 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (action === 'update-experience-booking-status') {
+    const id = body.experienceBookingId as string | undefined;
+    const status = body.experienceStatus as string | undefined;
+    if (!id || !status) return new Response(JSON.stringify({ error: 'Missing id/status' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { error } = await supabase.from('experience_bookings').update({ status }).eq('id', id);
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  // ── Experiences content (admin) — table public-read, writes gated ──────────
+  if (action === 'save-experience') {
+    const payload = body.experience as Record<string, unknown> | undefined;
+    const id = body.experienceId as string | undefined;
+    if (!payload) return new Response(JSON.stringify({ error: 'Missing experience payload' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { error } = id
+      ? await supabase.from('experiences').update(payload).eq('id', id)
+      : await supabase.from('experiences').insert(payload);
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (action === 'delete-experience') {
+    const id = body.experienceId as string | undefined;
+    if (!id) return new Response(JSON.stringify({ error: 'Missing id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { error } = await supabase.from('experiences').delete().eq('id', id);
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
   // ── Fetch all applications ────────────────────────────────────────────────
   if (action === 'fetch-all') {
     const { data, error: fetchErr } = await supabase
