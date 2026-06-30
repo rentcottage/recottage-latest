@@ -65,11 +65,11 @@ export default function Header({}: HeaderProps) {
 
             {/* Logo */}
             <h1
-              className="text-lg md:text-2xl font-bold text-red-500 cursor-pointer whitespace-nowrap"
+              className="text-lg md:text-2xl font-bold text-gray-900 cursor-pointer whitespace-nowrap"
               style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: '700' }}
               onClick={() => navigate('/')}
             >
-              RentCottage.Ge
+              Rent<span className="text-red-500">Cottage</span>.Ge
             </h1>
 
             {/* ── Desktop nav ── */}
@@ -160,11 +160,11 @@ export default function Header({}: HeaderProps) {
           {/* Overlay header */}
           <div className="flex items-center justify-between px-5 h-14 border-b border-gray-100 flex-shrink-0">
             <h1
-              className="text-lg font-bold text-red-500 cursor-pointer whitespace-nowrap"
+              className="text-lg font-bold text-gray-900 cursor-pointer whitespace-nowrap"
               style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: '700' }}
               onClick={() => mobileNavTo('/')}
             >
-              RentCottage.Ge
+              Rent<span className="text-red-500">Cottage</span>.Ge
             </h1>
             <button
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
