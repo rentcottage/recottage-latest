@@ -8,6 +8,8 @@ function adminFetchHeaders() {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    // Server-side admin secret, held in sessionStorage by AdminGate after login.
+    'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
   } as const;
 }
 

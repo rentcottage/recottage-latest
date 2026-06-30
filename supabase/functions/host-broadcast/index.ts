@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-password",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -230,6 +230,23 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { action } = body;
+
+    // ── Admin authorization ─────────────────────────────────────────────────
+    // Both actions are privileged: send-broadcast mass-emails every approved
+    // host; fetch-history reads broadcast records. Require the server-side secret.
+    const ADMIN_PASSWORD = Deno.env.get("ADMIN_PANEL_PASSWORD") ?? "";
+    const provided = (body.adminPassword as string | undefined) ?? req.headers.get("x-admin-password") ?? "";
+    const timingSafeEqual = (a: string, b: string): boolean => {
+      if (a.length !== b.length || a.length === 0) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      return diff === 0;
+    };
+    if (!(ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD))) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // ── fetch-history ──────────────────────────────────────────────────────
     if (action === "fetch-history") {

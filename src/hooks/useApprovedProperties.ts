@@ -78,10 +78,14 @@ export function useApprovedProperties() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all approved listings — no range limit so sorting is always global
+        // Fetch all approved listings — no range limit so sorting is always global.
+        // SECURITY: select only display-safe columns. Never ship host_email,
+        // host_phone, or admin_token to the public client (was select('*')).
         const { data, error: fetchError } = await supabase
           .from('property_applications')
-          .select('*')
+          .select(
+            'id, title, location, price_per_night, host_first_name, host_last_name, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position'
+          )
           .eq('status', 'approved')
           .order('created_at', { ascending: false });
 

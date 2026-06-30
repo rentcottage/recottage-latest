@@ -75,7 +75,11 @@ export default function PropertyDetail() {
     async function loadProperty() {
       const { data: app, error } = await supabase
         .from('property_applications')
-        .select('*')
+        // SECURITY: explicit display-safe columns only — never expose
+        // host_email, host_phone, or admin_token to the public client.
+        .select(
+          'id, title, location, price_per_night, cover_photo_url, cover_photo_position, amenities, categories, description, bedrooms, bathrooms, max_guests, google_maps_url, latitude, longitude, address, accepted_payment_methods, pricing_type, guest_pricing_tiers, host_first_name, host_last_name, photo_urls'
+        )
         .eq('id', id)
         .eq('status', 'approved')
         .maybeSingle();
