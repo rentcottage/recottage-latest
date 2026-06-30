@@ -400,6 +400,10 @@ Deno.serve(async (req: Request) => {
       ? rejectionNote.trim()
       : null;
   }
+  // Stamp the first approval time only (preserve it across any later re-approve).
+  if (action === 'approve' && !app.approved_at) {
+    updatePayload.approved_at = new Date().toISOString();
+  }
 
   const { error: updateErr } = await supabase
     .from('property_applications')
