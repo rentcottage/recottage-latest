@@ -65,7 +65,8 @@ export default function Header({}: HeaderProps) {
 
             {/* Logo */}
             <h1
-              className="text-lg md:text-2xl font-bold text-gray-900 cursor-pointer whitespace-nowrap"
+              translate="no"
+              className="notranslate text-lg md:text-2xl font-bold text-gray-900 cursor-pointer whitespace-nowrap"
               style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: '700' }}
               onClick={() => navigate('/')}
             >
@@ -160,7 +161,8 @@ export default function Header({}: HeaderProps) {
           {/* Overlay header */}
           <div className="flex items-center justify-between px-5 h-14 border-b border-gray-100 flex-shrink-0">
             <h1
-              className="text-lg font-bold text-gray-900 cursor-pointer whitespace-nowrap"
+              translate="no"
+              className="notranslate text-lg font-bold text-gray-900 cursor-pointer whitespace-nowrap"
               style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: '700' }}
               onClick={() => mobileNavTo('/')}
             >
