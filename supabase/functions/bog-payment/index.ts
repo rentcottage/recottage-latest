@@ -540,7 +540,7 @@ Deno.serve(async (req: Request) => {
     if (!check_out)      return jsonErr('Missing required field: check_out');
     if (!total_price)    return jsonErr('Missing required field: total_price');
 
-    const totalAmount = Number(total_price);
+    let totalAmount = Number(total_price);
     if (isNaN(totalAmount) || totalAmount <= 0) return jsonErr(`Invalid total_price value: ${total_price}`);
 
     // ── Require a verified phone number before any cottage booking ──────────
@@ -566,6 +566,38 @@ Deno.serve(async (req: Request) => {
     const checkOutDate = new Date(String(check_out) + 'T00:00:00');
     if (checkInDate < today)          return jsonErr('Check-in date cannot be in the past. Please select today or a future date.');
     if (checkOutDate <= checkInDate)  return jsonErr('Check-out date must be after check-in date.');
+
+    // ── Server-side price verification (SECURITY) ─────────────────────────────
+    // Never trust the client's total_price — it is the amount we charge. Recompute
+    // from the property's own pricing (× nights × guest tier, mirroring the booking
+    // widget) and charge THAT. A mismatch beyond a 1 GEL tolerance means tampering
+    // or stale pricing, so we reject rather than charge a surprise amount.
+    if (!property_id) return jsonErr('Missing required field: property_id', 400);
+    {
+      const { data: pricing } = await supabase
+        .from('property_applications')
+        .select('price_per_night, pricing_type, guest_pricing_tiers')
+        .eq('id', String(property_id))
+        .maybeSingle();
+      if (!pricing) return jsonErr('Property not found.', 404);
+
+      const nights = Math.ceil(Math.abs(checkOutDate.getTime() - checkInDate.getTime()) / 86_400_000);
+      const guestCount = Number(guests) || 1;
+      let nightly = Number(pricing.price_per_night) || 0;
+      const tiers = Array.isArray(pricing.guest_pricing_tiers)
+        ? (pricing.guest_pricing_tiers as Array<{ min_guests: number; max_guests: number; price_per_night: number }>)
+        : [];
+      if (pricing.pricing_type === 'per_guest' && tiers.length > 0) {
+        const tier = tiers.find((t) => guestCount >= t.min_guests && guestCount <= t.max_guests);
+        nightly = Number((tier ?? tiers[tiers.length - 1]).price_per_night) || nightly;
+      }
+      const serverTotal = nightly * nights;
+      if (serverTotal <= 0) return jsonErr('Could not determine the booking price.', 400);
+      if (Math.abs(serverTotal - totalAmount) > 1) {
+        return jsonErr('PRICE_MISMATCH: the price for these dates has changed. Please refresh and try again.', 400);
+      }
+      totalAmount = serverTotal; // authoritative — overrides whatever the client sent
+    }
 
     const chosenMethod = String(payment_method ?? 'pay_now');
 

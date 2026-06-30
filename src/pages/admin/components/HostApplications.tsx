@@ -807,6 +807,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'fetch-all' }),
       });
@@ -844,6 +845,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action, applicationId: appId }),
       });
@@ -895,6 +897,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'reject', applicationId: rejectTarget.id, rejectionNote: note }),
       });
@@ -935,6 +938,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ applicationId: appId }),
       });
@@ -964,6 +968,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'send-agreement-reminder', applicationId: appId }),
       });
@@ -1001,6 +1006,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'update-agreement-status', applicationId: appId, agreementStatus }),
       });
@@ -1048,6 +1054,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'delete', applicationId: deleteTarget.id }),
       });

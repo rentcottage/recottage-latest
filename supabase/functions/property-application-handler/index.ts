@@ -6,7 +6,7 @@ const FROM_EMAIL = 'noreply@rentcottage.ge';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-password',
 };
 
 // ─── Bounce classification ────────────────────────────────────────────────────
@@ -314,6 +314,26 @@ Deno.serve(async (req: Request) => {
     }
 
     const postAction = body.action as string | undefined;
+
+    // ── Admin authorization for admin POST actions ──────────────────────────
+    // The public application submission (no action) and the token-gated GET
+    // approve/reject links are unaffected. The admin POST actions below flip any
+    // application's status, so they require the server-side admin secret.
+    if (postAction === 'admin-approve-application' || postAction === 'admin-reject-application') {
+      const ADMIN_PASSWORD = Deno.env.get('ADMIN_PANEL_PASSWORD') ?? '';
+      const provided = (body.adminPassword as string | undefined) ?? req.headers.get('x-admin-password') ?? '';
+      const timingSafeEqual = (a: string, b: string): boolean => {
+        if (a.length !== b.length || a.length === 0) return false;
+        let diff = 0;
+        for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+        return diff === 0;
+      };
+      if (!(ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD))) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     if (postAction === 'admin-approve-application') {
       const applicationId = body.applicationId as string;

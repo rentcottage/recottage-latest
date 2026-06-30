@@ -6,7 +6,7 @@ const FROM_EMAIL = 'noreply@rentcottage.ge';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-password',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -143,6 +143,25 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ error: 'Missing action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // ── Admin authorization ───────────────────────────────────────────────────
+  // Every action in this function is privileged (PII dumps, approve/reject/
+  // delete, sending host emails). Require the server-side admin secret — the
+  // same gate as admin-user-management; it is never shipped in the client bundle.
+  const ADMIN_PASSWORD = Deno.env.get('ADMIN_PANEL_PASSWORD') ?? '';
+  const provided = (body.adminPassword as string | undefined) ?? req.headers.get('x-admin-password') ?? '';
+  const timingSafeEqual = (a: string, b: string): boolean => {
+    if (a.length !== b.length || a.length === 0) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  };
+  if (!(ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD))) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 

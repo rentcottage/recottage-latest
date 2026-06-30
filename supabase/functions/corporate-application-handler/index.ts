@@ -12,7 +12,7 @@ const HCAPTCHA_SECRET = Deno.env.get('HCAPTCHA_SECRET') ?? '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-password',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -132,6 +132,25 @@ Deno.serve(async (req: Request) => {
   }
 
   const action = body.action as string | undefined;
+
+  // ── Admin authorization for admin-* actions ───────────────────────────────
+  // Public actions stay open: new registration (no action) and corporate-login
+  // (which authenticates via tax_id + password itself). Every admin-* action
+  // (admin-list dumps all agency PII; admin-approve/reject mutate accounts and
+  // can create auth users) requires the server-side admin secret.
+  if (action && action.startsWith('admin-')) {
+    const ADMIN_PASSWORD = Deno.env.get('ADMIN_PANEL_PASSWORD') ?? '';
+    const provided = (body.adminPassword as string | undefined) ?? req.headers.get('x-admin-password') ?? '';
+    const timingSafeEqual = (a: string, b: string): boolean => {
+      if (a.length !== b.length || a.length === 0) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      return diff === 0;
+    };
+    if (!(ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD))) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+  }
 
   // ── Corporate login (tax_id + password → magic-link token the client consumes) ──
   if (action === 'corporate-login') {
