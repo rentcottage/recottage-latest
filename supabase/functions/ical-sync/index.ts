@@ -118,6 +118,28 @@ function generateICS(
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
+// ── SSRF guard ──────────────────────────────────────────────────────────────
+// Block non-http(s) schemes and private / loopback / link-local / cloud-metadata
+// hosts so a host-supplied ical_url can't probe internal services (169.254.169.254 etc).
+function isSafeHttpUrl(raw: unknown): boolean {
+  let u: URL;
+  try { u = new URL(String(raw).trim()); } catch { return false; }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".localhost")) return false;
+  if (host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80")) return false;
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]), b = Number(m[2]);
+    if (a === 0 || a === 10 || a === 127) return false;        // unspecified / private / loopback
+    if (a === 169 && b === 254) return false;                  // link-local + cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return false;         // private
+    if (a === 192 && b === 168) return false;                  // private
+    if (a === 100 && b >= 64 && b <= 127) return false;        // CGNAT
+  }
+  return true;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -188,6 +210,12 @@ Deno.serve(async (req: Request) => {
         const { platform, label, ical_url } = body;
         if (!platform || !ical_url) {
           return new Response(JSON.stringify({ error: "platform and ical_url are required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (!isSafeHttpUrl(ical_url)) {
+          return new Response(JSON.stringify({ error: "Invalid calendar URL." }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -296,6 +324,12 @@ Deno.serve(async (req: Request) => {
       // ── Legacy: save-url (backward compat) ──
       if (bodyAction === "save-url") {
         const { ical_url } = body;
+        if (!isSafeHttpUrl(ical_url)) {
+          return new Response(JSON.stringify({ error: "Invalid calendar URL." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { error } = await supabase
           .from("property_applications")
           .update({ ical_url })
@@ -370,6 +404,8 @@ async function syncCalendar(supabase: ReturnType<typeof createClient>, cal: {
 
   let icsText: string;
   try {
+    // Defense-in-depth: re-validate before fetching (covers legacy stored URLs).
+    if (!isSafeHttpUrl(cal.ical_url)) throw new Error("unsafe ical_url blocked");
     const icsRes = await fetch(cal.ical_url, {
       headers: { "User-Agent": "RentCottage-iCal-Sync/2.0" },
     });

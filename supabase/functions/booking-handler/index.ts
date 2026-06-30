@@ -681,6 +681,12 @@ async function applyBookingReject(supabase: any, bookingId: string, changedBy = 
   if (rejectionNote) updatePayload.rejection_note = rejectionNote;
   const { error: updateErr } = await supabase.from('bookings').update(updatePayload).eq('id', bookingId);
   if (updateErr) return { ok: false, error: 'Failed to update' };
+  // Paid online → actually issue the BOG refund (previously left as refund_pending forever).
+  // Mirrors applyHostRejectBooking / applyHostCancelBooking.
+  if (booking.payment_status === 'paid') {
+    const refund = await triggerBogPaymentAction('internal-refund', bookingId);
+    if (!refund.ok) console.error(`[admin-reject] BOG refund failed for ${bookingId}: ${refund.error}`);
+  }
   await logEvent(supabase, bookingId, 'rejected', prevStatus, 'rejected', changedBy, rejectionNote ? `Reason: ${rejectionNote}` : undefined);
   await sendEmail(supabase, booking.user_email, `Update on your booking at ${booking.property_title}`, buildRejectEmailHtml(booking, rejectionNote, 'admin'), 'booking_rejected', bookingId);
   if (changedBy === 'admin' && booking.property_id) {
