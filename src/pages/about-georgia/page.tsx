@@ -51,7 +51,6 @@ export default function AboutGeorgia() {
         description="Explore Georgia's 8,000-year history, UNESCO World Heritage sites, ancient wine traditions and stunning Caucasus landscapes. Your complete guide to traveling in Georgia."
         keywords="Georgia travel guide, Georgian culture, Caucasus mountains, Georgian wine, Kakheti, Kazbegi, UNESCO Georgia, Georgian cuisine, visit Georgia"
         canonical="/about-georgia"
-        ogImage="https://readdy.ai/api/search-image?query=Breathtaking%20panoramic%20view%20of%20Kazbegi%20Georgia%20with%20Gergeti%20Trinity%20Church%20on%20hilltop%20surrounded%20by%20dramatic%20snow-capped%20Caucasus%20mountain%20peaks%2C%20green%20alpine%20meadows%2C%20golden%20hour%20light&width=1200&height=630&seq=og-about-georgia&orientation=landscape"
         jsonLd={jsonLd}
       />
       <Header />

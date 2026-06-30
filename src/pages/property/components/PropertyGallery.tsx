@@ -10,9 +10,8 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const safeImages = images && images.length > 0 ? images : [
-    'https://readdy.ai/api/search-image?query=Beautiful%20traditional%20Georgian%20cottage%20surrounded%20by%20lush%20green%20mountains%2C%20rustic%20charm%2C%20cozy%20atmosphere%2C%20warm%20natural%20lighting%2C%20scenic%20countryside&width=1200&height=675&seq=gallery-default&orientation=landscape',
-  ];
+  // Self-hosted placeholder — old readdy.ai fallback URL 400s (dead endpoint).
+  const safeImages = images && images.length > 0 ? images : ['/cottage-placeholder.svg'];
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);

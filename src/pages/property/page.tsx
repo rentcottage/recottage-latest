@@ -93,9 +93,7 @@ export default function PropertyDetail() {
       const photos: string[] =
         app.photo_urls?.length > 0
           ? app.photo_urls
-          : [
-              'https://readdy.ai/api/search-image?query=Beautiful%20traditional%20Georgian%20cottage%20surrounded%20by%20lush%20green%20mountains%2C%20rustic%20charm%2C%20cozy%20atmosphere%2C%20warm%20natural%20lighting&width=1200&height=675&seq=db-prop-default&orientation=landscape',
-            ];
+          : ['/cottage-placeholder.svg']; // self-hosted; old readdy.ai fallback 400s
 
       setProperty({
         id: app.id,

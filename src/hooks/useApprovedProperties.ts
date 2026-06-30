@@ -22,8 +22,8 @@ export interface NormalizedProperty {
 }
 
 function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
-  const fallbackImage =
-    'https://readdy.ai/api/search-image?query=Beautiful%20traditional%20Georgian%20cottage%20surrounded%20by%20lush%20green%20mountains%20and%20nature%2C%20warm%20cozy%20atmosphere%2C%20natural%20lighting%2C%20rustic%20charm&width=400&height=300&seq=default-cottage-db&orientation=landscape';
+  // Self-hosted placeholder — the old readdy.ai fallback URL 400s (dead endpoint).
+  const fallbackImage = '/cottage-placeholder.svg';
   const photoUrls: string[] =
     Array.isArray(app.photo_urls) && (app.photo_urls as string[]).length > 0
       ? (app.photo_urls as string[])

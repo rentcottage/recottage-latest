@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="RentCottage.Ge cottage photo placeholder">
+  <rect width="800" height="600" fill="#f3f4f6"/>
+  <g fill="none" stroke="#cbd5e1" stroke-width="10" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M150 470 L150 300 L400 150 L650 300 L650 470 Z"/>
+    <path d="M310 470 L310 360 L490 360 L490 470"/>
+  </g>
+  <path d="M120 470 L680 470" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round"/>
+  <text x="400" y="540" font-family="Arial, sans-serif" font-size="34" font-weight="700" text-anchor="middle" fill="#9ca3af">RentCottage<tspan fill="#ef4444">.Ge</tspan></text>
+</svg>
