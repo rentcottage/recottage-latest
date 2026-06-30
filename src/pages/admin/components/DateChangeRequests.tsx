@@ -20,6 +20,7 @@ interface DateChangeRequest {
 type DCFilter = 'pending' | 'all' | 'approved' | 'rejected';
 
 const SUPABASE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/booking-handler`;
+const ADMIN_HOST_ACTIONS_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
 function statusBadge(s: string) {
@@ -60,12 +61,19 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('bookings')
-      .select('id, user_name, user_email, property_title, property_location, check_in, check_out, requested_check_in, requested_check_out, requested_total_price, total_price, date_change_status, date_change_requested_at')
-      .not('date_change_status', 'is', null)
-      .order('date_change_requested_at', { ascending: false });
-    setRequests((data as DateChangeRequest[]) ?? []);
+    // bookings is RLS-locked; admins read via the password-gated service function.
+    const res = await fetch(ADMIN_HOST_ACTIONS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+      },
+      body: JSON.stringify({ action: 'fetch-bookings', scope: 'date-changes' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRequests((res.ok && Array.isArray(data.bookings) ? data.bookings : []) as DateChangeRequest[]);
     setLoading(false);
   }, []);
 

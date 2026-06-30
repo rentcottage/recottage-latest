@@ -165,6 +165,31 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // ── Fetch bookings (admin) ────────────────────────────────────────────────
+  // The bookings table is RLS-locked to its owner/host/corporate; admins have no
+  // Supabase session (password-gated), so they read through this service-role path.
+  if (action === 'fetch-bookings') {
+    const scope = (body.scope as string | undefined) ?? 'all';
+    let q = supabase.from('bookings').select('*');
+    if (scope === 'completed') {
+      const today = new Date().toISOString().split('T')[0];
+      q = q.eq('status', 'confirmed').lte('check_out', today).order('check_out', { ascending: false });
+    } else if (scope === 'date-changes') {
+      q = q.not('date_change_status', 'is', null).order('date_change_requested_at', { ascending: false });
+    } else {
+      q = q.order('created_at', { ascending: false });
+    }
+    const { data, error } = await q;
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify({ bookings: data ?? [] }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   // ── Fetch all applications ────────────────────────────────────────────────
   if (action === 'fetch-all') {
     const { data, error: fetchErr } = await supabase

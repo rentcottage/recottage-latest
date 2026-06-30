@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../../../lib/supabase';
+const ADMIN_HOST_ACTIONS_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
 interface CompletedBooking {
   id: string;
@@ -103,18 +104,20 @@ export default function CompletedBookingsPanel() {
 
   const fetchCompleted = useCallback(async () => {
     setLoading(true);
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(
-        'id,property_title,property_location,check_in,check_out,guests,total_price,payment_method,payment_status,status,created_at'
-      )
-      .eq('status', 'confirmed')
-      .lte('check_out', today)
-      .order('check_out', { ascending: false });
-
-    if (!error && data) {
-      setBookings(data as CompletedBooking[]);
+    // bookings is RLS-locked; admins read via the password-gated service function.
+    const res = await fetch(ADMIN_HOST_ACTIONS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+      },
+      body: JSON.stringify({ action: 'fetch-bookings', scope: 'completed' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.bookings)) {
+      setBookings(data.bookings as CompletedBooking[]);
     }
     setLoading(false);
   }, []);

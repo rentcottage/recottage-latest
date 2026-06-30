@@ -35,6 +35,7 @@ interface Booking {
 type FilterStatus = 'pending' | 'all' | 'confirmed' | 'cancelled';
 
 const SUPABASE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/booking-handler`;
+const ADMIN_HOST_ACTIONS_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
 interface StatusDisplay {
@@ -253,11 +254,19 @@ export default function AdminBookings() {
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('id,user_email,user_name,property_title,property_location,check_in,check_out,guests,total_price,status,payment_status,payment_method,created_at,date_change_status,canceled_by,canceled_at,rejection_note')
-      .order('created_at', { ascending: false });
-    if (!error && data) setBookings(data as Booking[]);
+    // bookings is RLS-locked; admins read via the password-gated service function.
+    const res = await fetch(ADMIN_HOST_ACTIONS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+      },
+      body: JSON.stringify({ action: 'fetch-bookings', scope: 'all' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.bookings)) setBookings(data.bookings as Booking[]);
     setLoading(false);
   }, []);
 
