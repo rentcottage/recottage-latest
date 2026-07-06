@@ -7,26 +7,51 @@ import Home from '../pages/home/page';
 // demand. Before this, all 22 pages (admin panel, host dashboard, corporate,
 // booking flows…) shipped in ONE 1.3 MB bundle that every visitor had to
 // download and parse before the homepage could render.
-const SearchResults = lazy(() => import('../pages/search/page'));
-const PropertyDetail = lazy(() => import('../pages/property/page'));
-const Profile = lazy(() => import('../pages/profile/page'));
-const BecomeHost = lazy(() => import('../pages/become-host/page'));
-const NotFound = lazy(() => import('../pages/NotFound'));
-const Privacy = lazy(() => import('../pages/privacy/page'));
-const Terms = lazy(() => import('../pages/terms/page'));
-const HostResources = lazy(() => import('../pages/host-resources/page'));
-const HowItWorks = lazy(() => import('../pages/how-it-works/page'));
-const AboutGeorgia = lazy(() => import('../pages/about-georgia/page'));
-const SiteMap = lazy(() => import('../pages/sitemap/page'));
-const BookExperience = lazy(() => import('../pages/book-experience/page'));
-const AuthCallback = lazy(() => import('../pages/auth-callback/page'));
-const ResetPassword = lazy(() => import('../pages/auth-reset-password/page'));
-const AdminBookings = lazy(() => import('../pages/admin/page'));
-const HostDashboard = lazy(() => import('../pages/host-dashboard/page'));
-const PaymentSuccess = lazy(() => import('../pages/payment-success/page'));
-const PaymentFailed = lazy(() => import('../pages/payment-failed/page'));
-const CorporatePage = lazy(() => import('../pages/corporate/page'));
-const CorporateDashboard = lazy(() => import('../pages/corporate/dashboard/page'));
+//
+// lazyPage wraps React.lazy with a one-shot recovery: a deploy replaces the
+// hashed chunk files, so a tab opened before the deploy 404s when it first
+// navigates to a not-yet-loaded page. Reload once to pick up fresh HTML;
+// if the import fails again (real outage), rethrow so it isn't an endless
+// reload loop.
+function lazyPage(load: () => Promise<{ default: ComponentType }>) {
+  const RETRY_KEY = 'rc_chunk_reloaded';
+  return lazy(() =>
+    load()
+      .then((mod) => {
+        sessionStorage.removeItem(RETRY_KEY);
+        return mod;
+      })
+      .catch((err) => {
+        if (!sessionStorage.getItem(RETRY_KEY)) {
+          sessionStorage.setItem(RETRY_KEY, '1');
+          window.location.reload();
+          return new Promise<never>(() => {}); // hold Suspense while reloading
+        }
+        throw err;
+      }),
+  );
+}
+
+const SearchResults = lazyPage(() => import('../pages/search/page'));
+const PropertyDetail = lazyPage(() => import('../pages/property/page'));
+const Profile = lazyPage(() => import('../pages/profile/page'));
+const BecomeHost = lazyPage(() => import('../pages/become-host/page'));
+const NotFound = lazyPage(() => import('../pages/NotFound'));
+const Privacy = lazyPage(() => import('../pages/privacy/page'));
+const Terms = lazyPage(() => import('../pages/terms/page'));
+const HostResources = lazyPage(() => import('../pages/host-resources/page'));
+const HowItWorks = lazyPage(() => import('../pages/how-it-works/page'));
+const AboutGeorgia = lazyPage(() => import('../pages/about-georgia/page'));
+const SiteMap = lazyPage(() => import('../pages/sitemap/page'));
+const BookExperience = lazyPage(() => import('../pages/book-experience/page'));
+const AuthCallback = lazyPage(() => import('../pages/auth-callback/page'));
+const ResetPassword = lazyPage(() => import('../pages/auth-reset-password/page'));
+const AdminBookings = lazyPage(() => import('../pages/admin/page'));
+const HostDashboard = lazyPage(() => import('../pages/host-dashboard/page'));
+const PaymentSuccess = lazyPage(() => import('../pages/payment-success/page'));
+const PaymentFailed = lazyPage(() => import('../pages/payment-failed/page'));
+const CorporatePage = lazyPage(() => import('../pages/corporate/page'));
+const CorporateDashboard = lazyPage(() => import('../pages/corporate/dashboard/page'));
 
 // Minimal centered spinner shown only during a lazy chunk fetch (~50-200 ms).
 function RouteFallback() {
