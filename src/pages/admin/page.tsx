@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
 import BookingHistoryPanel from './components/BookingHistoryPanel';
 import AdminGate from './components/AdminGate';
 import DateChangeRequests from './components/DateChangeRequests';
@@ -11,6 +10,8 @@ import UserManagementPanel from './components/UserManagementPanel';
 import HostNewsPanel from './components/HostNewsPanel';
 import PaymentLogsPanel from './components/PaymentLogsPanel';
 import ExperiencesPanel from './components/ExperiencesPanel';
+import PromosPanel from './components/PromosPanel';
+import AdminSectionNav from './components/AdminSectionNav';
 
 interface Booking {
   id: string;
@@ -382,6 +383,15 @@ export default function AdminBookings() {
     cancelled: bookings.filter((b) => isCancelledStatus(b.status)).length,
     completed: bookings.filter((b) => b.status === 'confirmed' && b.check_out <= today).length,
   };
+  const dateChangesPending = bookings.filter((b) => b.date_change_status === 'pending').length;
+
+  // Pending counts surfaced as badges on the section nav.
+  const navBadges = {
+    bookings: counts.pending,
+    'date-changes': dateChangesPending,
+    'host-applications': pendingApplicationsCount,
+    'experience-bookings': pendingExperienceCount,
+  };
 
   const tabs: { key: FilterStatus; label: string; color: string }[] = [
     { key: 'pending', label: 'Pending', color: 'text-amber-600' },
@@ -395,7 +405,7 @@ export default function AdminBookings() {
       <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
         {/* Header bar */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
                 <i className="ri-calendar-check-line text-white text-sm"></i>
@@ -415,18 +425,31 @@ export default function AdminBookings() {
               Refresh
             </button>
           </div>
+          {/* Mobile: section jump chips (desktop uses the left sidebar) */}
+          <div className="lg:hidden max-w-7xl mx-auto mt-3">
+            <AdminSectionNav variant="chips" badges={navBadges} />
+          </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-start gap-6">
+          {/* Section navigation — pinned left sidebar (desktop). Pinning happens
+              inside AdminSectionNav via JS (CSS sticky breaks under Google
+              Translate's injected overflow styles). */}
+          <aside className="hidden lg:block w-52 flex-shrink-0">
+            <AdminSectionNav variant="sidebar" badges={navBadges} />
+          </aside>
+
+          <div className="flex-1 min-w-0">
           {/* Stats row */}
-          <div className="grid grid-cols-8 gap-4 mb-8">
+          <div id="overview" className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8 scroll-mt-36 lg:scroll-mt-24">
             {[
               { label: 'Total', count: counts.all, icon: 'ri-file-list-3-line', color: 'text-gray-600', bg: 'bg-gray-100' },
               { label: 'Pending', count: counts.pending, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50' },
               { label: 'Confirmed', count: counts.confirmed, icon: 'ri-checkbox-circle-line', color: 'text-green-600', bg: 'bg-green-50' },
               { label: 'Completed', count: counts.completed, icon: 'ri-medal-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
               { label: 'Cancelled', count: counts.cancelled, icon: 'ri-close-circle-line', color: 'text-red-500', bg: 'bg-red-50' },
-              { label: 'Date Changes', count: bookings.filter((b) => b.date_change_status === 'pending').length, icon: 'ri-calendar-2-line', color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: 'Date Changes', count: dateChangesPending, icon: 'ri-calendar-2-line', color: 'text-amber-600', bg: 'bg-amber-50' },
               { label: 'Applications', count: pendingApplicationsCount, icon: 'ri-home-smile-line', color: 'text-orange-500', bg: 'bg-orange-50' },
               { label: 'Experiences', count: pendingExperienceCount, icon: 'ri-goblet-line', color: 'text-purple-500', bg: 'bg-purple-50' },
             ].map((s) => (
@@ -443,7 +466,7 @@ export default function AdminBookings() {
           </div>
 
           {/* Filters + Search */}
-          <div className="bg-white rounded-xl border border-gray-200">
+          <div id="bookings" className="bg-white rounded-xl border border-gray-200 scroll-mt-36 lg:scroll-mt-24">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               {/* Tabs */}
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
@@ -646,49 +669,56 @@ export default function AdminBookings() {
           </div>
 
           {/* Date Change Requests section */}
-          <div className="mt-8">
+          <div id="date-changes" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <DateChangeRequests />
           </div>
 
           {/* Host Applications section */}
-          <div className="mt-8">
+          <div id="host-applications" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <HostApplications onPendingCountChange={setPendingApplicationsCount} />
           </div>
 
           {/* Corporate / Travel-Agency Applications section */}
-          <div className="mt-8">
+          <div id="corporate" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <CorporateApplications />
           </div>
 
           {/* Experiences (homepage cards) management */}
-          <div className="mt-8">
+          <div id="experiences" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <ExperiencesPanel />
           </div>
 
+          {/* Offers & Promos (location discounts) management */}
+          <div id="promos" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
+            <PromosPanel />
+          </div>
+
           {/* Experience Booking Requests section */}
-          <div className="mt-8">
+          <div id="experience-bookings" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <ExperienceBookingsPanel />
           </div>
 
           {/* Completed Bookings section */}
-          <div className="mt-8">
+          <div id="completed-bookings" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <CompletedBookingsPanel />
           </div>
 
           {/* User Management section */}
-          <div className="mt-8">
+          <div id="users" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <UserManagementPanel />
           </div>
 
           {/* Host News & Announcements section */}
-          <div className="mt-8">
+          <div id="host-news" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <HostNewsPanel />
           </div>
 
           {/* Payment Verification Logs section */}
-          <div className="mt-8">
+          <div id="payment-logs" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
             <PaymentLogsPanel />
           </div>
+          </div>{/* /flex-1 */}
+          </div>{/* /flex */}
         </div>
 
         {/* Rejection Note Modal */}
