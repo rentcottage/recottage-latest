@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import PropertyCard from '../../components/feature/PropertyCard';
@@ -6,6 +6,8 @@ import SearchBar from '../../components/feature/SearchBar';
 import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
+import { FEATURE_FLAGS } from '../../lib/featureFlags';
+import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
 
 // Georgian regions for the Region filter
 const GEORGIAN_REGIONS = [
@@ -23,18 +25,6 @@ const GEORGIAN_REGIONS = [
   'Tbilisi',
 ];
 
-// Seeded shuffle — deterministic for a given seed, random across sessions
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const result = [...arr];
-  let s = seed;
-  for (let i = result.length - 1; i > 0; i--) {
-    s = (s * 1664525 + 1013904223) & 0xffffffff;
-    const j = Math.abs(s) % (i + 1);
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 const PAGE_SIZE = 12;
 
 export default function SearchResults() {
@@ -50,10 +40,19 @@ export default function SearchResults() {
   const [showFilters, setShowFilters] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
+  const [activePromos, setActivePromos] = useState<Promo[]>([]);
+
+  // Offers & Promos — dormant until FEATURE_FLAGS.ENABLE_PROMOS is flipped on.
+  useEffect(() => {
+    if (!FEATURE_FLAGS.ENABLE_PROMOS) return;
+    let cancelled = false;
+    fetchActivePromos().then((p) => { if (!cancelled) setActivePromos(p); });
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Filters live in the URL so they survive navigating into a property and back ──
   // (and make filtered searches shareable/bookmarkable)
-  const sortBy = searchParams.get('sort') || 'recommended';
+  const sortBy = searchParams.get('sort') || 'alphabetical';
   const amenitiesParam = searchParams.get('amenities') || '';
   const typesParam = searchParams.get('types') || '';
   const regionsParam = searchParams.get('regions') || '';
@@ -77,9 +76,6 @@ export default function SearchResults() {
     else next.set(key, Array.isArray(value) ? value.join(',') : value);
     setSearchParams(next, { replace: true });
   };
-
-  // Generate a stable random seed once per page session
-  const sessionSeedRef = useRef<number>(Math.floor(Math.random() * 2147483647));
 
   // Derived: the slice currently shown on screen
   const filteredProperties = sortedFilteredProperties.slice(0, visibleCount);
@@ -197,10 +193,13 @@ export default function SearchResults() {
         filtered.sort((a, b) => b.reviews - a.reviews);
         break;
       default:
-        // Randomize order for "recommended" — fair exposure for all listings
-        // Uses a session-stable seed so order stays consistent within a session
-        // but rotates on every new page load
-        filtered = seededShuffle(filtered, sessionSeedRef.current);
+        // Default: always show listings alphabetically (A→Z) by name so search
+        // and filter results have a stable, predictable order. Explicit 'ka'
+        // locale keeps ordering identical across browsers/SSR; base sensitivity
+        // makes it case-insensitive and numeric handles "2" before "10".
+        filtered.sort((a, b) =>
+          (a.title || '').localeCompare(b.title || '', 'ka', { sensitivity: 'base', numeric: true })
+        );
         break;
     }
 
@@ -423,6 +422,30 @@ export default function SearchResults() {
           </div>
         </div>
 
+        {/* Active promo for the searched location — discount auto-applies at checkout */}
+        {FEATURE_FLAGS.ENABLE_PROMOS && location && (() => {
+          const searchPromo = findPromoForLocation(activePromos, location);
+          if (!searchPromo) return null;
+          return (
+            <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3.5 mb-6">
+              <div className="flex-shrink-0 w-9 h-9 bg-green-500 rounded-lg flex items-center justify-center">
+                <i className="ri-price-tag-3-line text-white text-lg"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-green-800 leading-snug">
+                  −{searchPromo.discount_percent}% · {searchPromo.title}
+                </p>
+                <p className="text-xs text-green-700 mt-0.5 leading-snug">
+                  Discount applied automatically at checkout on eligible cottages
+                  {searchPromo.ends_at && (
+                    <> · until {new Date(searchPromo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</>
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar — Desktop only */}
           <div className="hidden lg:block lg:w-72 flex-shrink-0">
@@ -542,10 +565,10 @@ export default function SearchResults() {
                 <span className="text-sm text-gray-600">Sort by:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => updateFilterParam('sort', e.target.value === 'recommended' ? '' : e.target.value)}
+                  onChange={(e) => updateFilterParam('sort', e.target.value === 'alphabetical' ? '' : e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer pr-8"
                 >
-                  <option value="recommended">Recommended</option>
+                  <option value="alphabetical">Alphabetical (A–Z)</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>

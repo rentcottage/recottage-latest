@@ -9,4 +9,11 @@ export const FEATURE_FLAGS = {
 
   /** Facebook login / signup buttons. Set to true to re-enable. */
   ENABLE_FACEBOOK_LOGIN: false,
+
+  /**
+   * Offers & Promos public surfaces (home section, search banner, property
+   * discount). Built but dormant — flip to true when the first offers land.
+   * Admin panel promo management works regardless of this flag.
+   */
+  ENABLE_PROMOS: false,
 } as const;

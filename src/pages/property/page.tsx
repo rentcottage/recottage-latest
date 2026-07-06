@@ -8,6 +8,8 @@ import PropertyGallery from './components/PropertyGallery';
 import BookingWidget from './components/BookingWidget';
 import SEO from '../../components/feature/SEO';
 import { supabase } from '../../lib/supabase';
+import { FEATURE_FLAGS } from '../../lib/featureFlags';
+import { fetchActivePromos, findPromoForLocation, applyPromoDiscount, type Promo } from '../../lib/promos';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
 
@@ -51,6 +53,19 @@ export default function PropertyDetail() {
   const [bookingCaptchaToken, setBookingCaptchaToken] = useState('');
   const [corporateId, setCorporateId] = useState<string | null>(null);
   const [corporateClientName, setCorporateClientName] = useState('');
+  const [activePromo, setActivePromo] = useState<Promo | null>(null);
+
+  // Location-targeted promo — dormant until FEATURE_FLAGS.ENABLE_PROMOS is on.
+  // The server (bog-payment) independently verifies and applies the same promo,
+  // so this only controls what the guest sees.
+  useEffect(() => {
+    if (!FEATURE_FLAGS.ENABLE_PROMOS || !property?.location) { setActivePromo(null); return; }
+    let cancelled = false;
+    fetchActivePromos().then((promos) => {
+      if (!cancelled) setActivePromo(findPromoForLocation(promos, property.location));
+    });
+    return () => { cancelled = true; };
+  }, [property?.location]);
 
   // Detect whether the signed-in user is an approved travel agency.
   useEffect(() => {
@@ -203,7 +218,11 @@ export default function PropertyDetail() {
   };
 
   const currentPricePerNight = getPriceForGuests(parseInt(guests) || 1);
-  const getTotalPrice = () => calculateNights() * currentPricePerNight;
+  const getBaseTotalPrice = () => calculateNights() * currentPricePerNight;
+  // Promo discount — same formula as the server so the charged amount matches.
+  const getTotalPrice = () => activePromo
+    ? applyPromoDiscount(getBaseTotalPrice(), activePromo.discount_percent)
+    : getBaseTotalPrice();
 
   const handleBackClick = () => {
     if (window.history.length > 1) navigate(-1);
@@ -683,6 +702,7 @@ export default function PropertyDetail() {
               currentPricePerNight={currentPricePerNight}
               calculateNights={calculateNights}
               getTotalPrice={getTotalPrice}
+              activePromo={activePromo}
               onCaptchaVerify={(token) => setBookingCaptchaToken(token)}
               onCaptchaExpire={() => setBookingCaptchaToken('')}
               captchaToken={bookingCaptchaToken}

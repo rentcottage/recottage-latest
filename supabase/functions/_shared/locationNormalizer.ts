@@ -1,15 +1,12 @@
 /**
- * Bilingual location normalizer — Georgian ↔ English
- *
- * Strategy:
- * 1. A comprehensive EN_TO_KA dictionary covers every city/village in georgianCities
- * 2. A reverse KA_TO_EN map is auto-built from EN_TO_KA
- * 3. REGION_ALIASES maps every region to all its English + Georgian name variants
- * 4. getSearchTokens() expands any query into all equivalent forms in both scripts
- * 5. locationMatches() uses those tokens for robust bilingual city matching
- * 6. regionMatches() uses REGION_ALIASES for robust bilingual region matching
- * 7. filterCitiesBilingual() powers autocomplete suggestions bilingually
+ * ⚠️ KEEP IN SYNC: this is a verbatim copy of src/lib/locationNormalizer.ts
+ * (edge functions cannot import from src/). When you add cities/regions or
+ * change matching logic there, copy the file here again and redeploy the
+ * functions that use it (bog-payment, admin-host-actions).
+ * Dependency-free and Deno-safe — only the client file's docblock is replaced
+ * by this header.
  */
+
 
 /**
  * All name variants (English + Georgian) for each Georgian region.

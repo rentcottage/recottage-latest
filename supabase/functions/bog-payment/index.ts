@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { findActivePromoForLocation, applyPromoDiscount } from '../_shared/promos.ts';
 
 // ── BOG API constants ────────────────────────────────────────────────────
 const BOG_AUTH_URL = 'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token';
@@ -572,11 +573,19 @@ Deno.serve(async (req: Request) => {
     // from the property's own pricing (× nights × guest tier, mirroring the booking
     // widget) and charge THAT. A mismatch beyond a 1 GEL tolerance means tampering
     // or stale pricing, so we reject rather than charge a surprise amount.
+    //
+    // PROMOS: if an active promo matches the property's location, the discounted
+    // total is equally acceptable (and preferred). The client total is compared
+    // against BOTH totals so a client that doesn't show promos (feature flag off,
+    // cached bundle) still books at full price with no false PRICE_MISMATCH —
+    // the guest is always charged exactly the amount they were shown.
     if (!property_id) return jsonErr('Missing required field: property_id', 400);
+    let appliedPromo: { id: string; discount_percent: number } | null = null;
+    let preDiscountTotal = 0;
     {
       const { data: pricing } = await supabase
         .from('property_applications')
-        .select('price_per_night, pricing_type, guest_pricing_tiers')
+        .select('price_per_night, pricing_type, guest_pricing_tiers, location')
         .eq('id', String(property_id))
         .maybeSingle();
       if (!pricing) return jsonErr('Property not found.', 404);
@@ -593,10 +602,21 @@ Deno.serve(async (req: Request) => {
       }
       const serverTotal = nightly * nights;
       if (serverTotal <= 0) return jsonErr('Could not determine the booking price.', 400);
-      if (Math.abs(serverTotal - totalAmount) > 1) {
+
+      // Promo lookup is fail-safe: any error inside = null = no discount.
+      // The property's own DB location is authoritative, never the client's.
+      const promo = await findActivePromoForLocation(supabase, String(pricing.location ?? property_location ?? ''));
+      const discountedTotal = promo ? applyPromoDiscount(serverTotal, promo.discount_percent) : serverTotal;
+
+      if (promo && Math.abs(discountedTotal - totalAmount) <= 1) {
+        totalAmount = discountedTotal; // authoritative discounted price
+        appliedPromo = promo;
+        preDiscountTotal = serverTotal;
+      } else if (Math.abs(serverTotal - totalAmount) <= 1) {
+        totalAmount = serverTotal; // authoritative — overrides whatever the client sent
+      } else {
         return jsonErr('PRICE_MISMATCH: the price for these dates has changed. Please refresh and try again.', 400);
       }
-      totalAmount = serverTotal; // authoritative — overrides whatever the client sent
     }
 
     const chosenMethod = String(payment_method ?? 'pay_now');
@@ -654,6 +674,9 @@ Deno.serve(async (req: Request) => {
           payment_method: 'pay_at_property',
           approval_deadline: approvalDeadline,
           corporate_id: resolvedCorporateId,
+          promo_id: appliedPromo?.id ?? null,
+          promo_discount_percent: appliedPromo?.discount_percent ?? null,
+          pre_discount_total: appliedPromo ? preDiscountTotal : null,
         })
         .select().maybeSingle();
 
@@ -699,6 +722,9 @@ Deno.serve(async (req: Request) => {
         payment_status: 'pending_payment',
         payment_method: 'pay_now',
         corporate_id: resolvedCorporateId,
+        promo_id: appliedPromo?.id ?? null,
+        promo_discount_percent: appliedPromo?.discount_percent ?? null,
+        pre_discount_total: appliedPromo ? preDiscountTotal : null,
       })
       .select().maybeSingle();
 
@@ -883,7 +909,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('id, status, payment_status, payment_transaction_id, payment_method, property_title, check_in, check_out, guests, total_price, property_location')
+      .select('id, property_id, status, payment_status, payment_transaction_id, payment_method, property_title, check_in, check_out, guests, total_price, property_location')
       .eq('id', bookingId)
       .maybeSingle();
 

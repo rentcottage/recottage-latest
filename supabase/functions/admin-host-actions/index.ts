@@ -228,6 +228,37 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
+  // ── Promos (admin) — table public-read, writes gated (same lockdown) ───────
+  if (action === 'fetch-promos') {
+    const { data, error } = await supabase.from('promos').select('*').order('created_at', { ascending: false });
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ promos: data ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (action === 'save-promo') {
+    const payload = body.promo as Record<string, unknown> | undefined;
+    const id = body.promoId as string | undefined;
+    if (!payload) return new Response(JSON.stringify({ error: 'Missing promo payload' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const pct = Number(payload.discount_percent);
+    if (!isFinite(pct) || pct <= 0 || pct > 90) {
+      return new Response(JSON.stringify({ error: 'discount_percent must be between 1 and 90' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!String(payload.title ?? '').trim() || !String(payload.location ?? '').trim()) {
+      return new Response(JSON.stringify({ error: 'title and location are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const { error } = id
+      ? await supabase.from('promos').update(payload).eq('id', id)
+      : await supabase.from('promos').insert(payload);
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (action === 'delete-promo') {
+    const id = body.promoId as string | undefined;
+    if (!id) return new Response(JSON.stringify({ error: 'Missing id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { error } = await supabase.from('promos').delete().eq('id', id);
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
   // ── Fetch all applications ────────────────────────────────────────────────
   if (action === 'fetch-all') {
     const { data, error: fetchErr } = await supabase

@@ -52,6 +52,8 @@ interface BookingWidgetProps {
   currentPricePerNight: number;
   calculateNights: () => number;
   getTotalPrice: () => number;
+  /** Active location promo — adds a discount line to the price breakdown. */
+  activePromo?: { title: string; discount_percent: number } | null;
   onCaptchaVerify: (token: string) => void;
   onCaptchaExpire: () => void;
   captchaToken: string;
@@ -60,6 +62,11 @@ interface BookingWidgetProps {
   /** Client name override used for agency bookings (the host sees this as the guest). */
   corporateClientName?: string;
   onCorporateClientNameChange?: (v: string) => void;
+}
+
+/** ₾ amounts: whole numbers stay whole, fractional show 2 decimals. */
+function formatGel(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
 /** Detect the active Google Translate language from the cookie */
@@ -101,6 +108,7 @@ interface BookingFormProps {
   currentPricePerNight: number;
   calculateNights: () => number;
   getTotalPrice: () => number;
+  activePromo?: { title: string; discount_percent: number } | null;
   onCaptchaVerify: (token: string) => void;
   onCaptchaExpire: () => void;
   captchaToken: string;
@@ -132,6 +140,7 @@ function BookingForm({
   currentPricePerNight,
   calculateNights,
   getTotalPrice,
+  activePromo,
   onCaptchaVerify,
   onCaptchaExpire,
   captchaToken,
@@ -435,11 +444,25 @@ function BookingForm({
             <span className="text-gray-700">
               ₾{currentPricePerNight} × {nights} nights
             </span>
-            <span className="text-gray-900">₾{currentPricePerNight * nights}</span>
+            {/* Value spans are notranslate: Google Translate wraps text nodes in
+                <font> tags which blocks React from updating them (e.g. when the
+                promo loads async and the total changes). Numbers need no translation. */}
+            <span className="text-gray-900 notranslate" translate="no">₾{formatGel(currentPricePerNight * nights)}</span>
           </div>
+          {activePromo && (
+            <div className="flex justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-green-600 font-medium min-w-0">
+                <i className="ri-price-tag-3-line text-sm flex-shrink-0"></i>
+                <span className="truncate">Promo <span className="notranslate" translate="no">−{activePromo.discount_percent}%</span></span>
+              </span>
+              <span className="text-green-600 font-medium whitespace-nowrap notranslate" translate="no">
+                −₾{formatGel(currentPricePerNight * nights - getTotalPrice())}
+              </span>
+            </div>
+          )}
           <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold">
             <span className="text-gray-900">Total</span>
-            <span className="text-gray-900">₾{getTotalPrice()}</span>
+            <span className="text-gray-900 notranslate" translate="no">₾{formatGel(getTotalPrice())}</span>
           </div>
           <div className="flex items-center gap-1.5 pt-1">
             <div className="w-3.5 h-3.5 flex items-center justify-center">
@@ -518,6 +541,7 @@ export default function BookingWidget({
   currentPricePerNight,
   calculateNights,
   getTotalPrice,
+  activePromo,
   onCaptchaVerify,
   onCaptchaExpire,
   captchaToken,
@@ -575,6 +599,7 @@ export default function BookingWidget({
     currentPricePerNight,
     calculateNights,
     getTotalPrice,
+    activePromo,
     onCaptchaVerify,
     onCaptchaExpire,
     captchaToken,
@@ -627,7 +652,10 @@ export default function BookingWidget({
             </div>
             {checkIn && checkOut && nights > 0 ? (
               <p className="text-xs text-gray-500 truncate">
-                ₾{getTotalPrice()} total · {nights} night{nights !== 1 ? 's' : ''}
+                <span className="notranslate" translate="no">₾{formatGel(getTotalPrice())}</span> total · {nights} night{nights !== 1 ? 's' : ''}
+                {activePromo && (
+                  <span className="text-green-600 font-semibold notranslate" translate="no"> · −{activePromo.discount_percent}%</span>
+                )}
               </p>
             ) : (
               <div className="flex items-center gap-1">
