@@ -1,25 +1,54 @@
+import { lazy, Suspense } from 'react';
+import type { ComponentType } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import Home from '../pages/home/page';
-import SearchResults from '../pages/search/page';
-import PropertyDetail from '../pages/property/page';
-import Profile from '../pages/profile/page';
-import BecomeHost from '../pages/become-host/page';
-import NotFound from '../pages/NotFound';
-import Privacy from '../pages/privacy/page';
-import Terms from '../pages/terms/page';
-import HostResources from '../pages/host-resources/page';
-import HowItWorks from '../pages/how-it-works/page';
-import AboutGeorgia from '../pages/about-georgia/page';
-import SiteMap from '../pages/sitemap/page';
-import BookExperience from '../pages/book-experience/page';
-import AuthCallback from '../pages/auth-callback/page';
-import ResetPassword from '../pages/auth-reset-password/page';
-import AdminBookings from '../pages/admin/page';
-import HostDashboard from '../pages/host-dashboard/page';
-import PaymentSuccess from '../pages/payment-success/page';
-import PaymentFailed from '../pages/payment-failed/page';
-import CorporatePage from '../pages/corporate/page';
-import CorporateDashboard from '../pages/corporate/dashboard/page';
+
+// Route-level code splitting: every page except Home loads its own chunk on
+// demand. Before this, all 22 pages (admin panel, host dashboard, corporate,
+// booking flows…) shipped in ONE 1.3 MB bundle that every visitor had to
+// download and parse before the homepage could render.
+const SearchResults = lazy(() => import('../pages/search/page'));
+const PropertyDetail = lazy(() => import('../pages/property/page'));
+const Profile = lazy(() => import('../pages/profile/page'));
+const BecomeHost = lazy(() => import('../pages/become-host/page'));
+const NotFound = lazy(() => import('../pages/NotFound'));
+const Privacy = lazy(() => import('../pages/privacy/page'));
+const Terms = lazy(() => import('../pages/terms/page'));
+const HostResources = lazy(() => import('../pages/host-resources/page'));
+const HowItWorks = lazy(() => import('../pages/how-it-works/page'));
+const AboutGeorgia = lazy(() => import('../pages/about-georgia/page'));
+const SiteMap = lazy(() => import('../pages/sitemap/page'));
+const BookExperience = lazy(() => import('../pages/book-experience/page'));
+const AuthCallback = lazy(() => import('../pages/auth-callback/page'));
+const ResetPassword = lazy(() => import('../pages/auth-reset-password/page'));
+const AdminBookings = lazy(() => import('../pages/admin/page'));
+const HostDashboard = lazy(() => import('../pages/host-dashboard/page'));
+const PaymentSuccess = lazy(() => import('../pages/payment-success/page'));
+const PaymentFailed = lazy(() => import('../pages/payment-failed/page'));
+const CorporatePage = lazy(() => import('../pages/corporate/page'));
+const CorporateDashboard = lazy(() => import('../pages/corporate/dashboard/page'));
+
+// Minimal centered spinner shown only during a lazy chunk fetch (~50-200 ms).
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center gap-3 text-gray-400">
+        <div className="w-5 h-5 flex items-center justify-center animate-spin">
+          <i className="ri-loader-4-line text-xl"></i>
+        </div>
+        <span className="text-sm">Loading…</span>
+      </div>
+    </div>
+  );
+}
+
+function page(Component: ComponentType) {
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <Component />
+    </Suspense>
+  );
+}
 
 const routes: RouteObject[] = [
   {
@@ -28,83 +57,83 @@ const routes: RouteObject[] = [
   },
   {
     path: '/search',
-    element: <SearchResults />
+    element: page(SearchResults)
   },
   {
     path: '/property/:id',
-    element: <PropertyDetail />
+    element: page(PropertyDetail)
   },
   {
     path: '/profile',
-    element: <Profile />
+    element: page(Profile)
   },
   {
     path: '/become-host',
-    element: <BecomeHost />
+    element: page(BecomeHost)
   },
   {
     path: '/privacy',
-    element: <Privacy />
+    element: page(Privacy)
   },
   {
     path: '/terms',
-    element: <Terms />
+    element: page(Terms)
   },
   {
     path: '/host-resources',
-    element: <HostResources />
+    element: page(HostResources)
   },
   {
     path: '/how-it-works',
-    element: <HowItWorks />
+    element: page(HowItWorks)
   },
   {
     path: '/about-georgia',
-    element: <AboutGeorgia />
+    element: page(AboutGeorgia)
   },
   {
     path: '/sitemap',
-    element: <SiteMap />
+    element: page(SiteMap)
   },
   {
     path: '/book-experience',
-    element: <BookExperience />
+    element: page(BookExperience)
   },
   {
     path: '/auth/callback',
-    element: <AuthCallback />
+    element: page(AuthCallback)
   },
   {
     path: '/auth/reset-password',
-    element: <ResetPassword />
+    element: page(ResetPassword)
   },
   {
     path: '/admin',
-    element: <AdminBookings />
+    element: page(AdminBookings)
   },
   {
     path: '/host-dashboard',
-    element: <HostDashboard />
+    element: page(HostDashboard)
   },
   {
     path: '/corporate',
-    element: <CorporatePage />
+    element: page(CorporatePage)
   },
   {
     path: '/corporate/dashboard',
-    element: <CorporateDashboard />
+    element: page(CorporateDashboard)
   },
   {
     path: '/payment/success',
-    element: <PaymentSuccess />,
+    element: page(PaymentSuccess)
   },
   {
     path: '/payment/failed',
-    element: <PaymentFailed />,
+    element: page(PaymentFailed)
   },
   {
     path: '*',
-    element: <NotFound />
+    element: page(NotFound)
   }
 ];
 

@@ -10,6 +10,7 @@ import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { supabase } from '../../lib/supabase';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, type Promo } from '../../lib/promos';
+import { optimizedImageUrl, IMG_CARD } from '../../lib/imageUrl';
 
 interface HomeExperience {
   id: string;
@@ -494,7 +495,9 @@ export default function HomePage() {
                             alt={exp.title}
                             className={`w-full h-full object-contain ${isComingSoon ? 'opacity-80' : ''}`}
                             style={{ height: '100%', minHeight: '7rem' }}
-                            src={exp.image_url}
+                            src={optimizedImageUrl(exp.image_url, IMG_CARD)}
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300">

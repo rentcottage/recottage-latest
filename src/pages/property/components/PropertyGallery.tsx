@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { optimizedImageUrl, IMG_HERO, IMG_THUMB } from '../../../lib/imageUrl';
 
 interface PropertyGalleryProps {
   images: string[];
@@ -63,8 +64,10 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
         >
           <img
             key={activeIndex}
-            src={safeImages[activeIndex]}
+            src={optimizedImageUrl(safeImages[activeIndex], IMG_HERO, 75)}
             alt={`${title} — photo ${activeIndex + 1}`}
+            fetchPriority={activeIndex === 0 ? 'high' : undefined}
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300"
           />
 
@@ -115,8 +118,10 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                 aria-label={`View photo ${idx + 1}`}
               >
                 <img
-                  src={img}
+                  src={optimizedImageUrl(img, IMG_THUMB, 60)}
                   alt={`${title} thumbnail ${idx + 1}`}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover object-center"
                 />
                 {idx === activeIndex && (
@@ -207,8 +212,10 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                   style={{ width: 72, aspectRatio: '4 / 3' }}
                 >
                   <img
-                    src={img}
+                    src={optimizedImageUrl(img, IMG_THUMB, 60)}
                     alt={`Thumbnail ${idx + 1}`}
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 w-full h-full object-cover object-center"
                   />
                 </button>

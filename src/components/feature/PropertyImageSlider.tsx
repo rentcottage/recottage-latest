@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { optimizedImageUrl, IMG_CARD } from '../../lib/imageUrl';
 
 type CoverPosition = 'top' | 'center' | 'bottom';
 
@@ -18,6 +19,10 @@ export default function PropertyImageSlider({
 }: PropertyImageSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  // Adjacent slides are only mounted after the user shows slider intent
+  // (hover/touch). Before that each card downloads exactly ONE image —
+  // upfront it was three (current + both neighbours), tripling page weight.
+  const [wantsNeighbors, setWantsNeighbors] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const MIN_SWIPE_DISTANCE = 40;
@@ -51,6 +56,7 @@ export default function PropertyImageSlider({
   );
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    setWantsNeighbors(true);
     touchStartX.current = e.touches[0].clientX;
     touchEndX.current = null;
   };
@@ -80,27 +86,28 @@ export default function PropertyImageSlider({
     <div
       className="relative w-full overflow-hidden bg-gray-100 select-none"
       style={{ aspectRatio: '16/11', minHeight: '180px' }}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => { setIsHovered(true); setWantsNeighbors(true); }}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Image strip — only render current + adjacent for performance */}
+      {/* Image strip — active always; neighbours only after slider intent */}
       {safeImages.map((src, i) => {
         const isActive = i === currentIndex;
         const isAdjacent =
           i === (currentIndex + 1) % total ||
           i === (currentIndex - 1 + total) % total;
 
-        if (!isActive && !isAdjacent) return null;
+        if (!isActive && !(wantsNeighbors && isAdjacent)) return null;
 
         return (
           <img
             key={i}
-            src={src}
+            src={optimizedImageUrl(src, IMG_CARD)}
             alt={`${title} - photo ${i + 1}`}
-            loading={i === 0 ? 'eager' : 'lazy'}
+            loading="lazy"
+            decoding="async"
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === 0 ? positionClass[coverPosition] : 'object-center'}`}
             style={{ opacity: isActive ? 1 : 0, pointerEvents: 'none', transform: 'scale(1.01)' }}
           />
