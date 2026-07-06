@@ -160,7 +160,17 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
               <div className="p-4 md:p-5">
                 <div className="flex items-start justify-between mb-2 md:mb-3">
                   <div className="min-w-0 mr-3">
-                    <h3 className="text-sm md:text-base font-bold text-gray-900 notranslate" translate="no">{p.title}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-sm md:text-base font-bold text-gray-900 notranslate min-w-0 truncate" translate="no">{p.title}</h3>
+                      <button
+                        onClick={() => setEditingProperty(p)}
+                        title="Edit name"
+                        aria-label="Edit cottage name"
+                        className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
+                      >
+                        <i className="ri-edit-line text-sm"></i>
+                      </button>
+                    </div>
                     <p className="text-xs md:text-sm text-gray-400 flex items-center gap-1 mt-0.5">
                       <i className="ri-map-pin-line text-xs"></i>
                       {p.location}

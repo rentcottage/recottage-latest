@@ -56,6 +56,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
   const [activeTab, setActiveTab] = useState<Tab>('settings');
 
   // Settings state
+  const [title, setTitle] = useState(property.title || '');
   const [description, setDescription] = useState(property.description || '');
   const [price, setPrice] = useState(String(property.price_per_night || ''));
   const [amenities, setAmenities] = useState<string[]>(property.amenities || []);
@@ -97,6 +98,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setTitle(property.title || '');
     setDescription(property.description || '');
     setPrice(String(property.price_per_night || ''));
     setAmenities(property.amenities || []);
@@ -152,6 +154,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     setError('');
     const priceNum = parseFloat(price);
 
+    if (!title.trim()) { setError('Cottage name cannot be empty.'); return; }
     if (!description.trim()) { setError('Description cannot be empty.'); return; }
 
     if (pricingType === 'fixed') {
@@ -178,6 +181,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     const { error: updateError } = await supabase
       .from('property_applications')
       .update({
+        title: title.trim(),
         description: description.trim(),
         price_per_night: basePriceForDb,
         amenities,
@@ -373,6 +377,34 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
           {/* ── SETTINGS TAB ── */}
           {activeTab === 'settings' && (
             <div className="space-y-6">
+
+              {/* ── COTTAGE NAME ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-4 h-4 flex items-center justify-center">
+                    <i className="ri-home-4-line text-emerald-600 text-sm"></i>
+                  </div>
+                  <label className="text-sm font-semibold text-gray-900">
+                    Cottage Name
+                    <span className="text-red-400 ml-0.5">*</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400 mb-2">
+                  This is the listing title guests see on cards and the property page.
+                </p>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value.slice(0, 90))}
+                  maxLength={90}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 notranslate"
+                  translate="no"
+                  placeholder="e.g. Cozy Mountain Cottage in Kazbegi"
+                />
+                <p className={`text-xs mt-1 text-right ${title.length > 80 ? 'text-amber-500' : 'text-gray-400'}`}>
+                  {title.length}/90
+                </p>
+              </div>
 
               {/* ── PRICING MODEL ── */}
               <div>
