@@ -10,7 +10,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-async function sendEmail(to: string, subject: string, html: string, from: string = FROM_EMAIL): Promise<boolean> {
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -18,7 +18,7 @@ async function sendEmail(to: string, subject: string, html: string, from: string
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from, to, subject, html }),
+      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
     });
     if (!res.ok) {
       const errText = await res.text();
@@ -30,59 +30,6 @@ async function sendEmail(to: string, subject: string, html: string, from: string
     console.error('[sendEmail] Exception:', e);
     return false;
   }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HOST EMAIL PRIVACY POLICY — PERMANENT RULE — DO NOT MODIFY WITHOUT EXPLICIT REQUEST
-// Host-facing emails are in Georgian and MUST NOT contain any customer personal
-// details (no name, email, or phone) — only the booking's own facts.
-// ═══════════════════════════════════════════════════════════════════════════
-const SITE_URL = 'https://rentcottage.ge';
-const BOOKINGS_FROM_EMAIL = 'bookings@rentcottage.ge';
-
-function emailWrapper(content: string): string {
-  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:580px;margin:0 auto;color:#111"><div style="background:#e53e3e;padding:28px 36px;border-radius:12px 12px 0 0"><h1 style="color:#fff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.3px">RentCottage.Ge</h1></div><div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:36px;border-radius:0 0 12px 12px">${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0"><p style="color:#9ca3af;font-size:12px;margin:0">© 2025 RentCottage.Ge · rentcottage.ge</p></div></div>`;
-}
-
-function bookingTable(rows: [string, string][]): string {
-  return `<table style="width:100%;border-collapse:collapse;margin:24px 0;font-size:14px">${rows.map(([label, value], i) => `<tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}"><td style="padding:12px 16px;font-weight:600;border:1px solid #e5e7eb;color:#374151;width:42%">${label}</td><td style="padding:12px 16px;border:1px solid #e5e7eb;color:#111">${value}</td></tr>`).join('')}</table>`;
-}
-
-/**
- * Georgian, privacy-safe "new booking request — action needed" email for the
- * host. Mirrors the notification bog-payment sends for pay-at-property manual-
- * approval bookings, so it can be re-sent for bookings created out-of-band
- * (e.g. an admin entering an offline request). Contains ZERO customer PII.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildHostBookingRequestHtml(booking: Record<string, any>, hostFirstName: string): string {
-  const payLabel = booking.payment_method === 'pay_now'
-    ? 'ონლაინ გადახდა (საქართველოს ბანკი)'
-    : 'ადგილზე გადახდა (ჩასვლისას)';
-  let deadline = '—';
-  if (booking.approval_deadline) {
-    try {
-      deadline = new Intl.DateTimeFormat('ka-GE', {
-        timeZone: 'Asia/Tbilisi', dateStyle: 'medium', timeStyle: 'short',
-      }).format(new Date(String(booking.approval_deadline)));
-    } catch { deadline = String(booking.approval_deadline); }
-  }
-  return emailWrapper(`
-    <h2 style="color:#d97706;margin-top:0">ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება 🏡</h2>
-    <p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p>
-    <p style="color:#374151;line-height:1.6">თქვენ გაქვთ <strong>ახალი ჯავშნის მოთხოვნა</strong> ობიექტისთვის <strong>${booking.property_title}</strong>. გთხოვთ დაადასტუროთ ან უარყოთ იგი.</p>
-    ${bookingTable([
-      ['ჯავშნის ID', String(booking.id)],
-      ['კოტეჯი', String(booking.property_title)],
-      ['ჩასვლის თარიღი', String(booking.check_in)],
-      ['გასვლის თარიღი', String(booking.check_out)],
-      ['სტუმრების რაოდენობა', String(booking.guests)],
-      ['ჯამური ფასი', '₾' + String(booking.total_price)],
-      ['გადახდის მეთოდი', payLabel],
-      ['დადასტურების ბოლო ვადა', deadline],
-    ])}
-    <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>საჭიროა მოქმედება:</strong> გთხოვთ, დაადასტუროთ ან უარყოთ ეს ჯავშანი მასპინძლის პანელში.</div>
-    <div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/host-dashboard" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">გადადით მასპინძლის პანელში</a></div>`);
 }
 
 function buildApprovalEmailHtml(app: Record<string, unknown>): string {
@@ -310,43 +257,6 @@ Deno.serve(async (req: Request) => {
     const { error } = await supabase.from('promos').delete().eq('id', id);
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-
-  // ── Send host the "new booking request" email (admin) ──────────────────────
-  // For bookings created out-of-band (e.g. an admin entering an offline
-  // request) where the usual automatic host notification never fired. The
-  // email is Georgian and carries ZERO customer PII (privacy rule above).
-  if (action === 'send-host-booking-request') {
-    const bookingId = body.bookingId as string | undefined;
-    if (!bookingId) return new Response(JSON.stringify({ error: 'Missing bookingId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-    const { data: booking, error: bErr } = await supabase
-      .from('bookings')
-      .select('id, property_id, property_title, check_in, check_out, guests, total_price, payment_method, status, approval_deadline')
-      .eq('id', bookingId)
-      .maybeSingle();
-    if (bErr || !booking) return new Response(JSON.stringify({ error: 'Booking not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-    if (!booking.property_id) return new Response(JSON.stringify({ error: 'Booking has no property_id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    const { data: prop } = await supabase
-      .from('property_applications')
-      .select('host_email, host_first_name')
-      .eq('id', String(booking.property_id))
-      .maybeSingle();
-    const hostEmail = prop?.host_email as string | undefined;
-    if (!hostEmail) return new Response(JSON.stringify({ error: 'Host email not found for this property' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    const hostFirstName = (prop?.host_first_name as string | undefined) ?? 'ჰოსტო';
-
-    const html = buildHostBookingRequestHtml(booking as Record<string, unknown>, hostFirstName);
-    const sent = await sendEmail(hostEmail, `ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება (24 სთ): ${booking.property_title}`, html, BOOKINGS_FROM_EMAIL);
-    if (!sent) return new Response(JSON.stringify({ error: 'Failed to send host email' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-    await supabase.from('booking_status_logs').insert({
-      booking_id: booking.id, event_type: 'host_request_email_resent',
-      from_status: booking.status, to_status: booking.status, changed_by: 'admin',
-      note: `Booking request email sent to host ${hostEmail}`,
-    });
-    return new Response(JSON.stringify({ success: true, hostEmail }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
   // ── Fetch all applications ────────────────────────────────────────────────

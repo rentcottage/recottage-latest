@@ -321,34 +321,6 @@ export default function AdminBookings() {
     setActionLoading(null);
   };
 
-  // Re-send the Georgian "new booking request" email to the host. Used for
-  // bookings created out-of-band (e.g. an admin entering an offline request)
-  // where the usual automatic host notification never fired.
-  const handleEmailHost = async (bookingId: string) => {
-    setActionLoading(bookingId + 'emailhost');
-    try {
-      const res = await fetch(ADMIN_HOST_ACTIONS_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
-        },
-        body: JSON.stringify({ action: 'send-host-booking-request', bookingId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        showToast(`Booking request emailed to host (${data.hostEmail}).`, 'success');
-      } else {
-        showToast(data.error ?? 'Could not send host email.', 'error');
-      }
-    } catch {
-      showToast('Network error. Please try again.', 'error');
-    }
-    setActionLoading(null);
-  };
-
   const handleConfirmReject = async (bookingId: string, note: string) => {
     setActionLoading(bookingId + 'reject');
     try {
@@ -672,23 +644,6 @@ export default function AdminBookings() {
                                     </div>
                                   )}
                                   Reject
-                                </button>
-                                <button
-                                  onClick={() => handleEmailHost(b.id)}
-                                  disabled={!!actionLoading}
-                                  title="Re-send the booking request email to the host"
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
-                                >
-                                  {actionLoading === b.id + 'emailhost' ? (
-                                    <div className="w-3 h-3 flex items-center justify-center animate-spin">
-                                      <i className="ri-loader-4-line"></i>
-                                    </div>
-                                  ) : (
-                                    <div className="w-3 h-3 flex items-center justify-center">
-                                      <i className="ri-mail-send-line"></i>
-                                    </div>
-                                  )}
-                                  Email host
                                 </button>
                               </div>
                             ) : (
