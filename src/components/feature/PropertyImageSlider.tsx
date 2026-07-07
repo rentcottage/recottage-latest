@@ -23,18 +23,9 @@ export default function PropertyImageSlider({
   // (hover/touch). Before that each card downloads exactly ONE image —
   // upfront it was three (current + both neighbours), tripling page weight.
   const [wantsNeighbors, setWantsNeighbors] = useState(false);
-  // Natural aspect ratio per photo, measured on load — drives the fit choice.
-  const [ratios, setRatios] = useState<Record<number, number>>({});
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const MIN_SWIPE_DISTANCE = 40;
-
-  const handleImgLoad = (i: number) => (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    if (!img.naturalWidth || !img.naturalHeight) return;
-    const r = img.naturalWidth / img.naturalHeight;
-    setRatios((prev) => (prev[i] ? prev : { ...prev, [i]: r }));
-  };
 
   const safeImages = images.length > 0 ? images : [''];
   const total = safeImages.length;
@@ -102,11 +93,11 @@ export default function PropertyImageSlider({
       onTouchEnd={handleTouchEnd}
     >
       {/* Image strip — active always; neighbours only after slider intent.
-          Fit is ratio-aware: landscape photos cover-fill the 16:11 box (a 4:3
-          photo loses only ~8% of its height — imperceptible, no letterbox
-          bars). Only square/portrait photos — where cover would chop off >20%
-          — are shown whole (object-contain) over a blurred fill; the fill
-          reuses the same file, so no extra download. */}
+          Every photo fills the card edge-to-edge: the CDN serves an exact
+          640×440 center-cropped variant (resize=cover), so there are never
+          letterbox bars or blurred edges. Exception: a host-positioned cover
+          (top/bottom, 3 listings) gets the uncropped variant and the browser
+          crops it at their chosen position via object-cover. */}
       {safeImages.map((src, i) => {
         const isActive = i === currentIndex;
         const isAdjacent =
@@ -115,38 +106,18 @@ export default function PropertyImageSlider({
 
         if (!isActive && !(wantsNeighbors && isAdjacent)) return null;
 
-        const url = optimizedImageUrl(src, IMG_CARD);
-        const ratio = ratios[i];
-        // Contain only when measured clearly square/portrait (or an extreme
-        // panorama). Unknown (still loading) defaults to cover — the common
-        // case — so most photos never reflow when the measurement lands.
-        const useContain = ratio !== undefined && (ratio < 1.15 || ratio > 2.4);
-        const coverClass = `object-cover ${i === 0 ? positionClass[coverPosition] : 'object-center'}`;
+        const isPositionedCover = i === 0 && coverPosition !== 'center';
+        const url = optimizedImageUrl(src, IMG_CARD, 70, isPositionedCover ? 'contain' : 'cover');
         return (
-          <div
+          <img
             key={i}
-            className="absolute inset-0 transition-opacity duration-300"
+            src={url}
+            alt={`${title} - photo ${i + 1}`}
+            loading="lazy"
+            decoding="async"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isPositionedCover ? positionClass[coverPosition] : 'object-center'}`}
             style={{ opacity: isActive ? 1 : 0, pointerEvents: 'none' }}
-          >
-            {useContain && (
-              <img
-                src={url}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                decoding="async"
-                className={`absolute inset-0 w-full h-full ${coverClass} blur-lg scale-110 opacity-60`}
-              />
-            )}
-            <img
-              src={url}
-              alt={`${title} - photo ${i + 1}`}
-              loading="lazy"
-              decoding="async"
-              onLoad={handleImgLoad(i)}
-              className={`absolute inset-0 w-full h-full ${useContain ? 'object-contain' : coverClass}`}
-            />
-          </div>
+          />
         );
       })}
 
