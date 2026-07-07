@@ -92,7 +92,10 @@ export default function PropertyImageSlider({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Image strip — active always; neighbours only after slider intent */}
+      {/* Image strip — active always; neighbours only after slider intent.
+          Photos are shown UNCROPPED (object-contain); a blurred cover-fit copy
+          of the same file fills the letterbox space behind them. Same URL
+          twice = one network request (browser cache), so no extra download. */}
       {safeImages.map((src, i) => {
         const isActive = i === currentIndex;
         const isAdjacent =
@@ -101,16 +104,29 @@ export default function PropertyImageSlider({
 
         if (!isActive && !(wantsNeighbors && isAdjacent)) return null;
 
+        const url = optimizedImageUrl(src, IMG_CARD);
         return (
-          <img
+          <div
             key={i}
-            src={optimizedImageUrl(src, IMG_CARD)}
-            alt={`${title} - photo ${i + 1}`}
-            loading="lazy"
-            decoding="async"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === 0 ? positionClass[coverPosition] : 'object-center'}`}
-            style={{ opacity: isActive ? 1 : 0, pointerEvents: 'none', transform: 'scale(1.01)' }}
-          />
+            className="absolute inset-0 transition-opacity duration-300"
+            style={{ opacity: isActive ? 1 : 0, pointerEvents: 'none' }}
+          >
+            <img
+              src={url}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              className={`absolute inset-0 w-full h-full object-cover ${i === 0 ? positionClass[coverPosition] : 'object-center'} blur-lg scale-110 opacity-60`}
+            />
+            <img
+              src={url}
+              alt={`${title} - photo ${i + 1}`}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-contain"
+            />
+          </div>
         );
       })}
 
