@@ -200,7 +200,8 @@ export default function PropertyDetail() {
     if (!checkIn || !checkOut) return 0;
     const start = new Date(checkIn);
     const end = new Date(checkOut);
-    return Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    // Signed diff (no Math.abs): reversed/equal ranges yield <= 0 nights, which the booking guard rejects.
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   };
 
   const getPriceForGuests = (guestCount: number): number => {
@@ -223,6 +224,12 @@ export default function PropertyDetail() {
   const getTotalPrice = () => activePromo
     ? applyPromoDiscount(getBaseTotalPrice(), activePromo.discount_percent)
     : getBaseTotalPrice();
+
+  // Clear check-out when it's on/before the new check-in (YYYY-MM-DD sorts as date order) to prevent reversed ranges.
+  const handleCheckInChange = useCallback((v: string) => {
+    setCheckIn(v);
+    setCheckOut((prev) => (prev && prev <= v ? '' : prev));
+  }, []);
 
   const handleBackClick = () => {
     if (window.history.length > 1) navigate(-1);
@@ -688,7 +695,7 @@ export default function PropertyDetail() {
               checkIn={checkIn}
               checkOut={checkOut}
               guests={guests}
-              onCheckInChange={setCheckIn}
+              onCheckInChange={handleCheckInChange}
               onCheckOutChange={setCheckOut}
               onGuestsChange={setGuests}
               isSubmitting={isSubmitting}
