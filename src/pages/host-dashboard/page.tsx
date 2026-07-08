@@ -38,6 +38,7 @@ interface HostBooking {
   date_change_status: string | null;
   date_change_requested_at: string | null;
   approval_deadline?: string | null;
+  rejection_note?: string | null;
 }
 
 interface HostProperty {
@@ -100,7 +101,7 @@ function HostDashboardContent() {
       const propertyIds = hostProperties.map((p) => p.id);
       const { data: bookingData } = await supabase
         .from('bookings')
-        .select('id, user_name, user_email, property_id, property_title, property_location, check_in, check_out, guests, price_per_night, total_price, status, payment_status, payment_method, created_at, requested_check_in, requested_check_out, requested_total_price, date_change_status, date_change_requested_at, approval_deadline')
+        .select('id, user_name, user_email, property_id, property_title, property_location, check_in, check_out, guests, price_per_night, total_price, status, payment_status, payment_method, created_at, requested_check_in, requested_check_out, requested_total_price, date_change_status, date_change_requested_at, approval_deadline, rejection_note')
         .in('property_id', propertyIds)
         .order('created_at', { ascending: false });
       setBookings((bookingData ?? []) as HostBooking[]);
@@ -116,12 +117,13 @@ function HostDashboardContent() {
   // Trigger contact-reveal emails once per day on dashboard load
   useEffect(() => {
     const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
+    const ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
     const lastRun = localStorage.getItem('rc_contact_reveal_last_run');
     const today = new Date().toISOString().split('T')[0];
     if (lastRun === today) return; // already ran today
     fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` },
       body: JSON.stringify({ action: 'send-contact-reveal-emails' }),
     })
       .then(() => localStorage.setItem('rc_contact_reveal_last_run', today))

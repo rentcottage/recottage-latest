@@ -23,3 +23,13 @@ verify_jwt = false
 # (verify caller's session JWT + profiles.role='admin') before it can be locked down.
 [functions.admin-user-management]
 verify_jwt = false
+
+# Serves anonymous email one-click links (approve/reject/confirm) AND the host &
+# admin dashboards, which send no user JWT — the host dashboard sends no auth
+# header and the admin panel sends the `sb_publishable_*` key. With the default
+# verify_jwt=true the gateway rejected both (missing / INVALID_JWT_FORMAT), so
+# host- and admin-side booking rejection failed identically. Host actions
+# self-authorize via a property-ownership check; admin actions still inherit the
+# shared anon-key posture of the other admin-* functions (not yet gated).
+[functions.booking-handler]
+verify_jwt = false

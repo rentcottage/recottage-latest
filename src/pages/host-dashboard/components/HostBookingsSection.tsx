@@ -37,6 +37,17 @@ interface Props {
 }
 
 const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
+const ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
+
+// Send the project apikey + bearer on every booking-handler call, identical to
+// the admin panel's calls (which work). The host actions previously sent no auth
+// headers at all — the only thing that differed from the working admin path —
+// so host approve/reject/cancel were rejected while admin succeeded.
+const FN_HEADERS = {
+  'Content-Type': 'application/json',
+  'apikey': ANON_KEY,
+  'Authorization': `Bearer ${ANON_KEY}`,
+};
 
 function fmt(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -225,7 +236,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: FN_HEADERS,
         body: JSON.stringify({ action: 'host-approve-booking', bookingId, hostEmail }),
       });
       const data = await res.json();
@@ -247,7 +258,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: FN_HEADERS,
         body: JSON.stringify({ action: 'host-reject-booking', bookingId, hostEmail, rejectionNote: note }),
       });
       const data = await res.json();
@@ -270,7 +281,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: FN_HEADERS,
         body: JSON.stringify({ action: 'host-cancel-booking', bookingId, hostEmail }),
       });
       const data = await res.json();
@@ -304,7 +315,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: FN_HEADERS,
           body: JSON.stringify({ action: 'expire-pending-approvals', hostEmail }),
         });
         onRefresh();

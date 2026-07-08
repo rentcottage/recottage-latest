@@ -809,7 +809,11 @@ async function applyHostRejectBooking(supabase: any, bookingId: string, hostEmai
     if (!refund.ok) console.error(`[host-reject] BOG refund failed for ${bookingId}: ${refund.error}`);
   }
   const now = new Date().toISOString();
-  const updatePayload: Record<string, unknown> = { status: 'rejected', canceled_by: 'host', canceled_at: now };
+  // Mirror admin reject (applyBookingReject): paid → refund just issued so mark
+  // refund_pending; unpaid → cancelled. Keeps the payment state identical
+  // whether a host or an admin rejects the same booking.
+  const paymentUpdate = booking.payment_status === 'paid' ? 'refund_pending' : 'cancelled';
+  const updatePayload: Record<string, unknown> = { status: 'rejected', payment_status: paymentUpdate, canceled_by: 'host', canceled_at: now };
   if (rejectionNote) updatePayload.rejection_note = rejectionNote;
   const { error: updateErr } = await supabase.from('bookings').update(updatePayload).eq('id', bookingId);
   if (updateErr) return { ok: false, error: 'Failed to update' };
