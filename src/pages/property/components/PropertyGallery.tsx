@@ -54,14 +54,16 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
     <>
       {/* ── Main Gallery ─────────────────────────────────────────── */}
       <div className="mb-8">
-        {/* Mosaic grid (mockup): big main image + 2×2 smaller tiles.
-            Any tile opens the lightbox at that photo. Smaller tiles are
-            desktop-only; mobile shows just the main image. */}
-        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] md:grid-rows-2 gap-2.5 rounded-card overflow-hidden h-64 md:h-[390px]">
+        {/* Mosaic grid (mockup): big main image + 2×2 smaller tiles. The
+            tiles only render when there are enough photos to fill them (≥5);
+            with fewer, the main image spans full width so there are never
+            blank cells. Tiles are desktop-only; mobile shows the main image
+            alone. Any tile opens the lightbox at that photo. */}
+        <div className={`grid grid-cols-1 gap-2.5 rounded-card overflow-hidden h-64 md:h-[390px] ${safeImages.length >= 5 ? 'md:grid-cols-[2fr_1fr_1fr] md:grid-rows-2' : ''}`}>
 
-          {/* Main image — spans both rows */}
+          {/* Main image — spans both rows when the mosaic tiles are shown */}
           <div
-            className="relative md:row-span-2 h-full overflow-hidden bg-gray-100 cursor-zoom-in group"
+            className={`relative h-full overflow-hidden bg-gray-100 cursor-zoom-in group ${safeImages.length >= 5 ? 'md:row-span-2' : ''}`}
             onClick={() => openLightbox(0)}
           >
             <img
@@ -85,8 +87,8 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
             )}
           </div>
 
-          {/* 4 smaller tiles — desktop only */}
-          {safeImages.slice(1, 5).map((img, i) => (
+          {/* 4 smaller tiles — desktop only, only when ≥5 photos to fill them */}
+          {safeImages.length >= 5 && safeImages.slice(1, 5).map((img, i) => (
             <div
               key={i + 1}
               className="relative hidden md:block h-full overflow-hidden bg-gray-100 cursor-zoom-in group"
