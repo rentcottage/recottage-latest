@@ -163,7 +163,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
 
   return (
     <>
-      <div className="border border-gray-200 rounded-lg p-4 relative">
+      <div className="border border-line rounded-card p-4 relative bg-white shadow-card">
         {/* Toast */}
         {toast && (
           <div
@@ -181,7 +181,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
             {booking.property_id ? (
               <Link
                 to={`/property/${booking.property_id}`}
-                className="font-medium text-gray-900 hover:text-rose-600 hover:underline underline-offset-2 transition-colors cursor-pointer inline-flex items-center gap-1 group notranslate"
+                className="font-bold text-ink hover:text-red-500 hover:underline underline-offset-2 transition-colors cursor-pointer inline-flex items-center gap-1 group notranslate"
                 translate="no"
               >
                 {booking.property_title}

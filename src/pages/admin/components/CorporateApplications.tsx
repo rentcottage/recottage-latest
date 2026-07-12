@@ -107,7 +107,7 @@ export default function CorporateApplications() {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-gray-900">Corporate Applications</h2>
@@ -217,12 +217,12 @@ export default function CorporateApplications() {
               value={rejectNote}
               onChange={(e) => setRejectNote(e.target.value)}
               placeholder="Optional — explain the reason (e.g. missing documentation)…"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]"
+              className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]"
             />
             <div className="flex gap-2 justify-end mt-4">
               <button
                 onClick={() => setRejectTarget(null)}
-                className="px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg cursor-pointer transition-colors"
+                className="px-4 py-2 bg-white border border-line hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg cursor-pointer transition-colors"
               >
                 Cancel
               </button>

@@ -92,7 +92,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
 
       {/* Overview cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-5">
+        <div className="bg-white rounded-card border border-line shadow-card p-3 md:p-5">
           <div className="flex items-center justify-between mb-2 md:mb-3">
             <span className="text-xs md:text-sm text-gray-500">Overall Rating</span>
             <div className="w-7 h-7 md:w-8 md:h-8 bg-yellow-50 rounded-lg flex items-center justify-center">
@@ -118,7 +118,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-5">
+        <div className="bg-white rounded-card border border-line shadow-card p-3 md:p-5">
           <div className="flex items-center justify-between mb-2 md:mb-3">
             <span className="text-xs md:text-sm text-gray-500">Total Reviews</span>
             <div className="w-7 h-7 md:w-8 md:h-8 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
           <p className="text-xs text-gray-400">across all properties</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-3 md:p-5">
+        <div className="bg-white rounded-card border border-line shadow-card p-3 md:p-5">
           <div className="flex items-center justify-between mb-2 md:mb-3">
             <span className="text-xs md:text-sm text-gray-500">5-Star Reviews</span>
             <div className="w-7 h-7 md:w-8 md:h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
@@ -149,7 +149,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
 
       {/* Per-property ratings */}
       {perPropertyStats.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 mb-5 md:mb-6">
+        <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-5 mb-5 md:mb-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3 md:mb-4">Rating per Property</h3>
           <div className="space-y-3">
             {perPropertyStats.map((p) => (
@@ -175,7 +175,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
       )}
 
       {/* Reviews list */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         {/* Filter tabs */}
         <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4 border-b border-gray-100 gap-2">
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto flex-1 min-w-0">

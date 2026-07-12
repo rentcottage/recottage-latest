@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/feature/Header';
+import Footer from '../../components/feature/Footer';
 import ExperienceBookingForm from './components/ExperienceBookingForm';
 import SEO from '../../components/feature/SEO';
 
@@ -103,14 +104,14 @@ export default function BookExperiencePage() {
         }}
       >
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-          <p className="hidden md:block text-xs uppercase tracking-widest text-red-300 font-medium mb-3">
+          <p className="text-[11px] md:text-xs uppercase tracking-[2px] text-white/85 font-bold mb-2">
             Authentic Georgian Experiences
           </p>
-          <h1 className="text-2xl md:text-5xl font-bold text-white mb-1 md:mb-3">
+          <h1 className="text-2xl md:text-[38px] font-extrabold text-white tracking-tight mb-1 md:mb-3">
             Book Your Experience
           </h1>
-          <p className="text-white/80 text-xs md:text-base max-w-xl">
-            Immerse yourself in Georgian culture
+          <p className="text-white/90 text-xs md:text-base max-w-xl">
+            A cottage + an experience = the perfect getaway
           </p>
         </div>
       </section>
@@ -144,7 +145,7 @@ export default function BookExperiencePage() {
               )}
 
               {active && (
-                <div className="rounded-xl md:rounded-2xl overflow-hidden border border-gray-100">
+                <div className="rounded-card overflow-hidden border border-line shadow-card">
                   <div className="relative bg-gray-50">
                     {photos.length > 0 ? (
                       <img
@@ -208,9 +209,9 @@ export default function BookExperiencePage() {
                       {active.description}
                     </p>
 
-                    <div className="border-t border-gray-100 pt-3 md:pt-5 flex items-baseline gap-2">
+                    <div className="border-t border-line pt-3 md:pt-5 flex items-baseline gap-2">
                       <span className="text-xs text-gray-400">From</span>
-                      <span className="text-2xl md:text-3xl font-bold text-red-500">
+                      <span className="text-2xl md:text-3xl font-extrabold text-red-500" translate="no">
                         {(active.currency_symbol || '₾')}
                         {Number(active.price_per_person).toFixed(0)}
                       </span>
@@ -237,6 +238,9 @@ export default function BookExperiencePage() {
           </div>
         )}
       </section>
+
+      {/* Footer — shared component */}
+      <Footer />
     </div>
   );
 }

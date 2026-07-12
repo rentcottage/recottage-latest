@@ -75,7 +75,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+            <div key={i} className="bg-white rounded-card border border-line shadow-card overflow-hidden animate-pulse">
               <div className="h-40 md:h-48 bg-gray-100" />
               <div className="p-4 md:p-5 space-y-3">
                 <div className="h-5 bg-gray-100 rounded w-3/4" />
@@ -86,7 +86,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
           ))}
         </div>
       ) : properties.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 flex flex-col items-center py-20 text-gray-400">
+        <div className="bg-white rounded-card border border-line shadow-card flex flex-col items-center py-20 text-gray-400">
           <div className="w-14 h-14 flex items-center justify-center mb-4">
             <i className="ri-home-smile-line text-5xl"></i>
           </div>
@@ -105,7 +105,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           {properties.map((p) => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div key={p.id} className="bg-white rounded-card border border-line shadow-card overflow-hidden">
               {/* Photo area */}
               {p.photo_urls && p.photo_urls.length > 0 ? (
                 <div className="relative h-40 md:h-48 overflow-hidden">

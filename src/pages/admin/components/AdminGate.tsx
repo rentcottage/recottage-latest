@@ -103,7 +103,7 @@ export default function AdminGate({ children }: Props) {
             setValue('');
             setError('');
           }}
-          className="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-gray-600 bg-white border border-gray-200 rounded-lg cursor-pointer whitespace-nowrap transition-colors"
+          className="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-gray-600 bg-white border border-line rounded-lg cursor-pointer whitespace-nowrap transition-colors"
         >
           <div className="w-3 h-3 flex items-center justify-center">
             <i className="ri-logout-box-r-line"></i>
@@ -129,7 +129,7 @@ export default function AdminGate({ children }: Props) {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-8">
+        <div className="bg-white rounded-2xl border border-line shadow-card p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -149,7 +149,7 @@ export default function AdminGate({ children }: Props) {
                   className={`w-full px-4 py-3 pr-11 text-sm border rounded-xl focus:outline-none focus:ring-2 transition-colors ${
                     error
                       ? 'border-red-300 focus:ring-red-200'
-                      : 'border-gray-200 focus:ring-red-200 focus:border-red-300'
+                      : 'border-line focus:ring-red-200 focus:border-red-300'
                   } ${lockedUntil ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}`}
                   autoComplete="current-password"
                 />

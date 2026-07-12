@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
+import Footer from '../../components/feature/Footer';
 import Button from '../../components/base/Button';
-import ContactModal from '../../components/feature/ContactModal';
-import CancellationModal from '../../components/feature/CancellationModal';
 import BookingCard from './components/BookingCard';
 import PhoneVerifyModal from '../../components/feature/PhoneVerifyModal';
 import { supabase } from '../../lib/supabase';
@@ -46,8 +45,6 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -538,8 +535,8 @@ export default function Profile() {
       <div className="max-w-6xl mx-auto px-3 md:px-4 py-5 md:py-8">
 
         {/* Profile Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="border-b border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-card shadow-card border border-line">
+          <div className="border-b border-line overflow-hidden">
             <nav className="flex overflow-x-auto px-3 md:px-8 gap-0 md:space-x-8 scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {[
                 { id: 'profile', label: 'Profile', icon: 'ri-user-line' },
@@ -919,75 +916,8 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 md:py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-6 md:mb-8">
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Support</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li><button onClick={() => setShowCancellationModal(true)} className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left">Cancellation Options</button></li>
-                <li><button onClick={() => setShowContactModal(true)} className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left">Contact Us</button></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Community</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li><a href="/become-host" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Become a Host</a></li>
-                <li><a href="/host-resources" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Host Resources</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">About</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li><a href="/how-it-works" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">How it Works</a></li>
-                <li><a href="/about-georgia" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">About Georgia</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Follow Us</h3>
-              <div className="flex space-x-4">
-                <a
-                  href="https://www.facebook.com/profile.php?id=61583084123461"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
-                >
-                  <i className="ri-facebook-line text-sm md:text-base"></i>
-                </a>
-                <a
-                  href="https://www.instagram.com/rentcottage.ge/"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
-                >
-                  <i className="ri-instagram-line text-sm md:text-base"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-4 md:pt-8 flex flex-col md:flex-row justify-between items-center">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 md:mb-0">
-              <h1 className="text-sm md:text-xl font-semibold md:font-bold text-red-500" style={{ fontFamily: '"Pacifico", serif' }}>
-                RentCottage.Ge
-              </h1>
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <a href="/privacy" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Privacy</a>
-                <a href="/terms" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Terms &amp; Conditions</a>
-                <a href="/sitemap" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">Site Map</a>
-              </div>
-            </div>
-            <p className="text-xs md:text-sm text-gray-400">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
-      {showCancellationModal && <CancellationModal isOpen={showCancellationModal} onClose={() => setShowCancellationModal(false)} />}
+      {/* Footer — shared component (owns Contact + Cancellation modals) */}
+      <Footer />
 
       <PhoneVerifyModal
         open={verifyOpen}

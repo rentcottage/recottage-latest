@@ -397,7 +397,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   value={title}
                   onChange={(e) => setTitle(e.target.value.slice(0, 90))}
                   maxLength={90}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 notranslate"
+                  className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 notranslate"
                   translate="no"
                   placeholder="e.g. Cozy Mountain Cottage in Kazbegi"
                 />
@@ -424,7 +424,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     className={`relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
                       pricingType === 'fixed'
                         ? 'border-emerald-500 bg-emerald-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        : 'border-line hover:border-gray-300 bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -454,7 +454,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     className={`relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
                       pricingType === 'per_guest'
                         ? 'border-amber-400 bg-amber-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        : 'border-line hover:border-gray-300 bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -492,7 +492,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         step="0.01"
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
-                        className="w-full pl-8 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        className="w-full pl-8 pr-4 py-2.5 text-sm border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400"
                         placeholder="e.g. 120"
                       />
                     </div>
@@ -533,7 +533,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                               value={tier.price_per_night || ''}
                               onChange={(e) => updateTierPrice(idx, e.target.value)}
                               placeholder="Price per night"
-                              className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                              className="w-full pl-7 pr-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                             />
                           </div>
                           <span className="text-xs text-gray-400 whitespace-nowrap">/ night</span>
@@ -560,7 +560,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, descMax))}
                   rows={7}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+                  className="w-full text-sm border border-line rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
                   placeholder="Tell guests what makes your place special…"
                 />
                 <p className={`text-xs mt-1 text-right ${descLen > descMax - 100 ? 'text-amber-500' : 'text-gray-400'}`}>
@@ -588,7 +588,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="e.g. Kazbegi, Stepantsminda village, Georgia"
-                      className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
                   </div>
 
@@ -599,7 +599,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       value={googleMapsUrl}
                       onChange={(e) => setGoogleMapsUrl(e.target.value)}
                       placeholder="https://maps.app.goo.gl/..."
-                      className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
                     <p className="text-xs text-gray-400 mt-1">
                       In Google Maps, click &quot;Share&quot; → &quot;Copy link&quot; and paste it here.
@@ -614,7 +614,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         value={latitude}
                         onChange={(e) => setLatitude(e.target.value)}
                         placeholder="e.g. 42.6593"
-                        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                       />
                     </div>
                     <div>
@@ -624,7 +624,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         value={longitude}
                         onChange={(e) => setLongitude(e.target.value)}
                         placeholder="e.g. 44.6390"
-                        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                       />
                     </div>
                   </div>
@@ -663,7 +663,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     <button
                       key={a}
                       onClick={() => toggleAmenity(a)}
-                      className="px-2.5 py-1 text-xs border border-gray-200 text-gray-600 rounded-full hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-colors whitespace-nowrap"
+                      className="px-2.5 py-1 text-xs border border-line text-gray-600 rounded-full hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-colors whitespace-nowrap"
                     >
                       + {a}
                     </button>
@@ -677,7 +677,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     onChange={(e) => setCustomAmenity(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomAmenity(); } }}
                     placeholder="Add custom amenity…"
-                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="flex-1 text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                   <button
                     onClick={addCustomAmenity}
@@ -707,7 +707,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     className={`relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
                       approvalMode === 'auto_confirm'
                         ? 'border-emerald-500 bg-emerald-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        : 'border-line hover:border-gray-300 bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -738,7 +738,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     className={`relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
                       approvalMode === 'manual_24h'
                         ? 'border-amber-400 bg-amber-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        : 'border-line hover:border-gray-300 bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -789,7 +789,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         type="button"
                         onClick={() => setAcceptedPaymentMethods(opt.value)}
                         className={`relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer text-left ${
-                          selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                          selected ? 'border-blue-500 bg-blue-50' : 'border-line hover:border-gray-300 bg-white'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -889,7 +889,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         <div
                           key={idx}
                           className={`relative rounded-xl overflow-hidden border-2 transition-all ${
-                            isCover ? 'border-emerald-500' : 'border-gray-200 hover:border-gray-300'
+                            isCover ? 'border-emerald-500' : 'border-line hover:border-gray-300'
                           }`}
                         >
                           <div className="w-full h-32">
@@ -983,7 +983,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                             className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
                               isActive
                                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                                : 'border-line text-gray-500 hover:border-gray-300 hover:bg-gray-50'
                             }`}
                           >
                             <div className="w-5 h-5 flex items-center justify-center">

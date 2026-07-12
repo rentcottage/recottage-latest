@@ -175,7 +175,7 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
           <span className="text-xs">No history recorded for this booking yet.</span>
         </div>
       ) : (
-        <ol className="relative border-l-2 border-gray-200 ml-2 space-y-0">
+        <ol className="relative border-l-2 border-line ml-2 space-y-0">
           {logs.map((entry, idx) => {
             const cfg = EVENT_CONFIG[entry.event_type] ?? EVENT_CONFIG.created;
             const isLast = idx === logs.length - 1;

@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import Header from '../../components/feature/Header';
-import ContactModal from '../../components/feature/ContactModal';
-import CancellationModal from '../../components/feature/CancellationModal';
+import Footer from '../../components/feature/Footer';
 import AutocompleteInput from '../../components/base/AutocompleteInput';
 import SEO from '../../components/feature/SEO';
 import { georgianCities } from '../../mocks/georgian-cities';
@@ -55,8 +54,6 @@ export default function BecomeHost() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [pricingType, setPricingType] = useState<'fixed' | 'per_guest'>('fixed');
   const [guestTierPrices, setGuestTierPrices] = useState<Record<number, string>>({});
   const [hostCaptchaToken, setHostCaptchaToken] = useState('');
@@ -354,12 +351,17 @@ export default function BecomeHost() {
         }}
       >
         <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4">
-          <h1 className="text-2xl md:text-5xl font-bold text-white mb-3 md:mb-4">
-            Become a Host
+          <h1 className="text-2xl md:text-[40px] font-extrabold text-white tracking-tight mb-3 md:mb-4">
+            Rent out your cottage and earn more
           </h1>
-          <p className="text-sm md:text-xl text-white/90 mb-4 md:mb-8 max-w-2xl">
-            Share your Georgian cottage with travelers and earn extra income while showcasing our beautiful country
+          <p className="text-sm md:text-xl text-white/90 mb-5 md:mb-7 max-w-2xl">
+            List for free, get bookings directly, and pay a commission only on successful stays
           </p>
+          <div className="hidden md:flex flex-wrap justify-center gap-3 text-[13.5px] font-semibold">
+            {['✓ Free listing', '✓ You set the price', '✓ Support in Georgian'].map((b) => (
+              <span key={b} className="bg-white/15 border border-white/30 text-white px-3.5 py-1.5 rounded-full">{b}</span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -1077,81 +1079,8 @@ export default function BecomeHost() {
         </section>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">Support</h3>
-              <ul className="space-y-2">
-                <li>
-                  <button 
-                    onClick={() => setShowCancellationModal(true)}
-                    className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer text-left"
-                  >
-                    Cancellation Options
-                  </button>
-                </li>
-                <li><a href="#" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Contact Us</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">Community</h3>
-              <ul className="space-y-2">
-                <li><a href="/become-host" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Become a Host</a></li>
-                <li><a href="/host-resources" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Host Resources</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">About</h3>
-              <ul className="space-y-2">
-                <li><a href="/how-it-works" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">How it Works</a></li>
-                <li><a href="/about-georgia" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">About Georgia</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">Follow Us</h3>
-              <div className="flex space-x-4">
-                <a href="https://www.facebook.com/profile.php?id=61583084123461" target="_blank" rel="noopener noreferrer" className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-facebook-line"></i>
-                </a>
-                <a href="https://www.instagram.com/rentcottage.ge/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-instagram-line"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <h1 className="text-sm md:text-xl font-bold text-red-500 mr-6" style={{ fontFamily: '"Pacifico", serif' }}>
-                RentCottage.Ge
-              </h1>
-              <div className="flex space-x-4 md:space-x-6">
-                <a href="/privacy" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Privacy</a>
-                <a href="/terms" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Terms &amp; Conditions</a>
-                <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Site Map</a>
-              </div>
-            </div>
-            <p className="text-gray-400 text-xs md:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      {/* Contact Modal */}
-      <ContactModal 
-        isOpen={showContactModal} 
-        onClose={() => setShowContactModal(false)} 
-      />
-
-      {/* Cancellation Modal */}
-      <CancellationModal 
-        isOpen={showCancellationModal} 
-        onClose={() => setShowCancellationModal(false)} 
-      />
+      {/* Footer — shared component (owns Contact + Cancellation modals) */}
+      <Footer />
     </div>
   );
 }

@@ -161,7 +161,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
       </div>
 
       {/* Activity feed */}
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-white rounded-card border border-line shadow-card">
         <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">Activity Feed</h3>
           <span className="text-xs text-gray-400">{activities.length} events</span>

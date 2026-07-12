@@ -40,8 +40,8 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
       label: 'My Properties',
       value: loading ? '—' : String(properties.length),
       icon: 'ri-home-smile-line',
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
+      color: 'text-red-500',
+      bg: 'bg-red-50',
       sub: `${properties.filter((p) => p.status === 'approved').length} approved`,
     },
     {
@@ -72,8 +72,8 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
       label: 'Total Earnings',
       value: loading ? '—' : `₾${stats.earnings.toLocaleString()}`,
       icon: 'ri-money-cny-circle-line',
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
+      color: 'text-red-500',
+      bg: 'bg-red-50',
       sub: 'Confirmed + completed',
     },
     {
@@ -95,7 +95,7 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-8">
         {cards.map((c) => (
-          <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-3 md:p-6">
+          <div key={c.label} className="bg-white rounded-card border border-line shadow-card p-3 md:p-6">
             <div className="flex items-center justify-between mb-2 md:mb-4">
               <span className="text-xs md:text-sm text-gray-500 leading-tight">{c.label}</span>
               <div className={`w-7 h-7 md:w-9 md:h-9 flex-shrink-0 ${c.bg} rounded-lg flex items-center justify-center`}>
@@ -115,7 +115,7 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
       </div>
 
       {/* Recent bookings summary */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-6">
         <h3 className="text-sm font-semibold text-gray-900 mb-3 md:mb-4">Recent Booking Activity</h3>
         {loading ? (
           <div className="space-y-3">

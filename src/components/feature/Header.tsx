@@ -59,31 +59,67 @@ export default function Header({}: HeaderProps) {
 
   return (
     <div onClick={handleOutsideClick}>
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      {/* Sticky blurred header — mockup "new look" */}
+      <header className="sticky top-0 z-50 border-b border-line bg-[rgba(255,255,255,0.94)] backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14 md:h-16">
+          <div className="flex items-center h-16 md:h-[68px] gap-4">
 
             {/* Logo */}
             <h1
               translate="no"
-              className="notranslate text-lg md:text-2xl font-bold text-gray-900 cursor-pointer whitespace-nowrap"
-              style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: '700' }}
+              className="notranslate text-lg md:text-[21px] font-extrabold text-ink cursor-pointer whitespace-nowrap tracking-tight"
+              style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: 800 }}
               onClick={() => navigate('/')}
             >
               Rent<span className="text-red-500">Cottage</span>.Ge
             </h1>
 
-            {/* ── Desktop nav ── */}
-            <div className="hidden md:flex items-center space-x-4">
+            {/* ── Desktop nav links ── */}
+            <nav className="hidden md:flex items-center gap-6 ml-auto text-[14.5px] font-medium text-gray-700">
+              <button
+                onClick={() => navigate('/search')}
+                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                Search
+              </button>
+              <button
+                onClick={() => navigate('/how-it-works')}
+                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                How It Works
+              </button>
+              <button
+                onClick={() => navigate('/about-georgia')}
+                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                About Georgia
+              </button>
               <button
                 onClick={() => navigate('/become-host')}
-                className="text-gray-700 hover:text-red-500 font-medium cursor-pointer whitespace-nowrap"
+                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
               >
                 Become a Host
               </button>
+            </nav>
 
-              <LanguageSelector variant="desktop" />
+            {/* ── Desktop right cluster ── */}
+            <div className="hidden md:flex items-center gap-2">
+              {/* Pill language control */}
+              <div className="flex items-center rounded-full border border-line px-1.5 py-0.5 hover:border-gray-300 transition-colors">
+                <LanguageSelector variant="desktop" />
+              </div>
 
+              {/* Ghost "Log in" — logged out only (mockup CTA) */}
+              {!loading && !isLoggedIn && (
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="border-[1.5px] border-red-500 text-red-500 hover:bg-red-50 font-semibold rounded-xl px-4 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap"
+                >
+                  Log in
+                </button>
+              )}
+
+              {/* Account menu */}
               <div className="relative user-menu-container">
                 <div
                   className="flex items-center border border-gray-300 rounded-full p-1 hover:shadow-md transition-shadow cursor-pointer"
@@ -125,12 +161,12 @@ export default function Header({}: HeaderProps) {
             </div>
 
             {/* ── Mobile right side ── */}
-            <div className="md:hidden flex items-center gap-2">
+            <div className="md:hidden flex items-center gap-2 ml-auto">
               {/* Quick login pill — only when logged out */}
               {!loading && !isLoggedIn && (
                 <button
                   onClick={() => setShowLogin(true)}
-                  className="text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors"
+                  className="text-xs font-semibold text-red-500 border border-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors"
                 >
                   Log in
                 </button>

@@ -171,14 +171,14 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
       </div>
 
       {propsLoading ? (
-        <div className="bg-white rounded-xl border border-gray-200 flex items-center justify-center py-16">
+        <div className="bg-white rounded-card border border-line shadow-card flex items-center justify-center py-16">
           <div className="flex items-center gap-2 text-gray-400">
             <div className="w-4 h-4 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
             <span className="text-sm">Loading…</span>
           </div>
         </div>
       ) : properties.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 flex flex-col items-center py-16 text-gray-400">
+        <div className="bg-white rounded-card border border-line shadow-card flex flex-col items-center py-16 text-gray-400">
           <div className="w-10 h-10 flex items-center justify-center mb-2"><i className="ri-home-smile-line text-3xl"></i></div>
           <p className="text-sm">No properties yet</p>
           <p className="text-xs mt-1">Submit a property to manage its availability</p>
@@ -186,7 +186,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
           {/* Left: Calendar picker */}
-          <div className="md:col-span-3 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+          <div className="md:col-span-3 bg-white rounded-card border border-line shadow-card p-4 md:p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Block New Dates</h3>
 
             {/* Property selector */}
@@ -195,7 +195,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
               <select
                 value={selectedPropertyId}
                 onChange={(e) => setSelectedPropertyId(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                className="w-full text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
               >
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>{p.title}</option>
@@ -309,7 +309,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Reason (optional) — e.g. Personal use, Maintenance"
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
                 <div className="flex items-center gap-2">
                   <button
@@ -346,7 +346,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
           </div>
 
           {/* Right: Blocked ranges list */}
-          <div className="md:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+          <div className="md:col-span-2 bg-white rounded-card border border-line shadow-card overflow-hidden flex flex-col">
             <div className="px-5 py-4 border-b border-gray-100">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-900">Blocked Periods</h3>
@@ -362,7 +362,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
               <select
                 value={filterPropertyId}
                 onChange={(e) => setFilterPropertyId(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                className="w-full text-xs border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
               >
                 <option value="all">All properties</option>
                 {properties.map((p) => (

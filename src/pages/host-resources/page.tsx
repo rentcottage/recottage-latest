@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Header from '../../components/feature/Header';
+import Footer from '../../components/feature/Footer';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
@@ -425,105 +426,8 @@ export default function HostResources() {
         </section>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-10 sm:py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8">
-            <div>
-              <h3 className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4">Support</h3>
-              <ul className="space-y-1.5 sm:space-y-2">
-                <li>
-                  <button
-                    onClick={() => setShowCancellationModal(true)}
-                    className="text-xs sm:text-sm text-gray-300 hover:text-white cursor-pointer text-left"
-                  >
-                    Cancellation Options
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setShowContactModal(true)}
-                    className="text-xs sm:text-sm text-gray-300 hover:text-white cursor-pointer text-left"
-                  >
-                    Contact Us
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4">Community</h3>
-              <ul className="space-y-1.5 sm:space-y-2">
-                <li>
-                  <a href="/become-host" className="text-xs sm:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    Become a Host
-                  </a>
-                </li>
-                <li>
-                  <a href="/host-resources" className="text-xs sm:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    Host Resources
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4">About</h3>
-              <ul className="space-y-1.5 sm:space-y-2">
-                <li>
-                  <a href="/how-it-works" className="text-xs sm:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    How it Works
-                  </a>
-                </li>
-                <li>
-                  <a href="/about-georgia" className="text-xs sm:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    About Georgia
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4">Follow Us</h3>
-              <div className="flex space-x-3 sm:space-x-4">
-                <a
-                  href="https://www.facebook.com/profile.php?id=61583084123461"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
-                >
-                  <i className="ri-facebook-line"></i>
-                </a>
-                <a
-                  href="https://www.instagram.com/rentcottage.ge/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
-                >
-                  <i className="ri-instagram-line"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-6 sm:pt-8 flex flex-col gap-3 sm:gap-0 sm:flex-row justify-between items-center">
-            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-0">
-              <h1
-                className="text-lg sm:text-xl font-bold text-red-500 sm:mr-6"
-                style={{ fontFamily: '"Pacifico", serif' }}
-              >
-                RentCottage.Ge
-              </h1>
-              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 sm:space-x-6">
-                <a href="/privacy" className="text-gray-300 hover:text-white text-xs sm:text-sm cursor-pointer">Privacy</a>
-                <a href="/terms" className="text-gray-300 hover:text-white text-xs sm:text-sm cursor-pointer">Terms &amp; Conditions</a>
-                <a href="/sitemap" className="text-gray-300 hover:text-white text-xs sm:text-sm cursor-pointer">Site Map</a>
-              </div>
-            </div>
-            <p className="text-gray-400 text-xs sm:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Footer — shared component (owns Contact + Cancellation modals) */}
+      <Footer />
 
       {/* Contact Modal */}
       <ContactModal
