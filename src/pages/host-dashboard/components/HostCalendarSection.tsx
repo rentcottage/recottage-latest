@@ -56,8 +56,11 @@ function datesBetween(start: string, end: string): string[] {
   const result: string[] = [];
   const cur = new Date(start + 'T00:00:00');
   const last = new Date(end + 'T00:00:00');
+  // Format from LOCAL date parts, not toISOString() (UTC): the dates are local
+  // midnights, so in any timezone east of UTC (Georgia is UTC+4) toISOString
+  // rolls back to the previous day, painting every booking one cell too early.
   while (cur <= last) {
-    result.push(cur.toISOString().split('T')[0]);
+    result.push(toDateStr(cur.getFullYear(), cur.getMonth() + 1, cur.getDate()));
     cur.setDate(cur.getDate() + 1);
   }
   return result;
