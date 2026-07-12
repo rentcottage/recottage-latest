@@ -622,18 +622,18 @@ export default function BookingWidget({
       {/* ── Desktop: sticky sidebar card (lg+) ─────────────────── */}
       <div className="hidden lg:block">
         <div className="bg-white border border-line rounded-card shadow-card p-6 sticky top-24">
-          <div className="flex items-baseline justify-between mb-5">
-            <div>
+          <div className="flex items-baseline justify-between gap-3 mb-5">
+            <div className="min-w-0">
               <span className="text-[26px] font-extrabold text-ink" translate="no">₾{currentPricePerNight}</span>
               <span className="text-soft text-sm ml-1">/ night</span>
               {pricingType === 'per_guest' && (
                 <p className="text-gray-700 mt-0.5 font-medium text-sm">Price varies by guest count</p>
               )}
             </div>
-            <div className="flex items-center text-sm font-bold">
+            <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
               <i className="ri-star-fill text-red-500 mr-1"></i>
               <span translate="no">{property.rating}</span>
-              <span className="text-soft ml-1 font-semibold">({property.reviews})</span>
+              <span className="text-soft ml-1 font-semibold" translate="no">({property.reviews})</span>
             </div>
           </div>
           <BookingForm {...formProps} />
