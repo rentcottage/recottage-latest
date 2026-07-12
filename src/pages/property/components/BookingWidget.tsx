@@ -461,15 +461,14 @@ function BookingForm({
               </span>
             </div>
           )}
+          {/* Service fee — always ₾0 (matches the reference's itemized breakdown). */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-700">Service fee</span>
+            <span className="text-gray-900 notranslate" translate="no">₾0</span>
+          </div>
           <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold">
             <span className="text-gray-900">Total</span>
             <span className="text-gray-900 notranslate" translate="no">₾{formatGel(getTotalPrice())}</span>
-          </div>
-          <div className="flex items-center gap-1.5 pt-1">
-            <div className="w-3.5 h-3.5 flex items-center justify-center">
-              <i className="ri-checkbox-circle-line text-green-500 text-xs"></i>
-            </div>
-            <span className="text-xs text-gray-400">All fees included · No hidden charges</span>
           </div>
         </div>
       )}
@@ -500,6 +499,15 @@ function BookingForm({
       >
         {isSubmitting ? submittingLabel : bookBtnLabel}
       </button>
+
+      {/* Reassurance note (from the reference). Only for pay-at-property — a
+          pay-now booking redirects to the bank and charges immediately, so
+          "you pay nothing now" would be inaccurate there. */}
+      {paymentMethod === 'pay_at_property' && (
+        <p className="text-center text-[12.5px] text-gray-500 mt-3">
+          You pay nothing now — booking is free
+        </p>
+      )}
 
       <div className="flex items-center justify-center gap-2 mt-3">
         <div className="w-4 h-4 flex items-center justify-center">
