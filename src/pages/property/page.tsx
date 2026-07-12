@@ -103,7 +103,7 @@ export default function PropertyDetail() {
         return;
       }
 
-      const hostName = `${app.host_first_name} ${app.host_last_name.charAt(0)}.`;
+      const hostName = `${app.host_first_name ?? ''} ${(app.host_last_name ?? '').charAt(0)}.`.trim();
       const photos: string[] =
         app.photo_urls?.length > 0
           ? app.photo_urls

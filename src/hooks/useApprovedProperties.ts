@@ -51,7 +51,7 @@ function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
     reviews: 0,
     image: coverUrl,
     images: orderedPhotos,
-    host: `${app.host_first_name as string} ${(app.host_last_name as string).charAt(0)}.`,
+    host: `${(app.host_first_name as string) ?? ''} ${((app.host_last_name as string) ?? '').charAt(0)}.`.trim(),
     amenities: (app.amenities as string[]) || [],
     categories: (app.categories as string[]) || [],
     propertyType: (app.property_type as string) || 'Cottage',
