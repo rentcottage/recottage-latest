@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../../components/feature/Header';
-import ContactModal from '../../components/feature/ContactModal';
-import CancellationModal from '../../components/feature/CancellationModal';
+import Footer from '../../components/feature/Footer';
 import PropertyReviews from './components/PropertyReviews';
 import PropertyGallery from './components/PropertyGallery';
 import BookingWidget from './components/BookingWidget';
@@ -46,9 +45,9 @@ export default function PropertyDetail() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error' | 'unauthenticated'>('idle');
   const [bookingError, setBookingError] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'pay_now' | 'pay_at_property'>('pay_at_property');
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [saved, setSaved] = useState(false); // decorative only — no favorites backend
   const [shareCopied, setShareCopied] = useState(false);
   const [bookingCaptchaToken, setBookingCaptchaToken] = useState('');
   const [corporateId, setCorporateId] = useState<string | null>(null);
@@ -454,51 +453,55 @@ export default function PropertyDetail() {
       />
       <Header />
 
-      <div className="max-w-6xl mx-auto px-6 py-4 md:py-8 pb-24 lg:pb-8">
-        {/* Back Button */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 md:py-6 pb-24 lg:pb-8">
+        {/* Breadcrumb — back to results */}
         <button
           onClick={handleBackClick}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 md:mb-6 cursor-pointer whitespace-nowrap"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-red-500 hover:text-red-600 mb-3 md:mb-4 cursor-pointer whitespace-nowrap"
         >
-          <div className="w-5 h-5 flex items-center justify-center mr-2">
-            <i className="ri-arrow-left-line"></i>
-          </div>
-          Back to listings
+          <i className="ri-arrow-left-line"></i>
+          Back to search results
         </button>
 
-        {/* Property Title and Location */}
-        <div className="mb-4 md:mb-6">
-          <div className="flex items-start justify-between gap-2 mb-1.5 md:mb-2">
-            <h1 className="text-lg md:text-3xl font-bold text-gray-900 min-w-0 flex-1 notranslate" translate="no">{property.title}</h1>
-            {/* Share Button */}
-            <div className="flex-shrink-0">
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-1.5 px-2.5 py-2 md:px-3 border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
-              >
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <i className={shareCopied ? 'ri-check-line text-green-500' : 'ri-share-line'}></i>
-                </div>
-                <span className={`hidden sm:inline ${shareCopied ? 'text-green-600' : ''}`}>
-                  {shareCopied ? 'Copied!' : 'Share'}
+        {/* Property Title Row */}
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-4 md:mb-5">
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-[32px] font-extrabold text-ink tracking-tight leading-tight notranslate" translate="no">{property.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 mt-2 text-[14.5px] text-gray-700">
+              <span className="inline-flex items-center gap-1">
+                <i className="ri-map-pin-line text-soft"></i>
+                {property.location}
+              </span>
+              <span className="inline-flex items-center gap-1 font-bold">
+                <i className="ri-star-fill text-red-500"></i>
+                <span translate="no">{property.rating}</span>
+                <span className="font-semibold text-soft">({property.reviews} reviews)</span>
+              </span>
+              {isDbProperty && (
+                <span className="inline-flex items-center gap-1 bg-[#222] text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                  <i className="ri-verified-badge-fill"></i>
+                  Verified
                 </span>
-              </button>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
-            <div className="flex items-center">
-              <div className="w-4 h-4 flex items-center justify-center mr-1">
-                <i className="ri-map-pin-line"></i>
-              </div>
-              <span>{property.location}</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 flex items-center justify-center mr-1">
-                <i className="ri-star-fill text-yellow-400"></i>
-              </div>
-              <span className="font-medium">{property.rating}</span>
-              <span className="ml-1">({property.reviews} reviews)</span>
-            </div>
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 border-[1.5px] border-line hover:border-red-500 hover:text-red-500 bg-white text-gray-700 text-[13.5px] font-bold rounded-full px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <i className={shareCopied ? 'ri-check-line text-green-500' : 'ri-share-line'}></i>
+              <span className={shareCopied ? 'text-green-600' : ''}>{shareCopied ? 'Copied!' : 'Share'}</span>
+            </button>
+            {/* Decorative save — no favorites backend today */}
+            <button
+              onClick={() => setSaved((v) => !v)}
+              aria-pressed={saved}
+              className="inline-flex items-center gap-1.5 border-[1.5px] border-line hover:border-red-500 hover:text-red-500 bg-white text-gray-700 text-[13.5px] font-bold rounded-full px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <i className={saved ? 'ri-heart-fill text-red-500' : 'ri-heart-line'}></i>
+              <span>Save</span>
+            </button>
           </div>
         </div>
 
@@ -509,22 +512,39 @@ export default function PropertyDetail() {
           {/* Property Details */}
           <div className="lg:col-span-2">
             {/* Host Info */}
-            <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
-              <h2 className="text-sm md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">Hosted by {property.host}</h2>
-              <div className="flex items-center">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 rounded-full flex items-center justify-center mr-3 md:mr-4">
-                  <i className="ri-user-line text-gray-500 text-lg md:text-xl"></i>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm md:text-base">{property.host}</p>
-                  <p className="text-xs text-gray-600">Superhost · 3 years hosting</p>
-                </div>
+            <div className="flex items-center gap-3.5 border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
+              <div className="w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-red-50 text-red-500 font-extrabold text-lg md:text-xl flex items-center justify-center flex-shrink-0 notranslate" translate="no">
+                {property.host?.trim()?.charAt(0)?.toUpperCase() || 'H'}
               </div>
+              <div className="min-w-0">
+                <h2 className="text-[16px] font-bold text-ink truncate">Hosted by {property.host}</h2>
+                <p className="text-[13.5px] text-soft">Superhost · 3 years hosting</p>
+              </div>
+              <span className="ml-auto flex-shrink-0 bg-red-50 text-red-500 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                <i className="ri-star-fill"></i>
+                Superhost
+              </span>
+            </div>
+
+            {/* Key facts */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
+              {[
+                { icon: 'ri-group-line', label: `${property.maxGuests || 1} guests`, sub: 'Maximum' },
+                { icon: 'ri-hotel-bed-line', label: `${property.bedrooms || 1} bedroom${(property.bedrooms || 1) === 1 ? '' : 's'}`, sub: 'Sleeping' },
+                { icon: 'ri-drop-line', label: `${property.bathrooms || 1} bathroom${(property.bathrooms || 1) === 1 ? '' : 's'}`, sub: 'Private' },
+                { icon: 'ri-verified-badge-line', label: 'Verified', sub: 'Checked listing' },
+              ].map((fact) => (
+                <div key={fact.label} className="bg-[#fafafa] border border-line rounded-xl p-3.5 text-center">
+                  <i className={`${fact.icon} text-xl text-ink`}></i>
+                  <b className="block text-sm text-ink mt-1">{fact.label}</b>
+                  <small className="text-xs text-soft">{fact.sub}</small>
+                </div>
+              ))}
             </div>
 
             {/* About this place — full description */}
-            <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
-              <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">About this place</h3>
+            <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
+              <h3 className="text-xl font-extrabold text-ink mb-3.5">About this place</h3>
               {(() => {
                 const fullText = property.description
                   ? property.description
@@ -534,11 +554,11 @@ export default function PropertyDetail() {
                 const displayText = !showFullDesc && isLong ? `${fullText.slice(0, PREVIEW_LENGTH).trimEnd()}…` : fullText;
                 return (
                   <>
-                    <p className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-line">{displayText}</p>
+                    <p className="text-[15px] text-gray-700 leading-relaxed whitespace-pre-line">{displayText}</p>
                     {isLong && (
                       <button
                         onClick={() => setShowFullDesc((v) => !v)}
-                        className="mt-3 flex items-center gap-1 text-xs md:text-sm font-semibold text-gray-900 underline underline-offset-2 cursor-pointer whitespace-nowrap"
+                        className="mt-3 flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-600 cursor-pointer whitespace-nowrap"
                       >
                         {showFullDesc ? 'Show less' : 'Show more'}
                         <div className="w-4 h-4 flex items-center justify-center">
@@ -552,12 +572,16 @@ export default function PropertyDetail() {
             </div>
 
             {/* What this place offers — amenities */}
-            {property.amenities && property.amenities.length > 0 && (
-              <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
-                <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">What this place offers</h3>
-                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                  {property.amenities.map((amenity: string) => (
-                    <div key={amenity} className="flex items-center gap-2 text-xs md:text-sm text-gray-700">
+            {property.amenities && property.amenities.length > 0 && (() => {
+              const AMENITY_PREVIEW = 8;
+              const isLong = property.amenities.length > AMENITY_PREVIEW;
+              const shown = showAllAmenities ? property.amenities : property.amenities.slice(0, AMENITY_PREVIEW);
+              return (
+              <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
+                <h3 className="text-xl font-extrabold text-ink mb-3.5">What this place offers</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  {shown.map((amenity: string) => (
+                    <div key={amenity} className="flex items-center gap-2.5 text-[14.5px] text-gray-700">
                       <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                         <i className={`${
                           amenity === 'WiFi' ? 'ri-wifi-line' :
@@ -573,19 +597,29 @@ export default function PropertyDetail() {
                           amenity === 'Heating' ? 'ri-temp-hot-line' :
                           amenity === 'Air Conditioning' ? 'ri-temp-cold-line' :
                           'ri-checkbox-circle-line'
-                        } text-gray-500`}></i>
+                        } text-red-500`}></i>
                       </div>
                       <span>{amenity}</span>
                     </div>
                   ))}
                 </div>
+                {isLong && (
+                  <button
+                    onClick={() => setShowAllAmenities((v) => !v)}
+                    className="mt-3.5 inline-flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-600 cursor-pointer whitespace-nowrap"
+                  >
+                    {showAllAmenities ? 'Show less' : `All amenities (${property.amenities.length})`}
+                    <i className={showAllAmenities ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'}></i>
+                  </button>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             {/* Location Section */}
             {hasLocation && (
-              <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
-                <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-3 md:mb-4">Where you&apos;ll be</h3>
+              <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
+                <h3 className="text-xl font-extrabold text-ink mb-3.5">Where you&apos;ll be</h3>
 
                 {/* Address text */}
                 {property.address && (
@@ -635,9 +669,9 @@ export default function PropertyDetail() {
 
             {/* Per-guest pricing breakdown — fully interactive selector */}
             {pricingType === 'per_guest' && guestPricingTiers.length > 0 && (
-              <div className="border-b border-gray-200 pb-4 mb-4 md:pb-6 md:mb-6">
+              <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
-                  <h3 className="text-sm md:text-xl font-semibold text-gray-900">Pricing by Guest Count</h3>
+                  <h3 className="text-xl font-extrabold text-ink">Pricing by Guest Count</h3>
                   <span className="text-xs text-gray-400">Tap to select</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -721,71 +755,8 @@ export default function PropertyDetail() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 md:py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-6 md:mb-8">
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Support</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li>
-                  <button onClick={() => setShowCancellationModal(true)} className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left">
-                    Cancellation Options
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setShowContactModal(true)} className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left">
-                    Contact Us
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Community</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li><a href="/become-host" className="text-xs md:text-sm text-gray-300 hover:text-white">Become a Host</a></li>
-                <li><a href="/host-resources" className="text-xs md:text-sm text-gray-300 hover:text-white">Host Resources</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">About</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li><a href="/how-it-works" className="text-xs md:text-sm text-gray-300 hover:text-white">How it Works</a></li>
-                <li><a href="/about-georgia" className="text-xs md:text-sm text-gray-300 hover:text-white">About Georgia</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Follow Us</h3>
-              <div className="flex space-x-4">
-                <a href="https://www.facebook.com/profile.php?id=61583084123461" target="_blank" rel="noopener noreferrer" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white">
-                  <i className="ri-facebook-line text-sm md:text-base"></i>
-                </a>
-                <a href="https://www.instagram.com/rentcottage.ge/" target="_blank" rel="noopener noreferrer" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white">
-                  <i className="ri-instagram-line text-sm md:text-base"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 pt-4 md:pt-8 flex flex-col md:flex-row justify-between items-center">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 md:mb-0">
-              <h1 className="text-sm md:text-xl font-semibold md:font-bold text-red-500" style={{ fontFamily: '"Pacifico", serif' }}>
-                RentCottage.Ge
-              </h1>
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <a href="/privacy" className="text-xs md:text-sm text-gray-300 hover:text-white">Privacy</a>
-                <a href="/terms" className="text-xs md:text-sm text-gray-300 hover:text-white">Terms &amp; Conditions</a>
-                <a href="/sitemap" className="text-xs md:text-sm text-gray-300 hover:text-white">Site Map</a>
-              </div>
-            </div>
-            <p className="text-xs md:text-sm text-gray-400">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
-      {showCancellationModal && (
-        <CancellationModal isOpen={showCancellationModal} onClose={() => setShowCancellationModal(false)} />
-      )}
+      {/* Footer — shared component (owns Contact + Cancellation modals) */}
+      <Footer />
     </div>
   );
 }

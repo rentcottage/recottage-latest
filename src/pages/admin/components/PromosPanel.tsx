@@ -241,7 +241,7 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
             <span className="text-xs text-gray-400">— uncheck to prepare a promo without publishing it</span>
           </label>
 
-          <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 leading-relaxed">
+          <div className="text-xs text-gray-500 bg-gray-50 border border-line rounded-lg px-3 py-2 leading-relaxed">
             <i className="ri-information-line mr-1"></i>
             Guests see the promo on the homepage, on search results for this location, and the
             discount is applied automatically at checkout on matching cottages. Location matching
@@ -316,7 +316,7 @@ export default function PromosPanel() {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">

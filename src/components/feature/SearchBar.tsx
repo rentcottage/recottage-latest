@@ -260,192 +260,175 @@ export default function SearchBar() {
       </div>
 
       {/* ── DESKTOP LAYOUT (hidden below md) ── */}
-      <div className="hidden md:block bg-white rounded-full shadow-lg border border-gray-200 p-2">
-        <div className="flex flex-row items-center">
-          {/* Where */}
-          <div className="relative flex-1 min-w-0">
-            <div className="px-6 py-4">
-              <div className="text-xs font-semibold text-gray-900 mb-1">Where</div>
-              <input
-                type="text"
-                value={selectedLocation}
-                onChange={(e) => {
-                  setSelectedLocation(e.target.value);
-                  setShowWhereDropdown(e.target.value.length > 0);
-                  setShowGuestsDropdown(false);
-                }}
-                onFocus={() => {
-                  if (selectedLocation.length > 0) setShowWhereDropdown(true);
-                  setShowGuestsDropdown(false);
-                }}
-                onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
-                placeholder="Search destinations"
-                className="text-sm text-gray-600 bg-transparent border-none outline-none w-full placeholder-gray-400"
-              />
-            </div>
+      <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] bg-white rounded-card shadow-card">
+        {/* Where */}
+        <div className="relative px-5 py-3.5 border-r border-line text-left">
+          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Where</div>
+          <input
+            type="text"
+            value={selectedLocation}
+            onChange={(e) => {
+              setSelectedLocation(e.target.value);
+              setShowWhereDropdown(e.target.value.length > 0);
+              setShowGuestsDropdown(false);
+            }}
+            onFocus={() => {
+              if (selectedLocation.length > 0) setShowWhereDropdown(true);
+              setShowGuestsDropdown(false);
+            }}
+            onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
+            placeholder="Search destinations"
+            className="text-[15px] text-ink bg-transparent border-none outline-none w-full placeholder-gray-400"
+          />
 
-            {showWhereDropdown && (
-              <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
-                <div className="p-4">
-                  {selectedLocation.length > 0 ? (
-                    <>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Matching destinations</h3>
-                      <div className="space-y-2">
-                        {filterCitiesBilingual(georgianCities, selectedLocation)
-                          .slice(0, 8)
-                          .map((city, index) => (
-                            <div
-                              key={index}
-                              onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
-                              className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                            >
-                              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                <i className="ri-map-pin-line text-gray-600"></i>
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900">{city.name}</p>
-                                <p className="text-sm text-gray-600">{city.region}</p>
-                              </div>
-                            </div>
-                          ))}
-                        {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && (
-                          <div className="p-3 text-center text-gray-500">No destinations found</div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Popular destinations</h3>
-                      <div className="space-y-2">
-                        {popularDestinations.map((destination, index) => (
+          {showWhereDropdown && (
+            <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+              <div className="p-4">
+                {selectedLocation.length > 0 ? (
+                  <>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Matching destinations</h3>
+                    <div className="space-y-2">
+                      {filterCitiesBilingual(georgianCities, selectedLocation)
+                        .slice(0, 8)
+                        .map((city, index) => (
                           <div
                             key={index}
-                            onClick={() => handleLocationSelect(destination.name)}
+                            onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
                             className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                           >
                             <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
                               <i className="ri-map-pin-line text-gray-600"></i>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{destination.name}</p>
-                              <p className="text-sm text-gray-600">{destination.description}</p>
+                              <p className="font-medium text-gray-900">{city.name}</p>
+                              <p className="text-sm text-gray-600">{city.region}</p>
                             </div>
                           </div>
                         ))}
+                      {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && (
+                        <div className="p-3 text-center text-gray-500">No destinations found</div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Popular destinations</h3>
+                    <div className="space-y-2">
+                      {popularDestinations.map((destination, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleLocationSelect(destination.name)}
+                          className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                        >
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                            <i className="ri-map-pin-line text-gray-600"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{destination.name}</p>
+                            <p className="text-sm text-gray-600">{destination.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Check-in */}
+        <div className="px-5 py-3.5 border-r border-line text-left">
+          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Check-in</div>
+          <input
+            type="date"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            min={new Date().toISOString().split('T')[0]}
+            className="text-[15px] text-ink bg-transparent border-none outline-none w-full cursor-pointer"
+            placeholder="Add dates"
+          />
+        </div>
+
+        {/* Check-out */}
+        <div className="px-5 py-3.5 border-r border-line text-left">
+          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Check-out</div>
+          <input
+            type="date"
+            value={checkOut}
+            onChange={(e) => setCheckOut(e.target.value)}
+            min={checkIn || new Date().toISOString().split('T')[0]}
+            className="text-[15px] text-ink bg-transparent border-none outline-none w-full cursor-pointer"
+            placeholder="Add dates"
+          />
+        </div>
+
+        {/* Who */}
+        <div className="relative px-5 py-3.5 text-left">
+          <div
+            className="cursor-pointer"
+            onClick={() => {
+              setShowGuestsDropdown(!showGuestsDropdown);
+              setShowWhereDropdown(false);
+            }}
+          >
+            <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Guests</div>
+            <div className="text-[15px] text-ink" translate="no">
+              {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
+            </div>
+          </div>
+
+          {showGuestsDropdown && (
+            <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Guests</h4>
+                    <p className="text-sm text-gray-600">Ages 13 or above</p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setGuests(Math.max(1, parseInt(guests) - 1).toString())}
+                      disabled={guests === '1'}
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer ${
+                        guests === '1'
+                          ? 'border-gray-200 text-gray-300'
+                          : 'border-gray-400 text-gray-600 hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="w-4 h-4 flex items-center justify-center">
+                        <i className="ri-subtract-line"></i>
                       </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="w-px h-8 bg-gray-300"></div>
-
-          {/* Check-in */}
-          <div className="flex-1 min-w-0">
-            <div className="px-6 py-4">
-              <div className="text-xs font-semibold text-gray-900 mb-1">Check-in</div>
-              <input
-                type="date"
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="text-sm text-gray-600 bg-transparent border-none outline-none w-full cursor-pointer"
-                placeholder="Add dates"
-              />
-            </div>
-          </div>
-
-          <div className="w-px h-8 bg-gray-300"></div>
-
-          {/* Check-out */}
-          <div className="flex-1 min-w-0">
-            <div className="px-6 py-4">
-              <div className="text-xs font-semibold text-gray-900 mb-1">Check-out</div>
-              <input
-                type="date"
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-                min={checkIn || new Date().toISOString().split('T')[0]}
-                className="text-sm text-gray-600 bg-transparent border-none outline-none w-full cursor-pointer"
-                placeholder="Add dates"
-              />
-            </div>
-          </div>
-
-          <div className="w-px h-8 bg-gray-300"></div>
-
-          {/* Who */}
-          <div className="relative flex-1 min-w-0">
-            <div
-              className="px-6 py-4 cursor-pointer rounded-full hover:bg-gray-50 transition-colors"
-              onClick={() => {
-                setShowGuestsDropdown(!showGuestsDropdown);
-                setShowWhereDropdown(false);
-              }}
-            >
-              <div className="text-xs font-semibold text-gray-900 mb-1">Guests</div>
-              <div className="text-sm text-gray-600" translate="no">
-                {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
-              </div>
-            </div>
-
-            {showGuestsDropdown && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
-                <div className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Guests</h4>
-                      <p className="text-sm text-gray-600">Ages 13 or above</p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => setGuests(Math.max(1, parseInt(guests) - 1).toString())}
-                        disabled={guests === '1'}
-                        className={`w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer ${
-                          guests === '1'
-                            ? 'border-gray-200 text-gray-300'
-                            : 'border-gray-400 text-gray-600 hover:border-gray-600'
-                        }`}
-                      >
-                        <div className="w-4 h-4 flex items-center justify-center">
-                          <i className="ri-subtract-line"></i>
-                        </div>
-                      </button>
-                      <span className="w-8 text-center font-medium" translate="no">{guests}</span>
-                      <button
-                        onClick={() => setGuests(Math.min(15, parseInt(guests) + 1).toString())}
-                        disabled={guests === '15'}
-                        className={`w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer ${
-                          guests === '15'
-                            ? 'border-gray-200 text-gray-300'
-                            : 'border-gray-400 text-gray-600 hover:border-gray-600'
-                        }`}
-                      >
-                        <div className="w-4 h-4 flex items-center justify-center">
-                          <i className="ri-add-line"></i>
-                        </div>
-                      </button>
-                    </div>
+                    </button>
+                    <span className="w-8 text-center font-medium" translate="no">{guests}</span>
+                    <button
+                      onClick={() => setGuests(Math.min(15, parseInt(guests) + 1).toString())}
+                      disabled={guests === '15'}
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer ${
+                        guests === '15'
+                          ? 'border-gray-200 text-gray-300'
+                          : 'border-gray-400 text-gray-600 hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="w-4 h-4 flex items-center justify-center">
+                        <i className="ri-add-line"></i>
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Search Button */}
-          <div className="ml-2">
-            <button
-              onClick={handleSearch}
-              className="bg-red-500 hover:bg-red-600 text-white p-4 rounded-full cursor-pointer transition-colors whitespace-nowrap"
-            >
-              <div className="w-4 h-4 flex items-center justify-center">
-                <i className="ri-search-line"></i>
-              </div>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
+
+        {/* Search Button */}
+        <button
+          onClick={handleSearch}
+          className="bg-red-500 hover:bg-red-600 text-white font-bold text-base px-7 rounded-r-[16px] flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap"
+        >
+          <i className="ri-search-line text-lg"></i>
+          Search
+        </button>
       </div>
     </>
   );

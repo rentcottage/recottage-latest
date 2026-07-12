@@ -354,7 +354,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                     className={`text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
                       rejectNote === reason
                         ? 'bg-red-50 border-red-300 text-red-700 font-semibold'
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600'
+                        : 'bg-gray-50 border-line text-gray-600 hover:border-red-200 hover:text-red-600'
                     }`}
                   >
                     {reason}
@@ -374,7 +374,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                 maxLength={500}
                 rows={3}
                 placeholder="Type a custom reason for the guest…"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-200 resize-none"
+                className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-200 resize-none"
               />
               <p className="text-xs text-gray-400 text-right mt-1">{rejectNote.length}/500</p>
             </div>
@@ -440,7 +440,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 md:px-6 py-3 md:py-4 border-b border-gray-100 gap-3">
           {!showCancelledOnly && (
@@ -482,7 +482,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search property, location…"
-              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 w-full sm:w-52"
+              className="pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 w-full sm:w-52"
             />
           </div>
         </div>
@@ -717,7 +717,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                                   <button
                                     disabled={isCancelling}
                                     onClick={() => { setCancelConfirm(null); setCancelError((p) => ({ ...p, [b.id]: '' })); }}
-                                    className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-600 text-xs font-medium rounded-md border border-gray-200 transition-colors cursor-pointer whitespace-nowrap"
+                                    className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-600 text-xs font-medium rounded-md border border-line transition-colors cursor-pointer whitespace-nowrap"
                                   >
                                     Keep
                                   </button>

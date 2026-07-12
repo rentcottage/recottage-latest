@@ -325,7 +325,7 @@ export default function AuthModals({
       <button
         onClick={handleGoogle}
         disabled={!!socialLoading}
-        className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+        className="w-full flex items-center justify-center px-4 py-3 border-[1.5px] border-line rounded-xl hover:border-ink font-semibold text-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
       >
         {socialLoading === 'google' ? (
           <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-3"></div>
@@ -340,7 +340,7 @@ export default function AuthModals({
         <button
           onClick={handleFacebook}
           disabled={!!socialLoading}
-          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+          className="w-full flex items-center justify-center px-4 py-3 border-[1.5px] border-line rounded-xl hover:border-ink font-semibold text-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
         >
           {socialLoading === 'facebook' ? (
             <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-3"></div>
@@ -360,7 +360,7 @@ export default function AuthModals({
       {/* ── LOGIN MODAL ── */}
       {showLogin && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-card max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
 
               {/* ── Forgot password — sent confirmation ── */}
@@ -436,7 +436,7 @@ export default function AuthModals({
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                         placeholder="Enter your email"
                         autoFocus
                       />
@@ -457,7 +457,7 @@ export default function AuthModals({
                     <button
                       type="submit"
                       disabled={forgotLoading || !forgotCaptchaToken}
-                      className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                      className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                     >
                       {forgotLoading ? 'Sending...' : 'Send reset link'}
                     </button>
@@ -488,6 +488,12 @@ export default function AuthModals({
                     </button>
                   </div>
 
+                  {/* Pill tabs */}
+                  <div className="flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 mb-6">
+                    <button type="button" className="flex-1 rounded-full py-2.5 text-sm font-bold bg-red-500 text-white">Log in</button>
+                    <button type="button" onClick={onSwitchToSignup} className="flex-1 rounded-full py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">Sign up</button>
+                  </div>
+
                   <SocialButtons />
 
                   <div className="my-5 flex items-center gap-3">
@@ -511,7 +517,7 @@ export default function AuthModals({
                         required
                         value={loginForm.email}
                         onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                         placeholder="Enter your email"
                       />
                     </div>
@@ -522,7 +528,7 @@ export default function AuthModals({
                         required
                         value={loginForm.password}
                         onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                        className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                         placeholder="Enter your password"
                       />
                     </div>
@@ -542,7 +548,7 @@ export default function AuthModals({
                     <button
                       type="submit"
                       disabled={loginLoading || !loginCaptchaToken}
-                      className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                      className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                     >
                       {loginLoading ? 'Logging in...' : 'Log in'}
                     </button>
@@ -573,7 +579,7 @@ export default function AuthModals({
       {/* ── SIGNUP MODAL ── */}
       {showSignup && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-card max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
 
               {/* ── Email confirmation sent ── */}
@@ -645,6 +651,12 @@ export default function AuthModals({
                   {/* ── STEP 1: details ── */}
                   {signupStep === 'details' && (
                     <>
+                      {/* Pill tabs */}
+                      <div className="flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 mb-6">
+                        <button type="button" onClick={onSwitchToLogin} className="flex-1 rounded-full py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">Log in</button>
+                        <button type="button" className="flex-1 rounded-full py-2.5 text-sm font-bold bg-red-500 text-white">Sign up</button>
+                      </div>
+
                       <SocialButtons />
 
                       <div className="my-5 flex items-center gap-3">
@@ -669,7 +681,7 @@ export default function AuthModals({
                               required
                               value={signupForm.firstName}
                               onChange={(e) => setSignupForm((p) => ({ ...p, firstName: e.target.value }))}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                              className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                               placeholder="First name"
                             />
                           </div>
@@ -680,7 +692,7 @@ export default function AuthModals({
                               required
                               value={signupForm.lastName}
                               onChange={(e) => setSignupForm((p) => ({ ...p, lastName: e.target.value }))}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                              className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                               placeholder="Last name"
                             />
                           </div>
@@ -692,7 +704,7 @@ export default function AuthModals({
                             required
                             value={signupForm.email}
                             onChange={(e) => setSignupForm((p) => ({ ...p, email: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                            className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                             placeholder="Enter your email"
                           />
                         </div>
@@ -709,7 +721,7 @@ export default function AuthModals({
                               required
                               value={signupForm.phone}
                               onChange={(e) => setSignupForm((p) => ({ ...p, phone: e.target.value }))}
-                              className="w-full pl-9 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                              className="w-full pl-9 pr-3 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                               placeholder="+995 555 12 34 56"
                             />
                           </div>
@@ -723,7 +735,7 @@ export default function AuthModals({
                             minLength={8}
                             value={signupForm.password}
                             onChange={(e) => setSignupForm((p) => ({ ...p, password: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                            className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                             placeholder="Create a password"
                           />
                           <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
@@ -736,7 +748,7 @@ export default function AuthModals({
                             minLength={8}
                             value={signupForm.confirmPassword}
                             onChange={(e) => setSignupForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                            className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                             placeholder="Confirm your password"
                           />
                         </div>
@@ -760,7 +772,7 @@ export default function AuthModals({
                         <button
                           type="submit"
                           disabled={signupLoading}
-                          className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                          className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                         >
                           {signupLoading ? 'Sending code...' : 'Continue'}
                         </button>
@@ -804,7 +816,7 @@ export default function AuthModals({
                             onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                             placeholder="••••••"
                             autoFocus
-                            className="w-full text-center tracking-[0.5em] text-lg font-semibold p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            className="w-full text-center tracking-[0.5em] text-lg font-semibold p-3 border-[1.5px] border-line rounded-xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                           />
                           <div className="mt-2 text-center">
                             <button
@@ -839,7 +851,7 @@ export default function AuthModals({
                       <button
                         type="submit"
                         disabled={signupLoading || !signupCaptchaToken || (!otpVerified && otpCode.length !== 6)}
-                        className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+                        className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                       >
                         {signupLoading ? 'Creating account...' : 'Create account'}
                       </button>

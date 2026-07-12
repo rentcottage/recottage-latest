@@ -254,29 +254,51 @@ function BookingForm({
         </div>
       )}
 
-      {/* Dates */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Check-in</label>
-          <input
-            type="date"
-            name="checkInDate"
-            value={checkIn}
-            onChange={(e) => onCheckInChange(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-          />
+      {/* Dates + guests — grouped bordered box (mockup .fields) */}
+      <div className="border-[1.5px] border-line rounded-xl overflow-hidden mb-4">
+        <div className="grid grid-cols-2">
+          <div className="p-3 border-b border-r border-line">
+            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink mb-0.5">Check-in</label>
+            <input
+              type="date"
+              name="checkInDate"
+              value={checkIn}
+              onChange={(e) => onCheckInChange(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full bg-transparent outline-none text-sm text-ink"
+            />
+          </div>
+          <div className="p-3 border-b border-line">
+            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink mb-0.5">Check-out</label>
+            <input
+              type="date"
+              name="checkOutDate"
+              value={checkOut}
+              onChange={(e) => onCheckOutChange(e.target.value)}
+              min={checkIn || new Date().toISOString().split('T')[0]}
+              className="w-full bg-transparent outline-none text-sm text-ink"
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Check-out</label>
-          <input
-            type="date"
-            name="checkOutDate"
-            value={checkOut}
-            onChange={(e) => onCheckOutChange(e.target.value)}
-            min={checkIn || new Date().toISOString().split('T')[0]}
-            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-          />
+        <div className="p-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink">Guests</label>
+            {property.maxGuests && (
+              <span className="text-[11px] text-soft">Max {property.maxGuests}</span>
+            )}
+          </div>
+          <select
+            name="numberOfGuests"
+            value={guests}
+            onChange={(e) => onGuestsChange(e.target.value)}
+            className="w-full bg-transparent outline-none text-sm text-ink mt-0.5 pr-6"
+          >
+            {Array.from({ length: property.maxGuests ?? 20 }, (_, i) => i + 1).map((num) => (
+              <option key={num} value={num}>
+                {num} guest{num > 1 ? 's' : ''}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -366,27 +388,6 @@ function BookingForm({
         </div>
       )}
 
-      {/* Guests */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-semibold text-gray-700">Guests</label>
-          {property.maxGuests && (
-            <span className="text-xs text-gray-400">Max {property.maxGuests} guests</span>
-          )}
-        </div>
-        <select
-          name="numberOfGuests"
-          value={guests}
-          onChange={(e) => onGuestsChange(e.target.value)}
-          className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm pr-8"
-        >
-          {Array.from({ length: property.maxGuests ?? 20 }, (_, i) => i + 1).map((num) => (
-            <option key={num} value={num}>
-              {num} guest{num > 1 ? 's' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* Payment Method */}
       {(() => {
@@ -490,7 +491,7 @@ function BookingForm({
         type="button"
         onClick={onBook}
         disabled={isSubmitting || !captchaToken}
-        className={`notranslate w-full py-3 rounded-lg font-medium cursor-pointer whitespace-nowrap transition-colors ${
+        className={`notranslate w-full py-3.5 rounded-xl font-bold text-base cursor-pointer whitespace-nowrap transition-colors ${
           isSubmitting || !captchaToken
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
             : 'bg-red-500 hover:bg-red-600 text-white'
@@ -620,21 +621,19 @@ export default function BookingWidget({
     <>
       {/* ── Desktop: sticky sidebar card (lg+) ─────────────────── */}
       <div className="hidden lg:block">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 sticky top-24">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white border border-line rounded-card shadow-card p-6 sticky top-24">
+          <div className="flex items-baseline justify-between mb-5">
             <div>
-              <span className="text-2xl font-bold text-gray-900">₾{currentPricePerNight}</span>
-              <span className="text-gray-600 ml-1">/ night</span>
+              <span className="text-[26px] font-extrabold text-ink" translate="no">₾{currentPricePerNight}</span>
+              <span className="text-soft text-sm ml-1">/ night</span>
               {pricingType === 'per_guest' && (
                 <p className="text-gray-700 mt-0.5 font-medium text-sm">Price varies by guest count</p>
               )}
             </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 flex items-center justify-center mr-1">
-                <i className="ri-star-fill text-yellow-400"></i>
-              </div>
-              <span className="font-medium">{property.rating}</span>
-              <span className="text-gray-600 ml-1 text-sm">({property.reviews})</span>
+            <div className="flex items-center text-sm font-bold">
+              <i className="ri-star-fill text-red-500 mr-1"></i>
+              <span translate="no">{property.rating}</span>
+              <span className="text-soft ml-1 font-semibold">({property.reviews})</span>
             </div>
           </div>
           <BookingForm {...formProps} />

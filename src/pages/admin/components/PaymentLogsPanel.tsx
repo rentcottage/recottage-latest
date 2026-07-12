@@ -508,7 +508,7 @@ export default function PaymentLogsPanel() {
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap transition-all border ${
               liveMode
                 ? 'bg-green-500 border-green-500 text-white'
-                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                : 'border-line text-gray-600 hover:border-gray-300'
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${liveMode ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
@@ -551,7 +551,7 @@ export default function PaymentLogsPanel() {
           { label: 'Status Changes', count: counts.status_change, icon: 'ri-exchange-line', color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Admin Actions', count: counts.admin, icon: 'ri-admin-line', color: 'text-orange-600', bg: 'bg-orange-50' },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
+          <div key={s.label} className="bg-white rounded-card border border-line shadow-card px-4 py-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-gray-500">{s.label}</span>
               <div className={`w-6 h-6 ${s.bg} rounded-md flex items-center justify-center`}>
@@ -578,7 +578,7 @@ export default function PaymentLogsPanel() {
       </div>
 
       {/* Table card */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         {/* Filters + Search */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-wrap gap-3">
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 flex-wrap">
@@ -610,7 +610,7 @@ export default function PaymentLogsPanel() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search event, booking ID, guest…"
-              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 w-72"
+              className="pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 w-72"
             />
           </div>
         </div>

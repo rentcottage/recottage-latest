@@ -321,7 +321,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                 {images.map((img, idx) => (
                   <div
                     key={img.key}
-                    className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-[4/3]"
+                    className="relative group rounded-lg overflow-hidden border border-line bg-gray-50 aspect-[4/3]"
                   >
                     <img src={img.preview} alt="" className="w-full h-full object-cover" />
                     {idx === 0 && (
@@ -490,7 +490,7 @@ export default function ExperiencesPanel() {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">

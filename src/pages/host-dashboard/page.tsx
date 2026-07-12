@@ -217,7 +217,7 @@ function HostDashboardContent() {
         <div className="px-6 py-5 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
+              <div className="w-9 h-9 bg-red-500 rounded-xl flex items-center justify-center">
                 <i className="ri-home-smile-line text-white text-base"></i>
               </div>
               <div>
@@ -239,8 +239,8 @@ function HostDashboardContent() {
         {/* Host info */}
         <div className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-emerald-100 rounded-full flex items-center justify-center">
-              <span className="text-sm font-bold text-emerald-700">
+            <div className="w-9 h-9 bg-red-50 rounded-full flex items-center justify-center">
+              <span className="text-sm font-bold text-red-500">
                 {hostName.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -262,7 +262,7 @@ function HostDashboardContent() {
                 onClick={() => handleNavSelect(item.key)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-700'
+                    ? 'bg-red-50 text-red-500'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >

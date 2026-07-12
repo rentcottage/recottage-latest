@@ -136,7 +136,7 @@ function AgreementStatusDropdown({ app, onUpdate, loading }: AgreementStatusDrop
       {open && (
         <>
           <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-1 z-[56] bg-white border border-gray-200 rounded-xl shadow-lg w-52 py-1 overflow-hidden">
+          <div className="absolute left-0 top-full mt-1 z-[56] bg-white border border-line rounded-xl shadow-lg w-52 py-1 overflow-hidden">
             {options.map((opt) => {
               const isActive = (app.agreement_status ?? 'not_sent') === opt.value;
               return (
@@ -212,7 +212,7 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap ${
                   note === r
                     ? 'bg-red-50 border-red-300 text-red-700 font-semibold'
-                    : 'border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600'
+                    : 'border-line text-gray-600 hover:border-red-200 hover:text-red-600'
                 }`}
               >
                 {r}
@@ -231,7 +231,7 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
             placeholder="e.g. This cottage has already been submitted and is currently under review."
             rows={4}
             maxLength={500}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none text-gray-700 placeholder-gray-400"
+            className="w-full text-sm border border-line rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none text-gray-700 placeholder-gray-400"
           />
           <p className="text-xs text-gray-400 text-right mt-1">{note.length}/500</p>
         </div>
@@ -249,7 +249,7 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
+            className="flex-1 py-2.5 border border-line hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
           >
             Cancel
           </button>
@@ -310,7 +310,7 @@ function ConfirmDeleteModal({ app, onConfirm, onCancel, loading }: ConfirmDelete
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
+            className="flex-1 py-2.5 border border-line hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
           >
             Cancel
           </button>
@@ -400,7 +400,7 @@ function DetailModal({
 
           {/* Agreement Status Panel — shown for approved/hidden */}
           {(app.status === 'approved' || app.status === 'hidden') && (
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="border border-line rounded-xl overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 flex items-center justify-center">
@@ -437,7 +437,7 @@ function DetailModal({
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap transition-all border ${
                           isActive
                             ? `${cfg.badge} border-transparent opacity-100 cursor-default`
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50'
+                            : 'border-line text-gray-600 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50'
                         }`}
                       >
                         <div className="w-3 h-3 flex items-center justify-center">
@@ -476,7 +476,7 @@ function DetailModal({
 
           {/* Hidden notice */}
           {app.status === 'hidden' && (
-            <div className="flex items-center gap-3 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3 bg-gray-100 border border-line rounded-xl px-4 py-3">
               <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
                 <i className="ri-eye-off-line text-gray-500"></i>
               </div>
@@ -597,7 +597,7 @@ function DetailModal({
                   </div>
                 )}
                 {mapEmbedSrc && (
-                  <div className="w-full h-52 rounded-xl overflow-hidden border border-gray-200">
+                  <div className="w-full h-52 rounded-xl overflow-hidden border border-line">
                     <iframe
                       title="Property map"
                       src={mapEmbedSrc}
@@ -615,7 +615,7 @@ function DetailModal({
                     href={mapViewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                    className="inline-flex items-center gap-2 px-3 py-2 border border-line hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <div className="w-3 h-3 flex items-center justify-center">
                       <i className="ri-map-2-line text-red-500"></i>
@@ -1165,7 +1165,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         {/* Tabs + Search */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-wrap gap-3">
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
@@ -1193,7 +1193,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search host, property…"
-              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-64"
+              className="pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-64"
             />
           </div>
         </div>

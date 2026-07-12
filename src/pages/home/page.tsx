@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import SearchBar from '../../components/feature/SearchBar';
 import PropertyCard from '../../components/feature/PropertyCard';
-import ContactModal from '../../components/feature/ContactModal';
-import CancellationModal from '../../components/feature/CancellationModal';
+import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { supabase } from '../../lib/supabase';
@@ -22,12 +21,76 @@ interface HomeExperience {
   status: 'active' | 'coming_soon' | 'archived';
 }
 
+type SeasonKey = 'winter' | 'spring' | 'summer' | 'autumn';
+
+interface SeasonContent {
+  label: string;
+  img: string;
+  title: string;
+  sub: string;
+  badges: string[];
+}
+
+// Seasonal hero content (ported from the mockup script). Source stays English —
+// Google Translate localizes it at runtime like the rest of the app.
+const SEASONS: Record<SeasonKey, SeasonContent> = {
+  winter: {
+    label: 'Winter',
+    img: '/redesign/season-winter.jpg',
+    title: 'Winter in the mountains awaits',
+    sub: 'Warm cottages in Gudauri and Bakuriani — close to the slopes, with a fireplace and jacuzzi',
+    badges: ['🎿 Close to the slopes', '♨️ Jacuzzi in the snow', '🔥 Fireplace & warmth'],
+  },
+  spring: {
+    label: 'Spring',
+    img: '/redesign/season-spring.jpg',
+    title: 'Spring — get ahead of the season',
+    sub: 'Blossoming valleys and peaceful cottages — book early at the best price',
+    badges: ['🌸 Blossoming nature', '💰 Early-bird prices', '🏞 Peaceful season'],
+  },
+  summer: {
+    label: 'Summer',
+    img: '/redesign/season-summer.jpg',
+    title: 'Escape the city heat',
+    sub: 'Cool mountain air in Racha, Svaneti and Borjomi — a yard, a grill and the sound of the river',
+    badges: ['⛰ Cool mountain air', '🍖 Grill & yard', '🏞 By the river'],
+  },
+  autumn: {
+    label: 'Autumn',
+    img: '/redesign/season-autumn.jpg',
+    title: 'Harvest season in Kakheti',
+    sub: 'Winery cottages in the vineyards — tastings, golden autumn and a Georgian feast',
+    badges: ['🍷 Winery cottages', '🍇 Harvest & tastings', '🍂 Golden autumn'],
+  },
+};
+
+const SEASON_ORDER: SeasonKey[] = ['winter', 'spring', 'summer', 'autumn'];
+
+function seasonByMonth(m: number): SeasonKey {
+  if (m === 11 || m <= 2) return 'winter';
+  if (m <= 4) return 'spring';
+  if (m <= 7) return 'summer';
+  return 'autumn';
+}
+
 export default function HomePage() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [selectedHelpTopic, setSelectedHelpTopic] = useState<string>('');
 
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [showCancellationModal, setShowCancellationModal] = useState(false);
+  // Seasonal hero — auto-selects by current month, switchable via the pills.
+  const [season, setSeason] = useState<SeasonKey>(() => seasonByMonth(new Date().getMonth()));
+  const [heroFading, setHeroFading] = useState(false);
+  const selectSeason = (key: SeasonKey) => {
+    if (key === season) return;
+    setHeroFading(true);
+    const img = new Image();
+    img.onload = img.onerror = () => {
+      setSeason(key);
+      setHeroFading(false);
+    };
+    img.src = SEASONS[key].img;
+  };
+
   const [showCookingModal, setShowCookingModal] = useState(false);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [isWineTastingModalOpen, setIsWineTastingModalOpen] = useState(false);
@@ -204,8 +267,9 @@ export default function HomePage() {
 
   const { dbProperties, loading: dbLoading, totalCount } = useApprovedProperties();
 
-  // Featured cottages: newest first, then 5 random from the rest
-  const featuredProperties = (() => {
+  // Featured cottages: newest first, then 5 random from the rest.
+  // Memoized on the fetched list so re-renders (e.g. season switch) don't reshuffle.
+  const featuredProperties = useMemo(() => {
     if (dbProperties.length === 0) return [];
     const [newest, ...rest] = dbProperties;
     if (rest.length === 0) return [newest];
@@ -216,7 +280,7 @@ export default function HomePage() {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return [newest, ...shuffled.slice(0, 5)];
-  })();
+  }, [dbProperties]);
 
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
@@ -291,32 +355,103 @@ export default function HomePage() {
       />
       <Header onStaysClick={scrollToListings} onExperiencesClick={scrollToExperiences} />
 
-      {/* Hero Section */}
+      {/* Hero Section — seasonal (auto-selects by month, switchable) */}
       <section
-        className="relative w-full h-[480px] md:h-[640px] flex flex-col justify-center items-center text-center px-4"
+        className="relative w-full min-h-[520px] md:min-h-[640px] flex flex-col justify-center items-center text-center px-4 py-24 md:py-28 transition-[background-image] duration-500"
         style={{
-          backgroundImage: "url('https://readdy.ai/api/search-image?query=Ultra-wide%20panoramic%20Caucasus%20mountain%20landscape%20in%20Georgia%20Kazbegi%20region%2C%20sweeping%20valley%20with%20rustic%20wooden%20cottages%20and%20stone%20houses%20scattered%20across%20bright%20green%20alpine%20meadows%2C%20towering%20snow-capped%20rocky%20peaks%20stretching%20across%20entire%20horizon%2C%20dense%20dark%20pine%20forests%20on%20slopes%2C%20crystal%20clear%20river%20winding%20through%20valley%20floor%2C%20dramatic%20clouds%20and%20blue%20sky%2C%20golden%20morning%20light%20casting%20warm%20glow%2C%20cinematic%2016x9%20wide%20angle%20aerial%20landscape%20photography%2C%20photorealistic%20ultra%20high%20definition%2C%20no%20ocean%20no%20beach%20no%20water%20body&width=1600&height=900&seq=hero-kazbegi-wide-16x9-v1&orientation=landscape')",
+          backgroundImage: `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)), url('${SEASONS[season].img}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
         }}
       >
-        {/* Dark overlay 35% */}
-        <div className="absolute inset-0 bg-black/35 pointer-events-none"></div>
+        {/* Season switcher pills */}
+        <div className="absolute top-4 right-4 z-20 flex gap-1.5 bg-black/35 border border-white/25 rounded-full p-1.5">
+          {SEASON_ORDER.map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-label={`${key} season`}
+              onClick={() => selectSeason(key)}
+              className={`text-xs md:text-[13px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-opacity ${
+                season === key ? 'bg-red-500 text-white opacity-100' : 'text-white opacity-75 hover:opacity-100'
+              }`}
+            >
+              {SEASONS[key].label}
+            </button>
+          ))}
+        </div>
 
-        {/* Hero content — centered, Airbnb style */}
+        {/* Hero content */}
         <div className="relative z-10 w-full flex flex-col items-center text-center px-4">
-          <h1 className="text-2xl md:text-6xl font-bold text-white mb-3 md:mb-5 leading-tight drop-shadow-md">
-            Find Your Perfect
-            <br />
-            Georgian Cottage
+          <h1
+            className={`text-3xl md:text-5xl font-extrabold text-white mb-3 md:mb-5 leading-tight tracking-tight drop-shadow-md max-w-3xl transition-opacity duration-300 ${
+              heroFading ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {SEASONS[season].title}
           </h1>
-          <p className="text-sm md:text-xl text-white/90 mb-6 md:mb-10 max-w-xl drop-shadow-sm">
-            Discover mountain retreats &amp; traditional cottages in Georgia
+          <p
+            className={`text-base md:text-lg text-white/95 mb-5 md:mb-7 max-w-xl leading-relaxed transition-opacity duration-300 ${
+              heroFading ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {SEASONS[season].sub}
           </p>
+          <div
+            className={`flex flex-wrap justify-center gap-2.5 md:gap-3 mb-8 md:mb-10 transition-opacity duration-300 ${
+              heroFading ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {SEASONS[season].badges.map((badge, i) => (
+              <span
+                key={i}
+                className="bg-white/15 border border-white/30 text-white text-xs md:text-[13.5px] font-semibold px-3.5 py-1.5 rounded-full"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
           <div className="w-full max-w-4xl">
             <SearchBar />
           </div>
+        </div>
+      </section>
+
+      {/* Popular destinations — region cards */}
+      <section className="py-12 md:py-16 px-4 md:px-6 max-w-6xl mx-auto">
+        <div className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">Popular destinations</h2>
+            <p className="text-soft mt-1">Pick a region and discover its best cottages</p>
+          </div>
+          <button
+            onClick={() => navigate('/search')}
+            className="text-red-500 font-bold text-sm hover:text-red-600 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            All regions →
+          </button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
+          {[
+            { name: 'Gudauri', tag: 'Winter ski hub', img: '/redesign/region-gudauri.jpg' },
+            { name: 'Bakuriani', tag: 'Family favorite', img: '/redesign/region-bakuriani.jpg' },
+            { name: 'Kakheti', tag: 'Wine country', img: '/redesign/region-kakheti.jpg' },
+            { name: 'Kazbegi', tag: 'Mountain views', img: '/redesign/region-kazbegi.jpg' },
+          ].map((region) => (
+            <button
+              key={region.name}
+              onClick={() => navigate(`/search?location=${encodeURIComponent(region.name)}`)}
+              className="group relative rounded-card overflow-hidden h-44 md:h-52 flex items-end text-left p-4 shadow-card hover:-translate-y-1 transition-transform duration-200 cursor-pointer"
+              style={{ backgroundImage: `url('${region.img}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            >
+              <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+              <span className="relative z-10 text-white">
+                <span className="block text-lg md:text-[19px] font-extrabold">{region.name}</span>
+                <span className="block text-xs md:text-[13px] opacity-90">{region.tag}</span>
+              </span>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -390,24 +525,32 @@ export default function HomePage() {
         )}
 
         {/* Featured Properties */}
-        <div id="property-listings" className="mb-5 md:mb-8">
-          <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">Featured Cottages</h2>
-          <div className="flex items-center gap-3">
-            <p className="text-gray-600">Handpicked cottages for your perfect Georgian getaway</p>
-            {dbLoading ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                <span className="w-3 h-3 flex items-center justify-center animate-spin">
-                  <i className="ri-loader-4-line"></i>
+        <div id="property-listings" className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">Featured cottages</h2>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="text-soft">Top-rated cottages this week</p>
+              {dbLoading ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+                  <span className="w-3 h-3 flex items-center justify-center animate-spin">
+                    <i className="ri-loader-4-line"></i>
+                  </span>
+                  Loading live listings…
                 </span>
-                Loading live listings…
-              </span>
-            ) : (totalCount ?? dbProperties.length) > 0 ? (
-              <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
-                {totalCount ?? dbProperties.length} live listing{(totalCount ?? dbProperties.length) !== 1 ? 's' : ''} from real hosts
-              </span>
-            ) : null}
+              ) : (totalCount ?? dbProperties.length) > 0 ? (
+                <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
+                  {totalCount ?? dbProperties.length} live listing{(totalCount ?? dbProperties.length) !== 1 ? 's' : ''} from real hosts
+                </span>
+              ) : null}
+            </div>
           </div>
+          <button
+            onClick={() => navigate('/search')}
+            className="text-red-500 font-bold text-sm hover:text-red-600 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            View all →
+          </button>
         </div>
 
         {dbLoading ? (
@@ -580,51 +723,100 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+      </section>
 
-        {/* Why Choose Us */}
-        <section className="py-6 md:py-16 bg-gray-50 rounded-2xl px-4 md:px-8">
-          <div className="text-center mb-4 md:mb-12">
-            <h2 className="text-base md:text-3xl font-bold text-gray-900 mb-1 md:mb-4">Why Choose Rentcottage.ge?</h2>
-            <p className="hidden md:block text-gray-600 max-w-2xl mx-auto">
-              Experience authentic Georgian hospitality in carefully selected properties across the country
-            </p>
+      {/* Trust band — why choose us (cards open the help modals) */}
+      <section className="bg-[#181818] text-white py-14 md:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-9 md:mb-11 tracking-tight">Why RentCottage.Ge?</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
+            {[
+              { icon: 'ri-shield-check-line', title: 'Verified cottages', desc: 'We personally check every listing — photos match reality', topic: 'safety' },
+              { icon: 'ri-calendar-line', title: 'Flexible cancellation', desc: 'Free cancellation up to 48 hours before check-in', topic: 'cancellation' },
+              { icon: 'ri-home-line', title: 'Easy booking', desc: 'Search, book and relax — secure payment, real hosts', topic: 'booking' },
+            ].map((item) => (
+              <button
+                key={item.topic}
+                type="button"
+                onClick={() => openHelpModal(item.topic)}
+                className="text-left cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mb-3.5">
+                  <i className={`${item.icon} text-2xl text-red-500`}></i>
+                </div>
+                <h3 className="text-[16.5px] font-bold mb-1.5 group-hover:text-red-400 transition-colors">{item.title}</h3>
+                <p className="text-sm text-white/75 leading-relaxed">{item.desc}</p>
+              </button>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-3 gap-2 md:gap-8">
-            <div
-              className="text-center cursor-pointer hover:bg-white rounded-xl p-2 md:p-6 transition-colors"
-              onClick={() => openHelpModal('booking')}
-            >
-              <div className="w-10 h-10 md:w-16 md:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4">
-                <i className="ri-home-line text-base md:text-2xl text-red-500"></i>
+      {/* How it works */}
+      <section className="py-14 md:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        <div className="mb-8 md:mb-10">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">How it works</h2>
+          <p className="text-soft mt-1">Book in just 3 steps</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+          {[
+            { n: 1, title: 'Search', desc: 'Pick a region, dates and guests — filter by jacuzzi, fireplace or pool' },
+            { n: 2, title: 'Book', desc: 'Request to book or message the host. Payment is safe and secure' },
+            { n: 3, title: 'Relax', desc: 'Get check-in details and enjoy your stay. We\u2019re here if you need us' },
+          ].map((step) => (
+            <div key={step.n} className="bg-white border border-line rounded-card p-6 md:p-7">
+              <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 font-extrabold text-lg flex items-center justify-center mb-3.5">
+                {step.n}
               </div>
-              <h4 className="font-medium text-gray-900 mb-0 md:mb-2 text-xs md:text-base leading-tight">Booking a Cottage</h4>
-              <p className="hidden md:block text-sm text-gray-600">How to search and book your perfect stay</p>
+              <h3 className="text-[17px] font-bold text-ink mb-1.5">{step.title}</h3>
+              <p className="text-sm text-soft leading-relaxed">{step.desc}</p>
             </div>
+          ))}
+        </div>
+      </section>
 
-            <div
-              className="text-center cursor-pointer hover:bg-white rounded-xl p-2 md:p-6 transition-colors"
-              onClick={() => openHelpModal('cancellation')}
-            >
-              <div className="w-10 h-10 md:w-16 md:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4">
-                <i className="ri-calendar-line text-base md:text-2xl text-red-500"></i>
-              </div>
-              <h4 className="font-medium text-gray-900 mb-0 md:mb-2 text-xs md:text-base leading-tight">Cancellation Policy</h4>
-              <p className="hidden md:block text-sm text-gray-600">Understanding our cancellation terms</p>
+      {/* Guest reviews */}
+      <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        <div className="mb-8 md:mb-10">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">What guests say</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+          {[
+            { text: 'The cottage was exactly like the photos. The host was very attentive and booking took just minutes.', who: 'Nino K. · Gudauri, January 2026' },
+            { text: 'We stayed in Bakuriani with the family. No surprises on price — you pay exactly what\u2019s listed. We\u2019ll be back.', who: 'Giorgi M. · Bakuriani, February 2026' },
+            { text: 'Rented a winery cottage in Kakheti with friends. Tastings, views, calm — a perfect ten!', who: 'Tamar B. · Sighnaghi, October 2025' },
+          ].map((review, i) => (
+            <div key={i} className="bg-white rounded-card shadow-card p-6">
+              <div className="text-red-500 tracking-[2px] mb-2.5" translate="no" aria-hidden="true">★★★★★</div>
+              <p className="text-[14.5px] text-ink leading-relaxed">“{review.text}”</p>
+              <p className="mt-3.5 text-[13.5px] font-bold text-soft">{review.who}</p>
             </div>
+          ))}
+        </div>
+      </section>
 
-            <div
-              className="text-center cursor-pointer hover:bg-white rounded-xl p-2 md:p-6 transition-colors"
-              onClick={() => openHelpModal('safety')}
-            >
-              <div className="w-10 h-10 md:w-16 md:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4">
-                <i className="ri-shield-check-line text-base md:text-2xl text-red-500"></i>
-              </div>
-              <h4 className="font-medium text-gray-900 mb-0 md:mb-2 text-xs md:text-base leading-tight">Safety &amp; Security</h4>
-              <p className="hidden md:block text-sm text-gray-600">Your safety is our top priority</p>
-            </div>
-          </div>
-        </section>
+      {/* Host CTA */}
+      <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        <div
+          className="relative rounded-[20px] overflow-hidden text-center text-white px-6 py-14 md:px-10 md:py-16"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)), url('/redesign/host-cta.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">Have a cottage? Earn more</h2>
+          <p className="max-w-xl mx-auto opacity-95 mb-6">
+            List your cottage for free, get bookings directly, and pay a commission only on successful stays
+          </p>
+          <button
+            onClick={() => navigate('/become-host')}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl px-6 py-3 cursor-pointer transition-colors whitespace-nowrap"
+          >
+            List your cottage for free
+          </button>
+        </div>
       </section>
 
       {/* Help Modal */}
@@ -674,117 +866,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 md:py-16">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-6 md:mb-8">
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Support</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li>
-                  <button
-                    onClick={() => setShowCancellationModal(true)}
-                    className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left"
-                  >
-                    Cancellation Options
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setShowContactModal(true)}
-                    className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left"
-                  >
-                    Contact Us
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Community</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li>
-                  <a href="/become-host" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    Become a Host
-                  </a>
-                </li>
-                <li>
-                  <a href="/host-resources" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    Host Resources
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">About</h3>
-              <ul className="space-y-1 md:space-y-2">
-                <li>
-                  <a href="/how-it-works" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    How it Works
-                  </a>
-                </li>
-                <li>
-                  <a href="/about-georgia" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    About Georgia
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Follow Us</h3>
-              <div className="flex space-x-4">
-                <a
-                  href="https://www.facebook.com/profile.php?id=61583084123461"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
-                >
-                  <i className="ri-facebook-line text-sm md:text-base"></i>
-                </a>
-                <a
-                  href="https://www.instagram.com/rentcottage.ge/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
-                >
-                  <i className="ri-instagram-line text-sm md:text-base"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-4 md:pt-8 flex flex-col md:flex-row justify-between items-center">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 md:mb-0">
-              <h1
-                className="text-sm md:text-xl font-semibold md:font-bold text-red-500"
-                style={{ fontFamily: '"Pacifico", serif' }}
-              >
-                RentCottage.Ge
-              </h1>
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <a href="/privacy" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                  Privacy
-                </a>
-                <a href="/terms" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                  Terms &amp; Conditions
-                </a>
-                <a href="/sitemap" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                  Site Map
-                </a>
-              </div>
-            </div>
-            <p className="text-xs md:text-sm text-gray-400">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      {/* Contact Modal */}
-      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
-
-      {/* Cancellation Modal */}
-      {showCancellationModal && <CancellationModal isOpen={showCancellationModal} onClose={() => setShowCancellationModal(false)} />}
+      {/* Footer — shared component (owns Contact + Cancellation modals) */}
+      <Footer />
 
       {/* Booking Form Modal */}
       {showBookingForm && (

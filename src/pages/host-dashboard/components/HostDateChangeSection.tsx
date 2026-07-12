@@ -50,7 +50,7 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
         <p className="text-xs md:text-sm text-gray-400 mt-0.5">Guest-requested booking date modifications for your properties</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="flex items-center gap-2 text-gray-400">

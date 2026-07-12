@@ -199,7 +199,7 @@ export default function UserManagementPanel() {
   });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ export default function UserManagementPanel() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email or phone…"
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
             />
           </div>
 
@@ -371,7 +371,7 @@ export default function UserManagementPanel() {
       {activeTab === 'blocked' && (
         <div className="p-6">
           {/* Manual block form */}
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 mb-6">
+          <div className="bg-gray-50 rounded-xl border border-line p-5 mb-6">
             <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <i className="ri-forbid-2-line text-red-500"></i>
               Manually Block an Email
@@ -383,14 +383,14 @@ export default function UserManagementPanel() {
                 value={blockEmailInput}
                 onChange={(e) => setBlockEmailInput(e.target.value)}
                 placeholder="email@example.com"
-                className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
+                className="flex-1 px-3 py-2.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
               />
               <input
                 type="text"
                 value={blockReasonInput}
                 onChange={(e) => setBlockReasonInput(e.target.value)}
                 placeholder="Reason (optional)"
-                className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
+                className="flex-1 px-3 py-2.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
               />
               <button
                 type="submit"
@@ -526,7 +526,7 @@ export default function UserManagementPanel() {
                   maxLength={300}
                   rows={3}
                   placeholder="e.g. Violated terms of service, fraudulent activity…"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
+                  className="w-full text-sm border border-line rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
                 />
               </div>
             </div>

@@ -1,14 +1,10 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
+import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
-import CancellationModal from '../../components/feature/CancellationModal';
-import ContactModal from '../../components/feature/ContactModal';
 
 export default function SiteMap() {
   const navigate = useNavigate();
-  const [showCancellationModal, setShowCancellationModal] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
   const jsonLd = {
@@ -179,95 +175,8 @@ export default function SiteMap() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-10 md:py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-3 md:mb-4">Support</h3>
-              <ul className="space-y-1.5 md:space-y-2">
-                <li>
-                  <button onClick={() => setShowCancellationModal(true)} className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer text-left whitespace-nowrap">
-                    Cancellation Options
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setShowContactModal(true)} className="text-gray-300 hover:text-white cursor-pointer text-left whitespace-nowrap">
-                    <span className="text-xs md:text-sm">Contact Us</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-3 md:mb-4">Community</h3>
-              <ul className="space-y-1.5 md:space-y-2">
-                <li>
-                  <a href="/become-host" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    Become a Host
-                  </a>
-                </li>
-                <li>
-                  <a href="/host-resources" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    Host Resources
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-3 md:mb-4">About</h3>
-              <ul className="space-y-1.5 md:space-y-2">
-                <li>
-                  <a href="/how-it-works" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    How it Works
-                  </a>
-                </li>
-                <li>
-                  <a href="/about-georgia" className="text-xs md:text-sm text-gray-300 hover:text-white cursor-pointer">
-                    About Georgia
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-3 md:mb-4">Follow Us</h3>
-              <div className="flex space-x-3 md:space-x-4">
-                <a href="https://www.facebook.com/profile.php?id=61583084123461" target="_blank" rel="noopener noreferrer" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-facebook-line"></i>
-                </a>
-                <a href="https://www.instagram.com/rentcottage.ge/" target="_blank" rel="noopener noreferrer" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-instagram-line"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-6 md:pt-8 flex flex-col gap-3 md:gap-0 md:flex-row justify-between items-center">
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-0">
-              <h1 className="text-base md:text-xl font-bold text-red-500 sm:mr-6" style={{ fontFamily: '"Pacifico", serif' }}>
-                RentCottage.Ge
-              </h1>
-              <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 md:space-x-6">
-                <a href="/privacy" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
-                  Privacy
-                </a>
-                <a href="/terms" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
-                  Terms &amp; Conditions
-                </a>
-                <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">
-                  Site Map
-                </a>
-              </div>
-            </div>
-            <p className="text-gray-400 text-xs md:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <CancellationModal isOpen={showCancellationModal} onClose={() => setShowCancellationModal(false)} />
-      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
+      {/* Footer — shared component (owns Contact + Cancellation modals) */}
+      <Footer />
     </div>
   );
 }

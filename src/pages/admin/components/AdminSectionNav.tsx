@@ -129,7 +129,7 @@ export default function AdminSectionNav({ variant, badges = {} }: AdminSectionNa
     <div ref={wrapRef}>
       <nav
         aria-label="Admin sections"
-        className="bg-white rounded-xl border border-gray-200 p-2"
+        className="bg-white rounded-card border border-line shadow-card p-2"
         style={pinned ? {
           position: 'fixed',
           top: PIN_TOP,

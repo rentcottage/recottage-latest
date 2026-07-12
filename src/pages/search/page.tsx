@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from '../../components/feature/Header';
+import Footer from '../../components/feature/Footer';
 import PropertyCard from '../../components/feature/PropertyCard';
 import SearchBar from '../../components/feature/SearchBar';
 import SEO from '../../components/feature/SEO';
@@ -26,6 +27,19 @@ const GEORGIAN_REGIONS = [
 ];
 
 const PAGE_SIZE = 12;
+
+// Quick-filter chips — each maps to a real value in `amenitiesList` so a chip
+// toggle drives the existing amenity filter state (no new filter logic).
+const QUICK_FILTERS: { label: string; amenity: string }[] = [
+  { label: 'Hot Tub', amenity: 'Hot Tub' },
+  { label: 'Fireplace', amenity: 'Fireplace' },
+  { label: 'Swimming Pool', amenity: 'Swimming Pool' },
+  { label: 'Pet Friendly', amenity: 'Pet Friendly' },
+  { label: 'WiFi', amenity: 'WiFi' },
+  { label: 'Kitchen', amenity: 'Kitchen' },
+  { label: 'BBQ Grill', amenity: 'BBQ Grill' },
+  { label: 'Mountain View', amenity: 'Mountain View' },
+];
 
 export default function SearchResults() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -298,85 +312,81 @@ export default function SearchResults() {
       />
       <Header />
       
-      {/* Search Header — shared background image for ALL screen sizes */}
-      <section className="relative z-20">
-        {/* Background image — same on mobile and desktop */}
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('https://readdy.ai/api/search-image?query=aerial%20view%20of%20Georgian%20Caucasus%20mountain%20valley%20with%20green%20meadows%2C%20soft%20morning%20mist%2C%20pine%20forests%2C%20gentle%20rolling%20hills%2C%20warm%20golden%20light%2C%20very%20soft%20and%20minimal%2C%20no%20people%2C%20wide%20landscape&width=1400&height=220&seq=search-header-bg-v2&orientation=landscape')",
-          }}
-        />
-        {/* Warm gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-stone-800/70 via-stone-700/60 to-amber-900/55" />
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white/20 to-transparent" />
+      {/* Search zone — white compact bar + quick-filter chips (mockup "new look") */}
+      <section className="bg-white border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+          {/* Desktop: full SearchBar */}
+          <div className="hidden md:block">
+            <SearchBar />
+          </div>
 
-        {/* Desktop: full SearchBar */}
-        <div className="hidden md:block relative z-10 max-w-6xl mx-auto px-6 py-7">
-          <p className="text-white/80 text-xs font-medium tracking-widest uppercase mb-3 flex items-center gap-2">
-            <i className="ri-search-line text-white/60"></i>
-            {location
-              ? `Showing results for "${location}"`
-              : category
-              ? `Browsing ${category.charAt(0).toUpperCase() + category.slice(1)} cottages`
-              : 'Find your perfect Georgian cottage'}
-          </p>
-          <SearchBar />
-        </div>
+          {/* Mobile: compact search trigger → opens the search modal */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setShowSearchModal(true)}
+              className="w-full flex items-center bg-white border border-line shadow-card rounded-full overflow-hidden cursor-pointer"
+            >
+              {/* Where */}
+              <div className="flex-1 min-w-0 px-3 py-2.5 text-left border-r border-line">
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Where</div>
+                <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
+                  {location ? location.split(',')[0] : 'Any'}
+                </div>
+              </div>
+              {/* Check-in */}
+              <div className="flex-1 min-w-0 px-3 py-2.5 text-left border-r border-line">
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Check-in</div>
+                <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
+                  {checkIn ? formatDate(checkIn) : 'Add'}
+                </div>
+              </div>
+              {/* Check-out */}
+              <div className="flex-1 min-w-0 px-3 py-2.5 text-left border-r border-line">
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Check-out</div>
+                <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
+                  {checkOut ? formatDate(checkOut) : 'Add'}
+                </div>
+              </div>
+              {/* Guests */}
+              <div className="flex-1 min-w-0 px-3 py-2.5 text-left">
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Guests</div>
+                <div className="text-[10px] font-medium text-gray-800 truncate leading-none" translate="no">
+                  {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
+                </div>
+              </div>
+              {/* Search icon */}
+              <div className="px-2.5 shrink-0 self-stretch flex items-center bg-red-500">
+                <i className="ri-search-line text-white text-sm"></i>
+              </div>
+            </button>
+          </div>
 
-        {/* Mobile: compact chips row on top of the same image */}
-        <div className="md:hidden relative z-10 px-3 py-4">
-          <p className="text-white/70 text-[10px] font-medium tracking-widest uppercase mb-2.5 flex items-center gap-1.5">
-            <i className="ri-search-line text-white/50 text-[10px]"></i>
-            {location ? `Results for "${location.split(',')[0]}"` : 'Find your perfect cottage'}
-          </p>
-          <button
-            onClick={() => setShowSearchModal(true)}
-            className="w-full flex items-center bg-white/95 backdrop-blur-sm border border-white/30 rounded-xl overflow-hidden cursor-pointer"
-          >
-            {/* Where */}
-            <div className="flex-1 min-w-0 px-2.5 py-2.5 text-left border-r border-gray-200">
-              <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Where</div>
-              <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                {location ? location.split(',')[0] : 'Any'}
-              </div>
-            </div>
-            {/* Check-in */}
-            <div className="flex-1 min-w-0 px-2.5 py-2.5 text-left border-r border-gray-200">
-              <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Check-in</div>
-              <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                {checkIn ? formatDate(checkIn) : 'Add'}
-              </div>
-            </div>
-            {/* Check-out */}
-            <div className="flex-1 min-w-0 px-2.5 py-2.5 text-left border-r border-gray-200">
-              <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Check-out</div>
-              <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                {checkOut ? formatDate(checkOut) : 'Add'}
-              </div>
-            </div>
-            {/* Guests */}
-            <div className="flex-1 min-w-0 px-2.5 py-2.5 text-left">
-              <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Guests</div>
-              <div className="text-[10px] font-medium text-gray-800 truncate leading-none" translate="no">
-                {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
-              </div>
-            </div>
-            {/* Search icon */}
-            <div className="px-2.5 py-2.5 shrink-0 flex items-center">
-              <div className="w-6 h-6 bg-red-500 rounded-lg flex items-center justify-center">
-                <i className="ri-search-line text-white text-xs"></i>
-              </div>
-            </div>
-          </button>
+          {/* Quick-filter chips — wired to the existing amenity filter */}
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5 -mx-1 px-1">
+            {QUICK_FILTERS.map((f) => {
+              const on = selectedAmenities.includes(f.amenity);
+              return (
+                <button
+                  key={f.amenity}
+                  onClick={() => handleAmenityToggle(f.amenity)}
+                  className={`shrink-0 border-[1.5px] rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                    on
+                      ? 'bg-red-50 border-red-500 text-red-500'
+                      : 'bg-white border-line text-gray-700 hover:border-red-500 hover:text-red-500'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Search Summary */}
         <div className="mb-8">
-          <h1 className="text-lg md:text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-xl md:text-[26px] font-extrabold text-ink tracking-tight mb-2">
             {category && !location
               ? `${category.charAt(0).toUpperCase() + category.slice(1)} Cottages`
               : location
@@ -449,20 +459,20 @@ export default function SearchResults() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar — Desktop only */}
           <div className="hidden lg:block lg:w-72 flex-shrink-0">
-            <div className="bg-white border border-gray-200 rounded-xl p-5 sticky top-24">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm md:text-lg font-semibold text-gray-900">Filters</h3>
+            <div className="bg-white border border-line rounded-card p-[22px] sticky top-24">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[17px] font-extrabold text-ink">Filters</h3>
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-red-500 hover:text-red-600 cursor-pointer"
+                  className="text-[13px] font-bold text-red-500 hover:text-red-600 cursor-pointer"
                 >
                   Clear all
                 </button>
               </div>
 
               {/* Price Range */}
-              <div className="mb-8">
-                <h4 className="font-medium text-gray-900 mb-4">Price Range</h4>
+              <div className="pb-5">
+                <h4 className="text-sm font-bold text-ink mb-3">Price Range</h4>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">₾0</span>
@@ -489,8 +499,8 @@ export default function SearchResults() {
               </div>
 
               {/* Amenities */}
-              <div className="mb-8">
-                <h4 className="font-medium text-gray-900 mb-4">Amenities</h4>
+              <div className="border-t border-line pt-4 pb-1">
+                <h4 className="text-sm font-bold text-ink mb-3">Amenities</h4>
                 <div className="space-y-3">
                   {amenitiesList.map((amenity) => (
                     <label key={amenity} className="flex items-center cursor-pointer">
@@ -507,8 +517,8 @@ export default function SearchResults() {
               </div>
 
               {/* Property Type */}
-              <div className="mb-8">
-                <h4 className="font-medium text-gray-900 mb-4">Property Type</h4>
+              <div className="border-t border-line pt-4 pb-1">
+                <h4 className="text-sm font-bold text-ink mb-3">Property Type</h4>
                 <div className="space-y-3">
                   {['Cottage', 'Cabin', 'House', 'Farmhouse', 'Winery'].map((type) => (
                     <label key={type} className="flex items-center cursor-pointer">
@@ -525,8 +535,8 @@ export default function SearchResults() {
               </div>
 
               {/* Region */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-4">Region</h4>
+              <div className="border-t border-line pt-4">
+                <h4 className="text-sm font-bold text-ink mb-3">Region</h4>
                 <div className="space-y-3">
                   {GEORGIAN_REGIONS.map((region) => (
                     <label key={region} className="flex items-center cursor-pointer">
@@ -552,9 +562,9 @@ export default function SearchResults() {
                 {/* Single filter button — mobile only */}
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer whitespace-nowrap text-gray-900"
+                  className="lg:hidden flex items-center px-4 py-2 border-[1.5px] border-ink rounded-[10px] font-bold text-sm text-ink hover:bg-ink hover:text-white transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <div className="w-4 h-4 flex items-center justify-center mr-2 text-gray-900">
+                  <div className="w-4 h-4 flex items-center justify-center mr-2">
                     <i className="ri-filter-line"></i>
                   </div>
                   Filters
@@ -562,11 +572,11 @@ export default function SearchResults() {
               </div>
 
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">Sort by:</span>
+                <span className="text-sm text-soft hidden sm:inline">Sort by:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => updateFilterParam('sort', e.target.value === 'alphabetical' ? '' : e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer pr-8"
+                  className="border-[1.5px] border-line rounded-[10px] px-3 py-2 text-sm text-ink bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer pr-8"
                 >
                   <option value="alphabetical">Alphabetical (A–Z)</option>
                   <option value="price-low">Price: Low to High</option>
@@ -612,7 +622,7 @@ export default function SearchResults() {
               <div className="text-center mt-12">
                 <button
                   onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                  className="bg-white border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap inline-flex items-center gap-2"
+                  className="bg-white border-[1.5px] border-line text-ink px-8 py-3 rounded-[10px] font-bold hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap inline-flex items-center gap-2"
                 >
                   Load More Cottages
                 </button>
@@ -851,65 +861,8 @@ export default function SearchResults() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">Support</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Cancellation Options</a></li>
-                <li><a href="#" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Contact Us</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">Community</h3>
-              <ul className="space-y-2">
-                <li><a href="/become-host" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Become a Host</a></li>
-                <li><a href="#" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">Host Resources</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">About</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">How it Works</a></li>
-                <li><a href="#" className="text-xs md:text-base text-gray-300 hover:text-white cursor-pointer">About Georgia</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-sm md:text-lg font-semibold mb-4">Follow Us</h3>
-              <div className="flex space-x-4">
-                <a href="https://www.facebook.com/profile.php?id=61583084123461" target="_blank" rel="noopener noreferrer" className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-facebook-line"></i>
-                </a>
-                <a href="#" className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-instagram-line"></i>
-                </a>
-                <a href="#" className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer">
-                  <i className="ri-twitter-line"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <h1 className="text-sm md:text-xl font-bold text-red-500 mr-6" style={{ fontFamily: '"Pacifico", serif' }}>
-                RentCottage.Ge
-              </h1>
-              <div className="flex space-x-4 md:space-x-6">
-                <a href="/privacy" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Privacy</a>
-                <a href="/terms" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Terms &amp; Conditions</a>
-                <a href="/sitemap" className="text-gray-300 hover:text-white text-xs md:text-sm cursor-pointer">Site Map</a>
-              </div>
-            </div>
-            <p className="text-gray-400 text-xs md:text-sm">© 2024 RentCottage.Ge, Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Footer — shared component */}
+      <Footer />
     </div>
   );
 }

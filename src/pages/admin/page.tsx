@@ -453,14 +453,14 @@ export default function AdminBookings() {
               { label: 'Applications', count: pendingApplicationsCount, icon: 'ri-home-smile-line', color: 'text-orange-500', bg: 'bg-orange-50' },
               { label: 'Experiences', count: pendingExperienceCount, icon: 'ri-goblet-line', color: 'text-purple-500', bg: 'bg-purple-50' },
             ].map((s) => (
-              <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
+              <div key={s.label} className="bg-white rounded-card border border-line shadow-card p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-gray-500">{s.label}</span>
+                  <span className="text-sm text-soft">{s.label}</span>
                   <div className={`w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center`}>
                     <i className={`${s.icon} ${s.color} text-sm`}></i>
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-gray-900">{s.count}</p>
+                <p className="text-3xl font-extrabold text-ink">{s.count}</p>
               </div>
             ))}
           </div>

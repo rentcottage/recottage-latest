@@ -135,7 +135,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="e.g. Important update for all hosts"
                   maxLength={200}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
+                  className="w-full text-sm border border-line rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
                 />
                 <p className="text-xs text-gray-400 text-right mt-1">{subject.length}/200</p>
               </div>
@@ -150,7 +150,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   placeholder="Write your announcement or news here…"
                   rows={8}
                   maxLength={5000}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400 leading-relaxed"
+                  className="w-full text-sm border border-line rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400 leading-relaxed"
                 />
                 <p className="text-xs text-gray-400 text-right mt-1">{body.length}/5000</p>
               </div>
@@ -181,7 +181,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                 </div>
               </div>
 
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="border border-line rounded-xl overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preview</p>
                 </div>
@@ -372,7 +372,7 @@ export default function HostNewsPanel() {
       )}
 
       {/* History table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-gray-900">Sent Announcements</p>

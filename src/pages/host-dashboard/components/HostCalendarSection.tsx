@@ -203,7 +203,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
       </div>
 
       {loading || blockedLoading ? (
-        <div className="bg-white rounded-xl border border-gray-200 flex items-center justify-center py-24">
+        <div className="bg-white rounded-card border border-line shadow-card flex items-center justify-center py-24">
           <div className="flex items-center gap-2 text-gray-400">
             <div className="w-4 h-4 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line"></i>
@@ -223,7 +223,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
               <select
                 value={selectedPropertyId}
                 onChange={(e) => setSelectedPropertyId(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white min-w-48"
+                className="text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white min-w-48"
               >
                 <option value="all">All properties</option>
                 {properties.map((p) => (
@@ -236,7 +236,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
             <div className="flex items-center gap-2">
               <button
                 onClick={prevMonth}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-line hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <i className="ri-arrow-left-s-line text-gray-600"></i>
               </button>
@@ -247,13 +247,13 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
               </div>
               <button
                 onClick={nextMonth}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-line hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <i className="ri-arrow-right-s-line text-gray-600"></i>
               </button>
               <button
                 onClick={goToday}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors whitespace-nowrap"
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-line rounded-lg hover:bg-gray-50 cursor-pointer transition-colors whitespace-nowrap"
               >
                 Today
               </button>
@@ -262,7 +262,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
 
           {/* Month stats */}
           <div className="grid grid-cols-3 gap-2 md:gap-3">
-            <div className="bg-white rounded-xl border border-gray-200 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
+            <div className="bg-white rounded-card border border-line shadow-card px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
               <div className="w-7 h-7 md:w-8 md:h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i className="ri-checkbox-circle-line text-green-600 text-xs md:text-sm"></i>
               </div>
@@ -271,7 +271,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                 <p className="text-[10px] md:text-xs text-gray-400 leading-tight">Confirmed</p>
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
+            <div className="bg-white rounded-card border border-line shadow-card px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
               <div className="w-7 h-7 md:w-8 md:h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i className="ri-time-line text-amber-600 text-xs md:text-sm"></i>
               </div>
@@ -280,7 +280,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                 <p className="text-[10px] md:text-xs text-gray-400 leading-tight">Pending</p>
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
+            <div className="bg-white rounded-card border border-line shadow-card px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
               <div className="w-7 h-7 md:w-8 md:h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i className="ri-calendar-close-line text-red-500 text-xs md:text-sm"></i>
               </div>
@@ -293,7 +293,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Calendar grid */}
-            <div className="md:col-span-2 bg-white rounded-xl border border-gray-200 p-3 md:p-5">
+            <div className="md:col-span-2 bg-white rounded-card border border-line shadow-card p-3 md:p-5">
               {/* Day headers */}
               <div className="grid grid-cols-7 mb-3">
                 {DAY_LABELS.map((d) => (
@@ -379,7 +379,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                   <span>Blocked</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <div className="w-3.5 h-3.5 rounded bg-gray-100 border border-gray-200"></div>
+                  <div className="w-3.5 h-3.5 rounded bg-gray-100 border border-line"></div>
                   <span>Completed</span>
                 </div>
                 <span className="text-xs text-gray-400 ml-auto">Click a day to see details</span>
@@ -387,7 +387,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
             </div>
 
             {/* Side panel: day details or upcoming */}
-            <div className="bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
+            <div className="bg-white rounded-card border border-line shadow-card flex flex-col overflow-hidden">
               {selectedDay && selectedDayData ? (
                 <div className="flex flex-col h-full">
                   <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">

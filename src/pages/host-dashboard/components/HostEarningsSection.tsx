@@ -53,7 +53,7 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
           { label: 'Confirmed Bookings', value: `₾${stats.confirmed.toLocaleString()}`, icon: 'ri-checkbox-circle-line', sub: 'Active confirmed stays', color: 'text-sky-600', bg: 'bg-sky-50' },
           { label: 'Completed Stays', value: `₾${stats.completed.toLocaleString()}`, icon: 'ri-star-line', sub: 'Fully completed stays', color: 'text-gray-600', bg: 'bg-gray-100' },
         ].map((c) => (
-          <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-3 md:p-6">
+          <div key={c.label} className="bg-white rounded-card border border-line shadow-card p-3 md:p-6">
             <div className="flex items-center justify-between mb-2 md:mb-4">
               <span className="text-xs md:text-sm text-gray-500">{c.label}</span>
               <div className={`w-7 h-7 md:w-9 md:h-9 flex-shrink-0 ${c.bg} rounded-lg flex items-center justify-center`}>
@@ -72,7 +72,7 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
 
       {/* Monthly breakdown */}
       {monthlyEntries.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 mb-5 md:mb-6">
+        <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-6 mb-5 md:mb-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-4 md:mb-5">Monthly Breakdown</h3>
           <div className="space-y-3">
             {monthlyEntries.map(([month, amount]) => {
@@ -95,7 +95,7 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
       )}
 
       {/* Earnings table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-100">
           <h3 className="text-sm font-semibold text-gray-900">Payment History</h3>
           <p className="text-xs text-gray-400 mt-0.5">All bookings that generated revenue</p>

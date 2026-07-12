@@ -167,7 +167,7 @@ export default function CompletedBookingsPanel() {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-6 py-5 border-b border-gray-100">
         <div className="flex items-center justify-between">
@@ -186,7 +186,7 @@ export default function CompletedBookingsPanel() {
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer whitespace-nowrap ${
                 showFilters || hasActiveFilters
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                  : 'bg-gray-50 border-line text-gray-600 hover:bg-gray-100'
               }`}
             >
               <div className="w-4 h-4 flex items-center justify-center">
@@ -210,7 +210,7 @@ export default function CompletedBookingsPanel() {
             </button>
             <button
               onClick={fetchCompleted}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 cursor-pointer whitespace-nowrap transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-line cursor-pointer whitespace-nowrap transition-colors"
             >
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-refresh-line text-sm"></i>
@@ -261,7 +261,7 @@ export default function CompletedBookingsPanel() {
                   value={searchProperty}
                   onChange={(e) => setSearchProperty(e.target.value)}
                   placeholder="Search property name…"
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white"
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white"
                 />
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function CompletedBookingsPanel() {
                 <select
                   value={filterPaymentMethod}
                   onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                  className="w-full appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
+                  className="w-full appearance-none pl-3 pr-8 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
                 >
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m}>{m}</option>
@@ -292,7 +292,7 @@ export default function CompletedBookingsPanel() {
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
+                className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
               />
             </div>
 
@@ -303,7 +303,7 @@ export default function CompletedBookingsPanel() {
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
+                className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
               />
             </div>
 
@@ -311,7 +311,7 @@ export default function CompletedBookingsPanel() {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 cursor-pointer whitespace-nowrap transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-line rounded-lg bg-white hover:bg-gray-50 cursor-pointer whitespace-nowrap transition-colors"
               >
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-close-line text-sm"></i>

@@ -170,7 +170,7 @@ function AddCalendarModal({
                       ? p.value === 'airbnb'
                         ? 'border-orange-400 bg-orange-50 text-orange-700'
                         : 'border-sky-400 bg-sky-50 text-sky-700'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      : 'border-line text-gray-600 hover:border-gray-300'
                   }`}
                 >
                   <div className="w-5 h-5 flex items-center justify-center">
@@ -209,7 +209,7 @@ function AddCalendarModal({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder={`e.g. My ${cfg.label} listing`}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
           </div>
 
@@ -223,7 +223,7 @@ function AddCalendarModal({
               value={url}
               onChange={(e) => { setUrl(e.target.value); setError(''); }}
               placeholder={cfg.placeholder}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono placeholder:font-sans"
+              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono placeholder:font-sans"
             />
             {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
           </div>
@@ -233,7 +233,7 @@ function AddCalendarModal({
         <div className="flex items-center gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors cursor-pointer whitespace-nowrap"
+            className="flex-1 py-2.5 border border-line text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors cursor-pointer whitespace-nowrap"
           >
             Cancel
           </button>
@@ -280,7 +280,7 @@ function CalendarCard({
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
+    <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-5">
       <div className="flex items-start gap-3">
         {/* Platform icon */}
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -340,7 +340,7 @@ function CalendarCard({
             onClick={() => onSync(cal.id)}
             disabled={syncing}
             title="Refresh sync"
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 text-gray-500 cursor-pointer transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-500 cursor-pointer transition-colors"
           >
             <i className={`ri-refresh-line text-sm ${syncing ? 'animate-spin' : ''}`}></i>
           </button>
@@ -348,7 +348,7 @@ function CalendarCard({
             <button
               onClick={() => setConfirmRemove(true)}
               title="Remove calendar"
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-line hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
             >
               <i className="ri-delete-bin-line text-sm"></i>
             </button>
@@ -362,7 +362,7 @@ function CalendarCard({
               </button>
               <button
                 onClick={() => setConfirmRemove(false)}
-                className="text-xs px-2.5 py-1.5 border border-gray-200 text-gray-500 font-semibold rounded-lg cursor-pointer whitespace-nowrap hover:bg-gray-50 transition-colors"
+                className="text-xs px-2.5 py-1.5 border border-line text-gray-500 font-semibold rounded-lg cursor-pointer whitespace-nowrap hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
@@ -544,7 +544,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
 
   if (propsLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 flex items-center justify-center py-16">
+      <div className="bg-white rounded-card border border-line shadow-card flex items-center justify-center py-16">
         <div className="flex items-center gap-2 text-gray-400">
           <div className="w-4 h-4 flex items-center justify-center animate-spin">
             <i className="ri-loader-4-line"></i>
@@ -557,7 +557,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
 
   if (properties.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 flex flex-col items-center py-16 text-gray-400">
+      <div className="bg-white rounded-card border border-line shadow-card flex flex-col items-center py-16 text-gray-400">
         <div className="w-10 h-10 flex items-center justify-center mb-2">
           <i className="ri-home-smile-line text-3xl"></i>
         </div>
@@ -570,7 +570,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
   return (
     <div className="space-y-5">
       {/* Property selector + Sync All */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="bg-white rounded-card border border-line shadow-card p-5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
             <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
@@ -579,7 +579,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
             <select
               value={selectedPropertyId}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white cursor-pointer"
+              className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white cursor-pointer"
             >
               {properties.map((p) => (
                 <option key={p.id} value={p.id}>{p.title}</option>
@@ -709,7 +709,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               </div>
             </div>
           ) : calendars.length === 0 ? (
-            <div className="bg-white rounded-xl border border-dashed border-gray-200 flex flex-col items-center py-14 text-gray-400">
+            <div className="bg-white rounded-card border border-dashed border-line flex flex-col items-center py-14 text-gray-400">
               <div className="w-12 h-12 flex items-center justify-center mb-3">
                 <i className="ri-calendar-2-line text-3xl"></i>
               </div>
@@ -745,7 +745,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
 
       {/* ── EXPORT TAB ── */}
       {activeTab === 'export' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 md:p-6 space-y-5">
+        <div className="bg-white rounded-card border border-line shadow-card p-5 md:p-6 space-y-5">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <div className="w-5 h-5 flex items-center justify-center">
@@ -768,12 +768,12 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                 type="text"
                 readOnly
                 value={exportUrl}
-                className="flex-1 min-w-0 text-xs border border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50 font-mono text-gray-600 truncate"
+                className="flex-1 min-w-0 text-xs border border-line rounded-lg px-3 py-2.5 bg-gray-50 font-mono text-gray-600 truncate"
               />
               <button
                 onClick={handleCopyExportUrl}
                 disabled={!exportUrl}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border border-gray-200 hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
               >
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className={copied ? 'ri-check-line text-emerald-600' : 'ri-clipboard-line'}></i>
@@ -829,7 +829,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
 
       {/* ── BLOCKED DATES TAB ── */}
       {activeTab === 'blocked' && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-gray-900">Externally Blocked Dates</h3>

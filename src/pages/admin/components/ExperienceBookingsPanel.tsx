@@ -71,7 +71,7 @@ function ActionMenu({ booking, onStatusChange, loading }: ActionMenuProps) {
       <button
         onClick={() => setOpen((p) => !p)}
         disabled={loading}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors disabled:opacity-50 whitespace-nowrap"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-line rounded-lg hover:bg-gray-50 cursor-pointer transition-colors disabled:opacity-50 whitespace-nowrap"
       >
         <div className="w-3 h-3 flex items-center justify-center">
           <i className="ri-more-2-fill text-gray-500"></i>
@@ -179,7 +179,7 @@ export default function ExperienceBookingsPanel() {
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
       {/* Section header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export default function ExperienceBookingsPanel() {
 
       {/* Status tabs + search */}
       <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-b border-gray-100">
-        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-white border border-line rounded-lg p-0.5">
           {statusTabs.map((t) => (
             <button
               key={t.key}
@@ -258,7 +258,7 @@ export default function ExperienceBookingsPanel() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or phone…"
-            className="pl-8 pr-4 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-52"
+            className="pl-8 pr-4 py-1.5 text-xs border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-52"
           />
         </div>
       </div>
@@ -412,7 +412,7 @@ export default function ExperienceBookingsPanel() {
                       </div>
                     </div>
                     {b.message && (
-                      <div className="mt-2 pt-3 border-t border-gray-200">
+                      <div className="mt-2 pt-3 border-t border-line">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                           Message / Special Requests
                         </p>
@@ -422,7 +422,7 @@ export default function ExperienceBookingsPanel() {
                       </div>
                     )}
                     {/* Contact action buttons */}
-                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line">
                       <a
                         href={`tel:${b.customer_phone}`}
                         className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-xs font-medium rounded-lg hover:bg-green-100 cursor-pointer transition-colors whitespace-nowrap"
