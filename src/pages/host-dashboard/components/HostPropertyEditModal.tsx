@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { compressImage } from '../../../lib/imageCompression';
 
 interface GuestPricingTier {
   min_guests: number;
@@ -224,12 +225,14 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     setPhotoError('');
 
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
+      // Re-encode to high-quality WebP before upload to save storage.
+      const uploadFile = await compressImage(file);
+      const ext = uploadFile.name.split('.').pop() || 'jpg';
       const fileName = `${property.id}/${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('property-photos')
-        .upload(fileName, file, { upsert: false });
+        .upload(fileName, uploadFile, { contentType: uploadFile.type, upsert: false });
 
       if (uploadError) {
         setPhotoError('Upload failed. Please try again.');

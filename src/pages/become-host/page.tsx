@@ -6,6 +6,7 @@ import AutocompleteInput from '../../components/base/AutocompleteInput';
 import SEO from '../../components/feature/SEO';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { supabase } from '../../lib/supabase';
+import { compressImage } from '../../lib/imageCompression';
 
 const PROPERTY_APP_FN_URL =
   'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/property-application-handler';
@@ -224,14 +225,16 @@ export default function BecomeHost() {
     setSubmitStatus('idle');
 
     try {
-      // 1. Upload photos to Supabase Storage
+      // 1. Compress + upload photos to Supabase Storage. Re-encoding shrinks
+      //    full-resolution camera files before they ever leave the browser.
       const photoUrls: string[] = [];
       for (const photo of formData.photos) {
-        const safeName = photo.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
+        const uploadFile = await compressImage(photo);
+        const safeName = uploadFile.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
         const path = `${Date.now()}-${safeName}`;
         const { error: uploadError } = await supabase.storage
           .from('property-photos')
-          .upload(path, photo, { contentType: photo.type, upsert: false });
+          .upload(path, uploadFile, { contentType: uploadFile.type, upsert: false });
         if (uploadError) {
           console.error('Photo upload error:', uploadError);
           continue;
