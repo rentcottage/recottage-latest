@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { optimizedImageUrl, IMG_HERO, IMG_THUMB } from '../../../lib/imageUrl';
+import { optimizedImageUrl, IMG_HERO, IMG_THUMB, IMG_CARD } from '../../../lib/imageUrl';
 
 interface PropertyGalleryProps {
   images: string[];
@@ -7,7 +7,6 @@ interface PropertyGalleryProps {
 }
 
 export default function PropertyGallery({ images, title }: PropertyGalleryProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
@@ -54,83 +53,56 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
   return (
     <>
       {/* ── Main Gallery ─────────────────────────────────────────── */}
-      <div className="mb-8 space-y-3">
+      <div className="mb-8">
+        {/* Mosaic grid (mockup): big main image + 2×2 smaller tiles.
+            Any tile opens the lightbox at that photo. Smaller tiles are
+            desktop-only; mobile shows just the main image. */}
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] md:grid-rows-2 gap-2.5 rounded-card overflow-hidden h-64 md:h-[390px]">
 
-        {/* Main Image — 16:9, clickable → lightbox */}
-        <div
-          className="relative w-full overflow-hidden rounded-xl bg-gray-100 cursor-zoom-in group"
-          style={{ aspectRatio: '16 / 9' }}
-          onClick={() => openLightbox(activeIndex)}
-        >
-          <img
-            key={activeIndex}
-            src={optimizedImageUrl(safeImages[activeIndex], IMG_HERO, 75)}
-            alt={`${title} — photo ${activeIndex + 1}`}
-            fetchPriority={activeIndex === 0 ? 'high' : undefined}
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300"
-          />
+          {/* Main image — spans both rows */}
+          <div
+            className="relative md:row-span-2 h-full overflow-hidden bg-gray-100 cursor-zoom-in group"
+            onClick={() => openLightbox(0)}
+          >
+            <img
+              src={optimizedImageUrl(safeImages[0], IMG_HERO, 75)}
+              alt={`${title} — photo 1`}
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
 
-          {/* Overlay hint */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/50 text-white text-sm font-medium px-4 py-2 rounded-full flex items-center gap-2">
-              <div className="w-4 h-4 flex items-center justify-center">
-                <i className="ri-zoom-in-line"></i>
-              </div>
-              View full screen
-            </div>
-          </div>
-
-          {/* Photo counter badge */}
-          {safeImages.length > 1 && (
-            <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full">
-              {activeIndex + 1} / {safeImages.length}
-            </div>
-          )}
-
-          {/* "View all photos" button */}
-          {safeImages.length > 1 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); openLightbox(activeIndex); }}
-              className="absolute bottom-3 left-3 bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-gray-50 transition-colors shadow-sm whitespace-nowrap"
-            >
-              <div className="w-3.5 h-3.5 flex items-center justify-center">
-                <i className="ri-image-2-line"></i>
-              </div>
-              View all {safeImages.length} photos
-            </button>
-          )}
-        </div>
-
-        {/* Thumbnail Strip — 4:3 each, horizontal scroll */}
-        {safeImages.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-            {safeImages.map((img, idx) => (
+            {/* "View all photos" button */}
+            {safeImages.length > 1 && (
               <button
-                key={idx}
-                onClick={() => setActiveIndex(idx)}
-                className={`relative flex-shrink-0 rounded-lg overflow-hidden transition-all duration-200 focus:outline-none ${
-                  idx === activeIndex
-                    ? 'ring-2 ring-red-500 ring-offset-1 opacity-100'
-                    : 'opacity-70 hover:opacity-100'
-                }`}
-                style={{ width: 100, aspectRatio: '4 / 3' }}
-                aria-label={`View photo ${idx + 1}`}
+                onClick={(e) => { e.stopPropagation(); openLightbox(0); }}
+                className="absolute bottom-3.5 right-3.5 bg-white text-gray-800 text-[13px] font-bold px-4 py-2 rounded-[10px] flex items-center gap-1.5 hover:bg-gray-50 transition-colors shadow-card whitespace-nowrap cursor-pointer"
               >
-                <img
-                  src={optimizedImageUrl(img, IMG_THUMB, 60)}
-                  alt={`${title} thumbnail ${idx + 1}`}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 w-full h-full object-cover object-center"
-                />
-                {idx === activeIndex && (
-                  <div className="absolute inset-0 bg-red-500/10"></div>
-                )}
+                <i className="ri-image-2-line"></i>
+                All photos ({safeImages.length})
               </button>
-            ))}
+            )}
           </div>
-        )}
+
+          {/* 4 smaller tiles — desktop only */}
+          {safeImages.slice(1, 5).map((img, i) => (
+            <div
+              key={i + 1}
+              className="relative hidden md:block h-full overflow-hidden bg-gray-100 cursor-zoom-in group"
+              onClick={() => openLightbox(i + 1)}
+            >
+              <img
+                src={optimizedImageUrl(img, IMG_CARD, 65)}
+                alt={`${title} — photo ${i + 2}`}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── Lightbox ─────────────────────────────────────────────── */}
