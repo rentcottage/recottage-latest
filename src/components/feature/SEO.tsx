@@ -1,4 +1,14 @@
 import { useEffect } from 'react';
+import { useTranslation } from '@lib/i18n';
+
+/** Open Graph locale tags for each supported UI language. */
+const OG_LOCALES: Record<string, string> = {
+  en: 'en_US',
+  ka: 'ka_GE',
+  ru: 'ru_RU',
+  de: 'de_DE',
+  fr: 'fr_FR',
+};
 
 interface SEOProps {
   title: string;
@@ -21,6 +31,8 @@ export default function SEO({
   ogType = 'website',
   ogImage = 'https://rentcottage.ge/og-image.png',
 }: SEOProps) {
+  const { lang } = useTranslation();
+  const ogLocale = OG_LOCALES[lang] ?? 'en_US';
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
   const canonicalUrl = canonical ? `${siteUrl}${canonical}` : siteUrl;
   const schemas = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
@@ -71,7 +83,7 @@ export default function SEO({
     setMeta('meta[property="og:url"]', canonicalUrl);
     setMeta('meta[property="og:image"]', ogImage);
     setMeta('meta[property="og:site_name"]', 'RentCottage.Ge');
-    setMeta('meta[property="og:locale"]', 'en_US');
+    setMeta('meta[property="og:locale"]', ogLocale);
 
     // Twitter
     setMeta('meta[name="twitter:card"]', 'summary_large_image');
@@ -88,7 +100,7 @@ export default function SEO({
       script.textContent = JSON.stringify(schema);
       document.head.appendChild(script);
     });
-  }, [title, description, keywords, canonical, noIndex, ogType, ogImage, canonicalUrl, schemas]);
+  }, [title, description, keywords, canonical, noIndex, ogType, ogImage, ogLocale, canonicalUrl, schemas]);
 
   return null;
 }

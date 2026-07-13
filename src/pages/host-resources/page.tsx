@@ -4,8 +4,10 @@ import Footer from '../../components/feature/Footer';
 import ContactModal from '../../components/feature/ContactModal';
 import CancellationModal from '../../components/feature/CancellationModal';
 import SEO from '../../components/feature/SEO';
+import { useTranslation } from '@lib/i18n';
 
 export default function HostResources() {
+  const { t } = useTranslation();
   const [showContactModal, setShowContactModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
 
@@ -30,7 +32,7 @@ export default function HostResources() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="Host Resources — Tips & Guides for Georgian Cottage Hosts | RentCottage.Ge"
+        title={t('hostResources.seo.title')}
         description="Everything Georgian cottage hosts need to succeed: listing tips, photography best practices, guest communication templates, pricing strategies and safety guidelines."
         keywords="Georgian cottage host tips, host resources Georgia, listing cottage guide, hosting guide Georgia, cottage host photography tips"
         canonical="/host-resources"
@@ -47,10 +49,10 @@ export default function HostResources() {
       >
         <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4">
           <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-2 sm:mb-4">
-            Host Resources
+            {t('footer.hostResources')}
           </h1>
           <p className="text-sm sm:text-xl text-white/90 mb-4 sm:mb-8 max-w-2xl">
-            Everything you need to become a successful host and provide exceptional experiences for your guests
+            {t('hostResources.hero.subtitle')}
           </p>
         </div>
       </section>
@@ -59,13 +61,13 @@ export default function HostResources() {
 
         {/* Quick Navigation */}
         <div className="bg-gray-50 rounded-2xl p-4 sm:p-8 mb-8 sm:mb-16">
-          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 text-center mb-4 sm:mb-8">Quick Navigation</h2>
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 text-center mb-4 sm:mb-8">{t('hostResources.quickNav.title')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
-              { id: 'getting-started', icon: 'ri-rocket-line', label: 'Getting Started' },
-              { id: 'listing-tips', icon: 'ri-home-line', label: 'Listing Tips' },
-              { id: 'guest-communication', icon: 'ri-message-line', label: 'Guest Communication' },
-              { id: 'safety-guidelines', icon: 'ri-shield-check-line', label: 'Safety Guidelines' }
+              { id: 'getting-started', icon: 'ri-rocket-line', label: t('hostResources.quickNav.gettingStarted') },
+              { id: 'listing-tips', icon: 'ri-home-line', label: t('hostResources.quickNav.listingTips') },
+              { id: 'guest-communication', icon: 'ri-message-line', label: t('hostResources.quickNav.guestCommunication') },
+              { id: 'safety-guidelines', icon: 'ri-shield-check-line', label: t('hostResources.quickNav.safetyGuidelines') }
             ].map((item) => (
               <button
                 key={item.id}
@@ -83,7 +85,7 @@ export default function HostResources() {
 
         {/* Getting Started Section */}
         <section id="getting-started" className="mb-10 sm:mb-16">
-          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Getting Started as a Host</h2>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">{t('hostResources.gettingStarted.title')}</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-12">
             <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8">
@@ -92,13 +94,13 @@ export default function HostResources() {
                   <i className="ri-home-add-line text-xl sm:text-2xl text-red-500"></i>
                 </div>
               </div>
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Create Your Listing</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">{t('hostResources.gettingStarted.createListingTitle')}</h3>
               <ul className="space-y-2 sm:space-y-3 text-gray-600">
                 {[
-                  'Upload high-quality photos of your cottage',
-                  'Write a compelling property description',
-                  'Set competitive pricing for your area',
-                  'List all available amenities accurately',
+                  t('howItWorks.hosts.step1Detail1'),
+                  t('hostResources.gettingStarted.createListing2'),
+                  t('howItWorks.hosts.step1Detail3'),
+                  t('hostResources.gettingStarted.createListing4'),
                 ].map((item) => (
                   <li key={item} className="flex items-start">
                     <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center mt-0.5 mr-2 sm:mr-3 flex-shrink-0">
@@ -116,13 +118,13 @@ export default function HostResources() {
                   <i className="ri-shield-check-line text-xl sm:text-2xl text-blue-500"></i>
                 </div>
               </div>
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Verification Process</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">{t('hostResources.gettingStarted.verificationTitle')}</h3>
               <ul className="space-y-2 sm:space-y-3 text-gray-600">
                 {[
-                  'Complete identity verification',
-                  'Property inspection by our team',
-                  'Review and approval process',
-                  'Go live and start receiving bookings',
+                  t('hostResources.gettingStarted.verification1'),
+                  t('hostResources.gettingStarted.verification2'),
+                  t('hostResources.gettingStarted.verification3'),
+                  t('hostResources.gettingStarted.verification4'),
                 ].map((item) => (
                   <li key={item} className="flex items-start">
                     <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center mt-0.5 mr-2 sm:mr-3 flex-shrink-0">
@@ -141,8 +143,8 @@ export default function HostResources() {
                 <i className="ri-lightbulb-line text-blue-500 text-sm sm:text-base"></i>
               </div>
               <div>
-                <h4 className="font-semibold text-blue-900 text-sm sm:text-base mb-1 sm:mb-2">Pro Tip</h4>
-                <p className="text-blue-800 text-xs sm:text-sm">Complete your listing with all details before submitting for review. Incomplete listings take longer to approve and may require additional back-and-forth communication.</p>
+                <h4 className="font-semibold text-blue-900 text-sm sm:text-base mb-1 sm:mb-2">{t('hostResources.gettingStarted.proTipTitle')}</h4>
+                <p className="text-blue-800 text-xs sm:text-sm">{t('hostResources.gettingStarted.proTipText')}</p>
               </div>
             </div>
           </div>
@@ -150,16 +152,16 @@ export default function HostResources() {
 
         {/* Listing Tips Section */}
         <section id="listing-tips" className="mb-10 sm:mb-16">
-          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Optimize Your Listing</h2>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">{t('hostResources.listingTips.title')}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
             <div>
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Photography Best Practices</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">{t('hostResources.listingTips.photographyTitle')}</h3>
               <div className="space-y-3 sm:space-y-4">
                 {[
-                  { num: '1', color: 'green', title: 'Natural Lighting', desc: 'Take photos during golden hour or with plenty of natural light. Avoid using flash when possible.' },
-                  { num: '2', color: 'green', title: 'Wide Angles', desc: 'Use wide-angle shots to show the full space and make rooms appear larger and more inviting.' },
-                  { num: '3', color: 'green', title: 'Clean & Staged', desc: 'Ensure spaces are clean, decluttered, and staged to look welcoming and comfortable.' },
+                  { num: '1', color: 'green', title: t('hostResources.listingTips.photo1Title'), desc: t('hostResources.listingTips.photo1Desc') },
+                  { num: '2', color: 'green', title: t('hostResources.listingTips.photo2Title'), desc: t('hostResources.listingTips.photo2Desc') },
+                  { num: '3', color: 'green', title: t('hostResources.listingTips.photo3Title'), desc: t('hostResources.listingTips.photo3Desc') },
                 ].map(({ num, color, title, desc }) => (
                   <div key={num} className="flex items-start">
                     <div className={`w-7 h-7 sm:w-8 sm:h-8 bg-${color}-100 rounded-full flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0 mt-0.5`}>
@@ -175,12 +177,12 @@ export default function HostResources() {
             </div>
 
             <div>
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Writing Compelling Descriptions</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">{t('hostResources.listingTips.descriptionsTitle')}</h3>
               <div className="space-y-3 sm:space-y-4">
                 {[
-                  { num: '1', color: 'blue', title: 'Tell a Story', desc: 'Share the unique history or special features that make your cottage memorable.' },
-                  { num: '2', color: 'blue', title: 'Highlight Amenities', desc: 'Mention key amenities and nearby attractions that guests will find valuable.' },
-                  { num: '3', color: 'blue', title: 'Be Honest', desc: 'Accurately describe your space to set proper expectations and avoid disappointment.' },
+                  { num: '1', color: 'blue', title: t('hostResources.listingTips.desc1Title'), desc: t('hostResources.listingTips.desc1Desc') },
+                  { num: '2', color: 'blue', title: t('hostResources.listingTips.desc2Title'), desc: t('hostResources.listingTips.desc2Desc') },
+                  { num: '3', color: 'blue', title: t('hostResources.listingTips.desc3Title'), desc: t('hostResources.listingTips.desc3Desc') },
                 ].map(({ num, color, title, desc }) => (
                   <div key={num} className="flex items-start">
                     <div className={`w-7 h-7 sm:w-8 sm:h-8 bg-${color}-100 rounded-full flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0 mt-0.5`}>
@@ -197,12 +199,12 @@ export default function HostResources() {
           </div>
 
           <div className="bg-gray-50 rounded-xl p-4 sm:p-8">
-            <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Pricing Strategy</h3>
+            <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">{t('hostResources.listingTips.pricingTitle')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
               {[
-                { icon: 'ri-search-line', color: 'yellow', title: 'Research Competition', desc: 'Check similar properties in your area to understand market rates and position competitively.' },
-                { icon: 'ri-calendar-line', color: 'purple', title: 'Seasonal Pricing', desc: 'Adjust rates for peak seasons, holidays, and local events to maximize revenue.' },
-                { icon: 'ri-star-line', color: 'green', title: 'Value-Based Pricing', desc: 'Price based on unique amenities, location benefits, and overall guest experience value.' },
+                { icon: 'ri-search-line', color: 'yellow', title: t('hostResources.listingTips.pricing1Title'), desc: t('hostResources.listingTips.pricing1Desc') },
+                { icon: 'ri-calendar-line', color: 'purple', title: t('hostResources.listingTips.pricing2Title'), desc: t('hostResources.listingTips.pricing2Desc') },
+                { icon: 'ri-star-line', color: 'green', title: t('hostResources.listingTips.pricing3Title'), desc: t('hostResources.listingTips.pricing3Desc') },
               ].map(({ icon, color, title, desc }) => (
                 <div key={title} className="text-center">
                   <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-${color}-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4`}>
@@ -220,65 +222,65 @@ export default function HostResources() {
 
         {/* Guest Communication Section */}
         <section id="guest-communication" className="mb-10 sm:mb-16">
-          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Guest Communication Excellence</h2>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">{t('hostResources.communication.title')}</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Response Time Guidelines</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">{t('hostResources.communication.responseTimesTitle')}</h3>
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-green-50 rounded-lg gap-2">
                   <div>
-                    <h4 className="font-medium text-green-900 text-xs sm:text-sm">Booking Inquiries</h4>
-                    <p className="text-xs text-green-700">Initial guest questions</p>
+                    <h4 className="font-medium text-green-900 text-xs sm:text-sm">{t('hostResources.communication.inquiriesTitle')}</h4>
+                    <p className="text-xs text-green-700">{t('hostResources.communication.inquiriesDesc')}</p>
                   </div>
-                  <span className="text-sm sm:text-lg font-bold text-green-600 whitespace-nowrap">Within 1 hour</span>
+                  <span className="text-sm sm:text-lg font-bold text-green-600 whitespace-nowrap">{t('hostResources.communication.inquiriesTime')}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-blue-50 rounded-lg gap-2">
                   <div>
-                    <h4 className="font-medium text-blue-900 text-xs sm:text-sm">Booking Requests</h4>
-                    <p className="text-xs text-blue-700">Accept or decline requests</p>
+                    <h4 className="font-medium text-blue-900 text-xs sm:text-sm">{t('hostResources.communication.requestsTitle')}</h4>
+                    <p className="text-xs text-blue-700">{t('hostResources.communication.requestsDesc')}</p>
                   </div>
-                  <span className="text-sm sm:text-lg font-bold text-blue-600 whitespace-nowrap">Within 24 hours</span>
+                  <span className="text-sm sm:text-lg font-bold text-blue-600 whitespace-nowrap">{t('hostResources.communication.requestsTime')}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-yellow-50 rounded-lg gap-2">
                   <div>
-                    <h4 className="font-medium text-yellow-900 text-xs sm:text-sm">General Messages</h4>
-                    <p className="text-xs text-yellow-700">Ongoing communication</p>
+                    <h4 className="font-medium text-yellow-900 text-xs sm:text-sm">{t('hostResources.communication.messagesTitle')}</h4>
+                    <p className="text-xs text-yellow-700">{t('hostResources.communication.messagesDesc')}</p>
                   </div>
-                  <span className="text-sm sm:text-lg font-bold text-yellow-600 whitespace-nowrap">Within 4 hours</span>
+                  <span className="text-sm sm:text-lg font-bold text-yellow-600 whitespace-nowrap">{t('hostResources.communication.messagesTime')}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Communication Templates</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">{t('hostResources.communication.templatesTitle')}</h3>
               <div className="space-y-3 sm:space-y-4">
                 <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                  <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">Welcome Message</h4>
-                  <p className="text-xs text-gray-600 italic">"Welcome to [Property Name]! I'm excited to host you. Here&#39;s everything you need to know for check-in..."</p>
+                  <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">{t('hostResources.communication.welcomeTitle')}</h4>
+                  <p className="text-xs text-gray-600 italic">{t('hostResources.communication.welcomeExample')}</p>
                 </div>
                 <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                  <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">Check-in Instructions</h4>
-                  <p className="text-xs text-gray-600 italic">"Your check-in is at 3 PM. The key is located in the lockbox by the front door. The code is..."</p>
+                  <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">{t('hostResources.communication.checkinTitle')}</h4>
+                  <p className="text-xs text-gray-600 italic">{t('hostResources.communication.checkinExample')}</p>
                 </div>
                 <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                  <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">Local Recommendations</h4>
-                  <p className="text-xs text-gray-600 italic">"For the best Georgian cuisine, I recommend visiting [Restaurant Name]. It&#39;s just 10 minutes away..."</p>
+                  <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">{t('hostResources.communication.recommendationsTitle')}</h4>
+                  <p className="text-xs text-gray-600 italic">{t('hostResources.communication.recommendationsExample')}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-4 sm:p-8">
-            <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Building Guest Relationships</h3>
+            <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">{t('hostResources.communication.relationshipsTitle')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
-                <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-2 sm:mb-3">Before Arrival</h4>
+                <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-2 sm:mb-3">{t('hostResources.communication.beforeArrivalTitle')}</h4>
                 <ul className="space-y-1.5 sm:space-y-2 text-gray-600">
                   {[
-                    'Send welcome message with check-in details',
-                    'Share local recommendations and tips',
-                    'Provide emergency contact information',
+                    t('hostResources.communication.before1'),
+                    t('hostResources.communication.before2'),
+                    t('hostResources.communication.before3'),
                   ].map((item) => (
                     <li key={item} className="flex items-start">
                       <div className="w-4 h-4 flex items-center justify-center mt-0.5 mr-2 flex-shrink-0">
@@ -290,12 +292,12 @@ export default function HostResources() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-2 sm:mb-3">During Stay</h4>
+                <h4 className="font-medium text-gray-900 text-xs sm:text-sm mb-2 sm:mb-3">{t('hostResources.communication.duringStayTitle')}</h4>
                 <ul className="space-y-1.5 sm:space-y-2 text-gray-600">
                   {[
-                    'Check in within 24 hours of arrival',
-                    'Be available for questions or issues',
-                    'Respect guest privacy and space',
+                    t('hostResources.communication.during1'),
+                    t('hostResources.communication.during2'),
+                    t('hostResources.communication.during3'),
                   ].map((item) => (
                     <li key={item} className="flex items-start">
                       <div className="w-4 h-4 flex items-center justify-center mt-0.5 mr-2 flex-shrink-0">
@@ -312,7 +314,7 @@ export default function HostResources() {
 
         {/* Safety Guidelines Section */}
         <section id="safety-guidelines" className="mb-10 sm:mb-16">
-          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">Safety &amp; Security Guidelines</h2>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-5 sm:mb-8">{t('hostResources.safety.title')}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
             <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8">
@@ -321,13 +323,13 @@ export default function HostResources() {
                   <i className="ri-shield-check-line text-xl sm:text-2xl text-red-500"></i>
                 </div>
               </div>
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Property Safety</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">{t('hostResources.safety.propertyTitle')}</h3>
               <ul className="space-y-2 sm:space-y-3 text-gray-600">
                 {[
-                  'Install smoke and carbon monoxide detectors',
-                  'Provide fire extinguisher and first aid kit',
-                  'Ensure all electrical systems are up to code',
-                  'Secure all windows and doors properly',
+                  t('hostResources.safety.property1'),
+                  t('hostResources.safety.property2'),
+                  t('hostResources.safety.property3'),
+                  t('hostResources.safety.property4'),
                 ].map((item) => (
                   <li key={item} className="flex items-start">
                     <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center mt-0.5 mr-2 sm:mr-3 flex-shrink-0">
@@ -345,13 +347,13 @@ export default function HostResources() {
                   <i className="ri-user-settings-line text-xl sm:text-2xl text-blue-500"></i>
                 </div>
               </div>
-              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Guest Verification</h3>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">{t('hostResources.safety.guestVerificationTitle')}</h3>
               <ul className="space-y-2 sm:space-y-3 text-gray-600">
                 {[
-                  'Review guest profiles and previous reviews',
-                  'Communicate with guests before arrival',
-                  'Trust your instincts about bookings',
-                  'Keep records of all guest interactions',
+                  t('hostResources.safety.guest1'),
+                  t('hostResources.safety.guest2'),
+                  t('hostResources.safety.guest3'),
+                  t('hostResources.safety.guest4'),
                 ].map((item) => (
                   <li key={item} className="flex items-start">
                     <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center mt-0.5 mr-2 sm:mr-3 flex-shrink-0">
@@ -370,10 +372,10 @@ export default function HostResources() {
                 <i className="ri-alert-line text-yellow-500 text-sm sm:text-base"></i>
               </div>
               <div>
-                <h4 className="font-semibold text-yellow-900 text-sm sm:text-base mb-1 sm:mb-2">Emergency Contacts</h4>
-                <p className="text-yellow-800 text-xs sm:text-sm mb-0.5"><strong className="text-yellow-900">Police:</strong> 112</p>
-                <p className="text-yellow-800 text-xs sm:text-sm mb-0.5"><strong className="text-yellow-900">Ambulance:</strong> 112</p>
-                <p className="text-yellow-800 text-xs sm:text-sm"><strong className="text-yellow-900">Fire Department:</strong> 112</p>
+                <h4 className="font-semibold text-yellow-900 text-sm sm:text-base mb-1 sm:mb-2">{t('hostResources.safety.emergencyTitle')}</h4>
+                <p className="text-yellow-800 text-xs sm:text-sm mb-0.5"><strong className="text-yellow-900">{t('hostResources.safety.police')}:</strong> 112</p>
+                <p className="text-yellow-800 text-xs sm:text-sm mb-0.5"><strong className="text-yellow-900">{t('hostResources.safety.ambulance')}:</strong> 112</p>
+                <p className="text-yellow-800 text-xs sm:text-sm"><strong className="text-yellow-900">{t('hostResources.safety.fireDepartment')}:</strong> 112</p>
               </div>
             </div>
           </div>
@@ -382,8 +384,8 @@ export default function HostResources() {
         {/* Support Section */}
         <section className="bg-gray-50 rounded-2xl p-4 sm:p-8">
           <div className="text-center mb-5 sm:mb-8">
-            <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Need More Help?</h2>
-            <p className="text-gray-600 text-xs sm:text-base">Our hosting support team is here to assist you</p>
+            <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">{t('hostResources.support.title')}</h2>
+            <p className="text-gray-600 text-xs sm:text-base">{t('hostResources.support.subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -393,15 +395,15 @@ export default function HostResources() {
                   <i className="ri-mail-line text-red-500 text-lg sm:text-xl"></i>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Contact Support</h3>
-                  <p className="text-gray-600 text-xs sm:text-sm">Get help with your hosting questions</p>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t('hostResources.support.contactTitle')}</h3>
+                  <p className="text-gray-600 text-xs sm:text-sm">{t('hostResources.support.contactDesc')}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowContactModal(true)}
                 className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 sm:py-3 px-4 rounded-lg transition-colors text-sm cursor-pointer whitespace-nowrap"
               >
-                Send Message
+                {t('hostResources.support.sendMessage')}
               </button>
             </div>
 
@@ -411,15 +413,15 @@ export default function HostResources() {
                   <i className="ri-book-line text-blue-500 text-lg sm:text-xl"></i>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Cancellation Policy</h3>
-                  <p className="text-gray-600 text-xs sm:text-sm">Learn about our host cancellation rules</p>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t('header.help.cancellationTitle')}</h3>
+                  <p className="text-gray-600 text-xs sm:text-sm">{t('hostResources.support.policyDesc')}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowCancellationModal(true)}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 sm:py-3 px-4 rounded-lg transition-colors text-sm cursor-pointer whitespace-nowrap"
               >
-                View Policy
+                {t('hostResources.support.viewPolicy')}
               </button>
             </div>
           </div>

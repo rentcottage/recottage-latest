@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useTranslation } from '@lib/i18n';
+import type { TranslateFn, Lang } from '@lib/i18n';
 
 interface Booking {
   id: string;
@@ -30,19 +32,27 @@ interface Props {
   loading: boolean;
 }
 
-function timeAgo(d: string): string {
+function timeAgo(d: string, t: TranslateFn, lang: Lang): string {
   const diff = Date.now() - new Date(d).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('common.justNow');
+  if (mins < 60) return t('common.minutesAgo', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('common.hoursAgo', { count: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  if (days < 7) return t('common.daysAgo', { count: days });
+  return new Date(d).toLocaleDateString(lang, { day: '2-digit', month: 'short' });
 }
 
 export default function HostActivitySection({ bookings, loading }: Props) {
+  const { t, lang } = useTranslation();
+
+  const statusLabel = (s: string) => {
+    const key = `common.status.${s}`;
+    const out = t(key);
+    return out === key ? s : out;
+  };
+
   const activities = useMemo<ActivityItem[]>(() => {
     const items: ActivityItem[] = [];
 
@@ -53,7 +63,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
       items.push({
         id: `booking-${b.id}`,
         type: 'new_booking',
-        label: `New booking request from ${guestName}`,
+        label: t('host.activity.newBookingFrom', { name: guestName }),
         sub: `${b.property_title} · ${b.total_price ? `₾${b.total_price}` : ''}`,
         time: b.created_at,
         icon: 'ri-calendar-add-line',
@@ -66,7 +76,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
         items.push({
           id: `confirmed-${b.id}`,
           type: 'confirmed',
-          label: `Booking confirmed for ${guestName}`,
+          label: t('host.activity.confirmedFor', { name: guestName }),
           sub: b.property_title,
           time: b.created_at,
           icon: 'ri-checkbox-circle-line',
@@ -79,7 +89,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
         items.push({
           id: `cancelled-${b.id}`,
           type: 'cancelled',
-          label: `Booking cancelled by ${guestName}`,
+          label: t('host.activity.cancelledBy', { name: guestName }),
           sub: b.property_title,
           time: b.created_at,
           icon: 'ri-close-circle-line',
@@ -92,7 +102,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
         items.push({
           id: `completed-${b.id}`,
           type: 'completed',
-          label: `Stay completed — ${guestName} checked out`,
+          label: t('host.activity.completedCheckout', { name: guestName }),
           sub: b.property_title,
           time: b.created_at,
           icon: 'ri-star-line',
@@ -106,8 +116,8 @@ export default function HostActivitySection({ bookings, loading }: Props) {
         items.push({
           id: `datechange-${b.id}`,
           type: 'date_change',
-          label: `Date change request from ${guestName}`,
-          sub: `${b.property_title} · ${b.date_change_status === 'pending' ? 'Awaiting your response' : b.date_change_status}`,
+          label: t('host.activity.dateChangeFrom', { name: guestName }),
+          sub: `${b.property_title} · ${b.date_change_status === 'pending' ? t('host.activity.awaitingResponse') : statusLabel(b.date_change_status)}`,
           time: b.date_change_requested_at,
           icon: 'ri-calendar-2-line',
           iconBg: 'bg-amber-50',
@@ -118,7 +128,8 @@ export default function HostActivitySection({ bookings, loading }: Props) {
 
     // Sort by time, newest first
     return items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }, [bookings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings, t]);
 
   const pendingCount = bookings.filter((b) => b.status === 'pending').length;
   const dateChangeCount = bookings.filter((b) => b.date_change_status === 'pending').length;
@@ -126,8 +137,8 @@ export default function HostActivitySection({ bookings, loading }: Props) {
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Notifications &amp; Activity</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Recent booking activity and requests across your properties</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.activity.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.activity.subtitle')}</p>
       </div>
 
       {/* Alert banners */}
@@ -139,9 +150,9 @@ export default function HostActivitySection({ bookings, loading }: Props) {
             </div>
             <div className="min-w-0">
               <p className="text-xs md:text-sm font-semibold text-amber-800">
-                {pendingCount} pending booking {pendingCount === 1 ? 'request' : 'requests'}
+                {t('host.activity.pendingBookingRequests', { count: pendingCount })}
               </p>
-              <p className="text-xs text-amber-600 hidden sm:block">Admin will review and confirm or reject on your behalf</p>
+              <p className="text-xs text-amber-600 hidden sm:block">{t('host.activity.adminWillReview')}</p>
             </div>
           </div>
         )}
@@ -152,9 +163,9 @@ export default function HostActivitySection({ bookings, loading }: Props) {
             </div>
             <div className="min-w-0">
               <p className="text-xs md:text-sm font-semibold text-sky-800">
-                {dateChangeCount} date change {dateChangeCount === 1 ? 'request' : 'requests'} pending
+                {t('host.activity.dateChangeRequestsPending', { count: dateChangeCount })}
               </p>
-              <p className="text-xs text-sky-600 hidden sm:block">Guests are requesting date modifications for their bookings</p>
+              <p className="text-xs text-sky-600 hidden sm:block">{t('host.activity.guestsRequestingDates')}</p>
             </div>
           </div>
         )}
@@ -163,8 +174,8 @@ export default function HostActivitySection({ bookings, loading }: Props) {
       {/* Activity feed */}
       <div className="bg-white rounded-card border border-line shadow-card">
         <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">Activity Feed</h3>
-          <span className="text-xs text-gray-400">{activities.length} events</span>
+          <h3 className="text-sm font-semibold text-gray-900">{t('host.activity.feedTitle')}</h3>
+          <span className="text-xs text-gray-400">{t('host.activity.eventsCount', { count: activities.length })}</span>
         </div>
 
         {loading ? (
@@ -173,7 +184,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
               <div className="w-4 h-4 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line"></i>
               </div>
-              <span className="text-sm">Loading activity…</span>
+              <span className="text-sm">{t('host.activity.loadingActivity')}</span>
             </div>
           </div>
         ) : activities.length === 0 ? (
@@ -181,8 +192,8 @@ export default function HostActivitySection({ bookings, loading }: Props) {
             <div className="w-10 h-10 flex items-center justify-center mb-2">
               <i className="ri-notification-off-line text-3xl"></i>
             </div>
-            <p className="text-sm">No activity yet</p>
-            <p className="text-xs mt-1">Activity from bookings will appear here</p>
+            <p className="text-sm">{t('host.activity.noActivityYet')}</p>
+            <p className="text-xs mt-1">{t('host.activity.noActivityHint')}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
@@ -195,7 +206,7 @@ export default function HostActivitySection({ bookings, loading }: Props) {
                   <p className="text-xs md:text-sm font-medium text-gray-900">{a.label}</p>
                   <p className="text-xs text-gray-400 mt-0.5 truncate">{a.sub}</p>
                 </div>
-                <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{timeAgo(a.time)}</span>
+                <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{timeAgo(a.time, t, lang)}</span>
               </div>
             ))}
           </div>

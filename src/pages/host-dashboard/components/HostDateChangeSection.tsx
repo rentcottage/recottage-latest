@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation, type TranslateFn } from '@lib/i18n';
 
 interface Booking {
   id: string;
@@ -21,12 +22,12 @@ interface Props {
   loading: boolean;
 }
 
-function fmt(d: string) {
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+function fmt(d: string, lang: string) {
+  return new Date(d).toLocaleDateString(lang, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function fmtTs(d: string) {
-  return new Date(d).toLocaleDateString('en-GB', {
+function fmtTs(d: string, lang: string) {
+  return new Date(d).toLocaleDateString(lang, {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
@@ -37,7 +38,15 @@ function statusBadge(s: string) {
   return 'bg-amber-100 text-amber-700';
 }
 
+function statusLabel(s: string, t: TranslateFn) {
+  if (s === 'approved') return t('host.dateChange.status.approved');
+  if (s === 'rejected') return t('host.bookings.status.rejected');
+  if (s === 'pending') return t('host.bookings.status.pending');
+  return s;
+}
+
 export default function HostDateChangeSection({ bookings, loading }: Props) {
+  const { t, lang } = useTranslation();
   const dateChanges = useMemo(() =>
     bookings.filter((b) => b.date_change_status !== null),
     [bookings]
@@ -46,8 +55,8 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Date Change Requests</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Guest-requested booking date modifications for your properties</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.dateChange.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.dateChange.subtitle')}</p>
       </div>
 
       <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
@@ -57,7 +66,7 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
               <div className="w-4 h-4 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line"></i>
               </div>
-              <span className="text-sm">Loading…</span>
+              <span className="text-sm">{t('common.loading')}</span>
             </div>
           </div>
         ) : dateChanges.length === 0 ? (
@@ -65,15 +74,23 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
             <div className="w-10 h-10 flex items-center justify-center mb-2">
               <i className="ri-calendar-check-line text-3xl"></i>
             </div>
-            <p className="text-sm">No date change requests</p>
-            <p className="text-xs mt-1">Guest date change requests will appear here</p>
+            <p className="text-sm">{t('host.dateChange.emptyTitle')}</p>
+            <p className="text-xs mt-1">{t('host.dateChange.emptySubtitle')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Guest', 'Property', 'Current Dates', 'Requested Dates', 'Price', 'Requested', 'Status'].map((h) => (
+                  {[
+                    t('host.bookings.guest'),
+                    t('host.bookings.table.property'),
+                    t('host.dateChange.table.currentDates'),
+                    t('host.dateChange.table.requestedDates'),
+                    t('host.dateChange.table.price'),
+                    t('host.dateChange.table.requested'),
+                    t('host.bookings.table.status'),
+                  ].map((h) => (
                     <th key={h} className="px-3 md:px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
@@ -97,15 +114,15 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
                       )}
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4 whitespace-nowrap">
-                      <p className="text-xs md:text-sm text-gray-500 line-through">{fmt(b.check_in)}</p>
-                      <p className="text-xs text-gray-400 line-through">→ {fmt(b.check_out)}</p>
+                      <p className="text-xs md:text-sm text-gray-500 line-through">{fmt(b.check_in, lang)}</p>
+                      <p className="text-xs text-gray-400 line-through">→ {fmt(b.check_out, lang)}</p>
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4 whitespace-nowrap">
                       <p className="text-xs md:text-sm font-medium text-gray-900">
-                        {b.requested_check_in ? fmt(b.requested_check_in) : '—'}
+                        {b.requested_check_in ? fmt(b.requested_check_in, lang) : '—'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {b.requested_check_out ? `→ ${fmt(b.requested_check_out)}` : ''}
+                        {b.requested_check_out ? `→ ${fmt(b.requested_check_out, lang)}` : ''}
                       </p>
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4 whitespace-nowrap">
@@ -122,12 +139,12 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4 whitespace-nowrap">
                       <span className="text-xs text-gray-400">
-                        {b.date_change_requested_at ? fmtTs(b.date_change_requested_at) : '—'}
+                        {b.date_change_requested_at ? fmtTs(b.date_change_requested_at, lang) : '—'}
                       </span>
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusBadge(b.date_change_status ?? 'pending')}`}>
-                        {b.date_change_status}
+                        {statusLabel(b.date_change_status ?? 'pending', t)}
                       </span>
                     </td>
                   </tr>

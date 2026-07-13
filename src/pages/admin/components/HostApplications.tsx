@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation, translateVocab } from '@lib/i18n';
+import type { TranslateFn } from '@lib/i18n';
 
 interface HostApplication {
   id: string;
@@ -61,38 +63,51 @@ function statusIcon(status: string) {
   return 'ri-time-line';
 }
 
-function formatDate(str: string) {
-  return new Date(str).toLocaleDateString('en-GB', {
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  pending: 'common.status.pending',
+  approved: 'common.status.approved',
+  rejected: 'common.status.rejected',
+  hidden: 'common.status.hidden',
+};
+
+/** Localized label for an application status; unexpected values render as-is. */
+function statusLabel(t: TranslateFn, status: string) {
+  const key = STATUS_LABEL_KEYS[status];
+  return key ? t(key) : status;
+}
+
+function formatDate(str: string, lang: string) {
+  return new Date(str).toLocaleDateString(lang, {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
 
-function formatCreated(str: string) {
-  return new Date(str).toLocaleDateString('en-GB', {
+function formatCreated(str: string, lang: string) {
+  return new Date(str).toLocaleDateString(lang, {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
 
 // ─── Agreement Status Badge ──────────────────────────────────────────────────
-function agreementStatusConfig(status: string | null | undefined) {
+function agreementStatusConfig(t: TranslateFn, status: string | null | undefined) {
   const s = status ?? 'not_sent';
   if (s === 'received') return {
-    label: 'Agreement Received',
-    shortLabel: 'Received',
+    label: t('admin.hostApps.agreement.received'),
+    shortLabel: t('admin.hostApps.agreement.receivedShort'),
     icon: 'ri-file-check-line',
     badge: 'bg-green-100 text-green-700',
     dot: 'bg-green-500',
   };
   if (s === 'pending') return {
-    label: 'Agreement Sent by Host',
-    shortLabel: 'Sent by Host',
+    label: t('admin.hostApps.agreement.sentByHost'),
+    shortLabel: t('admin.hostApps.agreement.sentByHostShort'),
     icon: 'ri-file-transfer-line',
     badge: 'bg-amber-100 text-amber-700',
     dot: 'bg-amber-500',
   };
   return {
-    label: 'Agreement Not Sent',
-    shortLabel: 'Not Sent',
+    label: t('admin.hostApps.agreement.notSent'),
+    shortLabel: t('admin.hostApps.agreement.notSentShort'),
     icon: 'ri-file-unknow-line',
     badge: 'bg-gray-100 text-gray-500',
     dot: 'bg-gray-400',
@@ -107,13 +122,14 @@ interface AgreementStatusDropdownProps {
 }
 
 function AgreementStatusDropdown({ app, onUpdate, loading }: AgreementStatusDropdownProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const current = agreementStatusConfig(app.agreement_status);
+  const current = agreementStatusConfig(t, app.agreement_status);
 
   const options: { value: AgreementStatus; label: string; icon: string; color: string }[] = [
-    { value: 'not_sent', label: 'Agreement Not Sent', icon: 'ri-file-unknow-line', color: 'text-gray-600' },
-    { value: 'pending', label: 'Agreement Sent by Host', icon: 'ri-file-transfer-line', color: 'text-amber-600' },
-    { value: 'received', label: 'Agreement Received', icon: 'ri-file-check-line', color: 'text-green-600' },
+    { value: 'not_sent', label: t('admin.hostApps.agreement.notSent'), icon: 'ri-file-unknow-line', color: 'text-gray-600' },
+    { value: 'pending', label: t('admin.hostApps.agreement.sentByHost'), icon: 'ri-file-transfer-line', color: 'text-amber-600' },
+    { value: 'received', label: t('admin.hostApps.agreement.received'), icon: 'ri-file-check-line', color: 'text-green-600' },
   ];
 
   return (
@@ -122,7 +138,7 @@ function AgreementStatusDropdown({ app, onUpdate, loading }: AgreementStatusDrop
         onClick={() => setOpen((v) => !v)}
         disabled={loading}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${current.badge} hover:opacity-80`}
-        title="Click to change agreement status"
+        title={t('admin.hostApps.agreement.changeStatusTitle')}
       >
         <div className="w-3 h-3 flex items-center justify-center">
           <i className={current.icon}></i>
@@ -177,15 +193,16 @@ interface RejectNoteModalProps {
   loading: boolean;
 }
 
-const QUICK_REASONS = [
-  'This cottage has already been submitted',
-  'Duplicate application — property already under review',
-  'This property is already listed on the platform',
-  'Incomplete or insufficient information provided',
-  'Photos do not meet our quality standards',
+const QUICK_REASON_KEYS = [
+  'admin.hostApps.reject.reasonAlreadySubmitted',
+  'admin.hostApps.reject.reasonDuplicate',
+  'admin.hostApps.reject.reasonAlreadyListed',
+  'admin.hostApps.reject.reasonIncomplete',
+  'admin.hostApps.reject.reasonPhotoQuality',
 ];
 
 function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalProps) {
+  const { t } = useTranslation();
   const [note, setNote] = useState('');
 
   return (
@@ -197,38 +214,41 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
             <i className="ri-close-circle-line text-red-500 text-lg"></i>
           </div>
           <div>
-            <h3 className="text-base font-bold text-gray-900">Reject Application</h3>
+            <h3 className="text-base font-bold text-gray-900">{t('admin.hostApps.reject.title')}</h3>
             <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[340px] notranslate" translate="no">&ldquo;{app.title}&rdquo;</p>
           </div>
         </div>
 
         <div className="mb-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quick reasons</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.hostApps.reject.quickReasons')}</p>
           <div className="flex flex-wrap gap-2">
-            {QUICK_REASONS.map((r) => (
-              <button
-                key={r}
-                onClick={() => setNote(r)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap ${
-                  note === r
-                    ? 'bg-red-50 border-red-300 text-red-700 font-semibold'
-                    : 'border-line text-gray-600 hover:border-red-200 hover:text-red-600'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+            {QUICK_REASON_KEYS.map((k) => {
+              const r = t(k);
+              return (
+                <button
+                  key={k}
+                  onClick={() => setNote(r)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap ${
+                    note === r
+                      ? 'bg-red-50 border-red-300 text-red-700 font-semibold'
+                      : 'border-line text-gray-600 hover:border-red-200 hover:text-red-600'
+                  }`}
+                >
+                  {r}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="mb-5">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-            Rejection note <span className="text-gray-400 font-normal normal-case">(optional — sent to applicant)</span>
+            {t('admin.hostApps.reject.noteLabel')} <span className="text-gray-400 font-normal normal-case">{t('admin.hostApps.reject.noteOptional')}</span>
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. This cottage has already been submitted and is currently under review."
+            placeholder={t('admin.hostApps.reject.notePlaceholder')}
             rows={4}
             maxLength={500}
             className="w-full text-sm border border-line rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none text-gray-700 placeholder-gray-400"
@@ -241,7 +261,7 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
             <i className="ri-information-line text-amber-500 text-sm"></i>
           </div>
           <p className="text-xs text-amber-700 leading-relaxed">
-            The rejection note will be included in the email sent to the applicant and saved in the admin panel.
+            {t('admin.hostApps.reject.noteInfo')}
           </p>
         </div>
 
@@ -251,7 +271,7 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
             disabled={loading}
             className="flex-1 py-2.5 border border-line hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={() => onConfirm(note.trim())}
@@ -267,7 +287,7 @@ function RejectNoteModal({ app, onConfirm, onCancel, loading }: RejectNoteModalP
                 <i className="ri-close-circle-line"></i>
               </div>
             )}
-            Confirm Rejection
+            {t('admin.hostApps.reject.confirm')}
           </button>
         </div>
       </div>
@@ -284,6 +304,7 @@ interface ConfirmDeleteModalProps {
 }
 
 function ConfirmDeleteModal({ app, onConfirm, onCancel, loading }: ConfirmDeleteModalProps) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
@@ -293,16 +314,16 @@ function ConfirmDeleteModal({ app, onConfirm, onCancel, loading }: ConfirmDelete
             <i className="ri-delete-bin-line text-red-500 text-lg"></i>
           </div>
           <div>
-            <h3 className="text-base font-bold text-gray-900">Remove Permanently?</h3>
-            <p className="text-xs text-gray-400 mt-0.5">This action cannot be undone</p>
+            <h3 className="text-base font-bold text-gray-900">{t('admin.hostApps.delete.title')}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{t('admin.hostApps.delete.cannotUndo')}</p>
           </div>
         </div>
 
         <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5">
           <p className="text-sm text-gray-700 leading-relaxed">
-            You are about to permanently delete{' '}
-            <strong className="text-gray-900">&ldquo;{app.title}&rdquo;</strong>.
-            This will remove the listing, all associated reviews, and blocked dates from the database.
+            {t('admin.hostApps.delete.warningBefore')}{' '}
+            <strong className="text-gray-900">&ldquo;{app.title}&rdquo;</strong>.{' '}
+            {t('admin.hostApps.delete.warningAfter')}
           </p>
         </div>
 
@@ -312,7 +333,7 @@ function ConfirmDeleteModal({ app, onConfirm, onCancel, loading }: ConfirmDelete
             disabled={loading}
             className="flex-1 py-2.5 border border-line hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -328,7 +349,7 @@ function ConfirmDeleteModal({ app, onConfirm, onCancel, loading }: ConfirmDelete
                 <i className="ri-delete-bin-line"></i>
               </div>
             )}
-            Yes, Delete Permanently
+            {t('admin.hostApps.delete.confirm')}
           </button>
         </div>
       </div>
@@ -355,11 +376,12 @@ function DetailModal({
   app, onClose, onApprove, onRejectRequest, onHide, onUnhide, onDeleteRequest,
   onSendAgreementReminder, onUpdateAgreementStatus, onResendApprovalEmail, actionLoading,
 }: DetailModalProps) {
+  const { t, lang } = useTranslation();
   const [activePhoto, setActivePhoto] = useState<string | null>(
     app.photo_urls.length > 0 ? app.photo_urls[0] : null
   );
   const hostName = `${app.host_first_name} ${app.host_last_name}`;
-  const agConfig = agreementStatusConfig(app.agreement_status);
+  const agConfig = agreementStatusConfig(t, app.agreement_status);
 
   const hasLocation = app.google_maps_url || app.latitude != null || app.longitude != null || app.address;
   const mapViewUrl = app.google_maps_url || (app.latitude != null && app.longitude != null ? `https://www.google.com/maps?q=${app.latitude},${app.longitude}` : null);
@@ -373,12 +395,12 @@ function DetailModal({
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 z-10 flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-gray-900 notranslate" translate="no">{app.title}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">ID: {app.id.slice(0, 8)}&hellip;</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t('admin.hostApps.detail.idShort', { id: app.id.slice(0, 8) })}&hellip;</p>
           </div>
           <div className="flex items-center gap-3">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusBadge(app.status)}`}>
               <i className={`${statusIcon(app.status)} text-xs`}></i>
-              {app.status}
+              {statusLabel(t, app.status)}
             </span>
             <button
               onClick={onClose}
@@ -393,7 +415,7 @@ function DetailModal({
           {/* Application ID */}
           <div className="bg-gray-50 rounded-lg px-4 py-2.5">
             <p className="text-xs text-gray-500">
-              <span className="font-semibold">Application ID:</span>{' '}
+              <span className="font-semibold">{t('admin.hostApps.detail.applicationId')}</span>{' '}
               <span className="font-mono text-gray-700">{app.id}</span>
             </p>
           </div>
@@ -406,7 +428,7 @@ function DetailModal({
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-file-text-line text-gray-500 text-sm"></i>
                   </div>
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Agreement Status</p>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('admin.hostApps.agreement.panelTitle')}</p>
                 </div>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${agConfig.badge}`}>
                   <div className="w-3 h-3 flex items-center justify-center">
@@ -421,13 +443,13 @@ function DetailModal({
                     <div className="w-3 h-3 flex items-center justify-center">
                       <i className="ri-calendar-check-line"></i>
                     </div>
-                    Agreement received on {formatCreated(app.agreement_received_at)}
+                    {t('admin.hostApps.agreement.receivedOn', { date: formatCreated(app.agreement_received_at, lang) })}
                   </div>
                 )}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs text-gray-500 font-medium">Update status:</p>
+                  <p className="text-xs text-gray-500 font-medium">{t('admin.hostApps.agreement.updateStatus')}</p>
                   {(['not_sent', 'pending', 'received'] as AgreementStatus[]).map((s) => {
-                    const cfg = agreementStatusConfig(s);
+                    const cfg = agreementStatusConfig(t, s);
                     const isActive = (app.agreement_status ?? 'not_sent') === s;
                     return (
                       <button
@@ -464,11 +486,11 @@ function DetailModal({
                 <i className="ri-close-circle-line text-red-500"></i>
               </div>
               <div>
-                <p className="text-sm font-semibold text-red-700 mb-1">Rejection Note</p>
+                <p className="text-sm font-semibold text-red-700 mb-1">{t('admin.hostApps.detail.rejectionNote')}</p>
                 {app.rejection_note ? (
                   <p className="text-sm text-red-600 leading-relaxed">{app.rejection_note}</p>
                 ) : (
-                  <p className="text-sm text-red-400 italic">No rejection note was provided.</p>
+                  <p className="text-sm text-red-400 italic">{t('admin.hostApps.detail.noRejectionNote')}</p>
                 )}
               </div>
             </div>
@@ -481,7 +503,7 @@ function DetailModal({
                 <i className="ri-eye-off-line text-gray-500"></i>
               </div>
               <p className="text-sm text-gray-600">
-                This property is currently <strong>hidden from the website</strong>. Guests cannot see or book it.
+                {t('admin.hostApps.detail.hiddenNoticeBefore')} <strong>{t('admin.hostApps.detail.hiddenNoticeStrong')}</strong>. {t('admin.hostApps.detail.hiddenNoticeAfter')}
               </p>
             </div>
           )}
@@ -490,11 +512,11 @@ function DetailModal({
           {app.photo_urls.length > 0 ? (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                Photos ({app.photo_urls.length})
+                {t('admin.hostApps.detail.photos', { count: app.photo_urls.length })}
               </p>
               {activePhoto && (
                 <div className="w-full h-56 rounded-xl overflow-hidden bg-gray-100 mb-3">
-                  <img src={activePhoto} alt="Cottage main" className="w-full h-full object-cover" />
+                  <img src={activePhoto} alt={t('admin.hostApps.detail.mainPhotoAlt')} className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="flex gap-2 flex-wrap">
@@ -506,7 +528,7 @@ function DetailModal({
                       activePhoto === url ? 'border-red-400' : 'border-transparent hover:border-gray-300'
                     }`}
                   >
-                    <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={t('admin.hostApps.detail.photoAlt', { num: i + 1 })} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -514,13 +536,13 @@ function DetailModal({
           ) : (
             <div className="flex items-center gap-2 text-sm text-gray-400 bg-gray-50 rounded-lg px-4 py-3">
               <i className="ri-image-line"></i>
-              No photos submitted
+              {t('admin.hostApps.detail.noPhotos')}
             </div>
           )}
 
           {/* Host Info */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Host Information</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('admin.hostApps.detail.hostInfo')}</p>
             <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-red-100 rounded-full flex items-center justify-center">
@@ -528,7 +550,7 @@ function DetailModal({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{hostName}</p>
-                  <p className="text-xs text-gray-500">Host applicant</p>
+                  <p className="text-xs text-gray-500">{t('admin.hostApps.detail.hostApplicant')}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 pt-1">
@@ -548,15 +570,15 @@ function DetailModal({
 
           {/* Property Details */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Property Details</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('admin.hostApps.detail.propertyDetails')}</p>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Type', value: app.property_type, icon: 'ri-home-4-line' },
-                { label: 'Location', value: app.location, icon: 'ri-map-pin-line' },
-                { label: 'Bedrooms', value: String(app.bedrooms), icon: 'ri-hotel-bed-line' },
-                { label: 'Bathrooms', value: String(app.bathrooms), icon: 'ri-drop-line' },
-                { label: 'Max Guests', value: String(app.max_guests), icon: 'ri-group-line' },
-                { label: 'Price/night', value: `₾${app.price_per_night}`, icon: 'ri-price-tag-3-line' },
+                { label: t('admin.hostApps.detail.type'), value: translateVocab(t, 'propertyType', app.property_type), icon: 'ri-home-4-line' },
+                { label: t('common.location'), value: app.location, icon: 'ri-map-pin-line' },
+                { label: t('admin.hostApps.detail.bedrooms'), value: String(app.bedrooms), icon: 'ri-hotel-bed-line' },
+                { label: t('admin.hostApps.detail.bathrooms'), value: String(app.bathrooms), icon: 'ri-drop-line' },
+                { label: t('admin.hostApps.detail.maxGuests'), value: String(app.max_guests), icon: 'ri-group-line' },
+                { label: t('admin.hostApps.pricePerNight'), value: `₾${app.price_per_night}`, icon: 'ri-price-tag-3-line' },
               ].map(({ label, value, icon }) => (
                 <div key={label} className="flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-3">
                   <div className="w-4 h-4 flex items-center justify-center">
@@ -573,14 +595,14 @@ function DetailModal({
 
           {/* Description */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Description</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('admin.hostApps.detail.description')}</p>
             <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-4 leading-relaxed">{app.description}</p>
           </div>
 
           {/* Location */}
           {hasLocation && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Location</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('common.location')}</p>
               <div className="space-y-3">
                 {app.address && (
                   <div className="flex items-start gap-2">
@@ -599,7 +621,7 @@ function DetailModal({
                 {mapEmbedSrc && (
                   <div className="w-full h-52 rounded-xl overflow-hidden border border-line">
                     <iframe
-                      title="Property map"
+                      title={t('admin.hostApps.detail.mapTitle')}
                       src={mapEmbedSrc}
                       width="100%"
                       height="100%"
@@ -620,7 +642,7 @@ function DetailModal({
                     <div className="w-3 h-3 flex items-center justify-center">
                       <i className="ri-map-2-line text-red-500"></i>
                     </div>
-                    View on Google Maps
+                    {t('admin.hostApps.detail.viewOnMaps')}
                     <div className="w-3 h-3 flex items-center justify-center">
                       <i className="ri-external-link-line text-gray-400"></i>
                     </div>
@@ -633,12 +655,12 @@ function DetailModal({
           {/* Amenities */}
           {app.amenities && app.amenities.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Amenities</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('admin.hostApps.detail.amenities')}</p>
               <div className="flex flex-wrap gap-2">
                 {app.amenities.map((a) => (
                   <span key={a} className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
                     <i className="ri-checkbox-circle-line text-green-500 text-xs"></i>
-                    {a}
+                    {translateVocab(t, 'amenities', a)}
                   </span>
                 ))}
               </div>
@@ -648,7 +670,7 @@ function DetailModal({
           {/* Submitted */}
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <i className="ri-calendar-line"></i>
-            Submitted {formatCreated(app.created_at)}
+            {t('admin.hostApps.detail.submittedOn', { date: formatCreated(app.created_at, lang) })}
           </div>
         </div>
 
@@ -666,7 +688,7 @@ function DetailModal({
                 ) : (
                   <div className="w-4 h-4 flex items-center justify-center"><i className="ri-checkbox-circle-line"></i></div>
                 )}
-                Approve Application
+                {t('admin.hostApps.actions.approveApplication')}
               </button>
               <button
                 onClick={() => onRejectRequest(app)}
@@ -674,7 +696,7 @@ function DetailModal({
                 className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
               >
                 <div className="w-4 h-4 flex items-center justify-center"><i className="ri-close-circle-line"></i></div>
-                Reject Application
+                {t('admin.hostApps.reject.title')}
               </button>
             </div>
           )}
@@ -686,14 +708,14 @@ function DetailModal({
                   onClick={() => onResendApprovalEmail(app.id)}
                   disabled={!!actionLoading}
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
-                  title="Resend the approval confirmation email to the host"
+                  title={t('admin.hostApps.actions.resendApprovalEmailTitle')}
                 >
                   {actionLoading === app.id + 'resend-approval' ? (
                     <div className="w-4 h-4 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
                   ) : (
                     <div className="w-4 h-4 flex items-center justify-center"><i className="ri-mail-check-line"></i></div>
                   )}
-                  Resend Approval Email
+                  {t('admin.hostApps.actions.resendApprovalEmail')}
                 </button>
               </div>
               <div className="flex items-center gap-3">
@@ -701,19 +723,19 @@ function DetailModal({
                   onClick={() => onSendAgreementReminder(app.id)}
                   disabled={!!actionLoading}
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
-                  title={app.agreement_reminder_sent_at ? `Last sent: ${formatDate(app.agreement_reminder_sent_at)}` : 'Send agreement reminder email'}
+                  title={app.agreement_reminder_sent_at ? t('admin.hostApps.actions.lastSent', { date: formatDate(app.agreement_reminder_sent_at, lang) }) : t('admin.hostApps.actions.sendReminderTitle')}
                 >
                   {actionLoading === app.id + 'reminder' ? (
                     <div className="w-4 h-4 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
                   ) : (
                     <div className="w-4 h-4 flex items-center justify-center"><i className="ri-mail-send-line"></i></div>
                   )}
-                  {app.agreement_reminder_sent_at ? 'Resend Agreement Reminder' : 'Send Agreement Reminder'}
+                  {app.agreement_reminder_sent_at ? t('admin.hostApps.actions.resendAgreementReminder') : t('admin.hostApps.actions.sendAgreementReminder')}
                 </button>
               </div>
               {app.agreement_reminder_sent_at && (
                 <p className="text-xs text-gray-400 text-center">
-                  Last reminder sent: {formatCreated(app.agreement_reminder_sent_at)}
+                  {t('admin.hostApps.actions.lastReminderSent', { date: formatCreated(app.agreement_reminder_sent_at, lang) })}
                 </p>
               )}
               <div className="flex items-center gap-3">
@@ -727,7 +749,7 @@ function DetailModal({
                   ) : (
                     <div className="w-4 h-4 flex items-center justify-center"><i className="ri-eye-off-line"></i></div>
                   )}
-                  Hide from Website
+                  {t('admin.hostApps.actions.hideFromWebsite')}
                 </button>
               </div>
               <div className="border-t border-gray-100 pt-3">
@@ -737,7 +759,7 @@ function DetailModal({
                   className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 hover:bg-red-50 disabled:opacity-50 text-red-500 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
                 >
                   <div className="w-4 h-4 flex items-center justify-center"><i className="ri-delete-bin-line"></i></div>
-                  Remove Permanently
+                  {t('admin.hostApps.actions.removePermanently')}
                 </button>
               </div>
             </>
@@ -756,7 +778,7 @@ function DetailModal({
                   ) : (
                     <div className="w-4 h-4 flex items-center justify-center"><i className="ri-eye-line"></i></div>
                   )}
-                  Publish Again
+                  {t('admin.hostApps.actions.publishAgain')}
                 </button>
               </div>
               <div className="border-t border-gray-100 pt-3">
@@ -766,7 +788,7 @@ function DetailModal({
                   className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 hover:bg-red-50 disabled:opacity-50 text-red-500 text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
                 >
                   <div className="w-4 h-4 flex items-center justify-center"><i className="ri-delete-bin-line"></i></div>
-                  Remove Permanently
+                  {t('admin.hostApps.actions.removePermanently')}
                 </button>
               </div>
             </>
@@ -779,6 +801,7 @@ function DetailModal({
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function HostApplications({ onPendingCountChange }: Props) {
+  const { t, lang } = useTranslation();
   const [applications, setApplications] = useState<HostApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterTab>('pending');
@@ -822,15 +845,15 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           onPendingCountChange(apps.filter((a) => a.status === 'pending').length);
         }
       } else {
-        const errMsg = (data.error as string) ?? `Fetch failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('admin.hostApps.errors.fetchFailed', { status: res.status });
         setFetchError(errMsg);
       }
     } catch (err) {
       console.error('[fetchApplications] Network error:', err);
-      setFetchError('Network error. Could not load applications.');
+      setFetchError(t('admin.hostApps.errors.networkLoad'));
     }
     setLoading(false);
-  }, [onPendingCountChange]);
+  }, [onPendingCountChange, t]);
 
   useEffect(() => {
     fetchApplications();
@@ -871,18 +894,18 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           onPendingCountChange(updated.filter((a) => a.status === 'pending').length);
         }
         const toastMessages: Record<string, string> = {
-          approve: 'Application approved — host notified by email.',
-          hide: 'Property hidden from the website.',
-          unhide: 'Property published again — now visible to guests.',
+          approve: t('admin.hostApps.toasts.approved'),
+          hide: t('admin.hostApps.toasts.hidden'),
+          unhide: t('admin.hostApps.toasts.published'),
         };
         showToast(toastMessages[action], 'success');
       } else {
-        const errMsg = (data.error as string) ?? `Request failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('common.requestFailed', { status: res.status });
         showToast(errMsg, 'error');
       }
     } catch (err) {
       console.error('[handleAction] Network error:', err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('common.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -916,15 +939,15 @@ export default function HostApplications({ onPendingCountChange }: Props) {
         if (onPendingCountChange) {
           onPendingCountChange(updated.filter((a) => a.status === 'pending').length);
         }
-        showToast('Application rejected — host notified by email.', 'success');
+        showToast(t('admin.hostApps.toasts.rejected'), 'success');
         setRejectTarget(null);
       } else {
-        const errMsg = (data.error as string) ?? `Request failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('common.requestFailed', { status: res.status });
         showToast(errMsg, 'error');
       }
     } catch (err) {
       console.error('[handleRejectConfirm] Network error:', err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('common.networkError'), 'error');
     }
     setRejectLoading(false);
   };
@@ -947,14 +970,14 @@ export default function HostApplications({ onPendingCountChange }: Props) {
       try { data = await res.json(); } catch { /* non-JSON */ }
 
       if (res.ok && data.success) {
-        showToast('Approval email resent successfully to host.', 'success');
+        showToast(t('admin.hostApps.toasts.approvalEmailResent'), 'success');
       } else {
-        const errMsg = (data.error as string) ?? `Request failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('common.requestFailed', { status: res.status });
         showToast(errMsg, 'error');
       }
     } catch (err) {
       console.error('[handleResendApprovalEmail] Network error:', err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('common.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -985,14 +1008,14 @@ export default function HostApplications({ onPendingCountChange }: Props) {
         if (selectedApp?.id === appId) {
           setSelectedApp((prev) => prev ? { ...prev, agreement_reminder_sent_at: now } : prev);
         }
-        showToast('Agreement reminder sent successfully', 'success');
+        showToast(t('admin.hostApps.toasts.reminderSent'), 'success');
       } else {
-        const errMsg = (data.error as string) ?? `Request failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('common.requestFailed', { status: res.status });
         showToast(errMsg, 'error');
       }
     } catch (err) {
       console.error('[handleSendAgreementReminder] Network error:', err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('common.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -1028,18 +1051,18 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           );
         }
         const labels: Record<string, string> = {
-          not_sent: 'Agreement status set to: Not Sent',
-          pending: 'Agreement status set to: Sent by Host',
-          received: 'Agreement marked as Received',
+          not_sent: t('admin.hostApps.toasts.agreementNotSent'),
+          pending: t('admin.hostApps.toasts.agreementSentByHost'),
+          received: t('admin.hostApps.toasts.agreementReceived'),
         };
-        showToast(labels[agreementStatus] ?? 'Agreement status updated', 'success');
+        showToast(labels[agreementStatus] ?? t('admin.hostApps.toasts.agreementUpdated'), 'success');
       } else {
-        const errMsg = (data.error as string) ?? `Request failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('common.requestFailed', { status: res.status });
         showToast(errMsg, 'error');
       }
     } catch (err) {
       console.error('[handleUpdateAgreementStatus] Network error:', err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('common.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -1070,15 +1093,15 @@ export default function HostApplications({ onPendingCountChange }: Props) {
         }
         if (selectedApp?.id === deleteTarget.id) setSelectedApp(null);
         setDeleteTarget(null);
-        showToast(`"${deleteTarget.title}" has been permanently removed.`, 'success');
+        showToast(t('admin.hostApps.toasts.deleted', { title: deleteTarget.title }), 'success');
       } else {
-        const errMsg = (data.error as string) ?? `Delete failed (${res.status})`;
+        const errMsg = (data.error as string) ?? t('admin.hostApps.errors.deleteFailed', { status: res.status });
         showToast(errMsg, 'error');
         setDeleteTarget(null);
       }
     } catch (err) {
       console.error('[handleDelete] Network error:', err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('common.networkError'), 'error');
       setDeleteTarget(null);
     }
     setDeleteLoading(false);
@@ -1106,11 +1129,11 @@ export default function HostApplications({ onPendingCountChange }: Props) {
   });
 
   const tabs: { key: FilterTab; label: string; color: string }[] = [
-    { key: 'pending', label: 'Pending', color: 'text-amber-600' },
-    { key: 'all', label: 'All', color: 'text-gray-600' },
-    { key: 'approved', label: 'Approved', color: 'text-green-600' },
-    { key: 'hidden', label: 'Hidden', color: 'text-gray-500' },
-    { key: 'rejected', label: 'Rejected', color: 'text-red-500' },
+    { key: 'pending', label: t('common.status.pending'), color: 'text-amber-600' },
+    { key: 'all', label: t('common.all'), color: 'text-gray-600' },
+    { key: 'approved', label: t('common.status.approved'), color: 'text-green-600' },
+    { key: 'hidden', label: t('common.status.hidden'), color: 'text-gray-500' },
+    { key: 'rejected', label: t('common.status.rejected'), color: 'text-red-500' },
   ];
 
   return (
@@ -1121,8 +1144,8 @@ export default function HostApplications({ onPendingCountChange }: Props) {
             <i className="ri-home-smile-line text-orange-500 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Host Applications</h2>
-            <p className="text-xs text-gray-400">Cottage listing applications &amp; property management</p>
+            <h2 className="text-base font-bold text-gray-900">{t('admin.hostApps.title')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.hostApps.subtitle')}</p>
           </div>
         </div>
         <button
@@ -1132,25 +1155,21 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           <div className="w-4 h-4 flex items-center justify-center">
             <i className="ri-refresh-line"></i>
           </div>
-          Refresh
+          {t('common.refresh')}
         </button>
       </div>
 
       {/* Agreement Status Legend */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Agreement:</p>
-        {[
-          { status: 'not_sent', label: 'Not Sent' },
-          { status: 'pending', label: 'Sent by Host' },
-          { status: 'received', label: 'Received' },
-        ].map(({ status, label }) => {
-          const cfg = agreementStatusConfig(status);
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('admin.hostApps.table.agreement')}:</p>
+        {(['not_sent', 'pending', 'received'] as const).map((status) => {
+          const cfg = agreementStatusConfig(t, status);
           return (
             <span key={status} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.badge}`}>
               <div className="w-3 h-3 flex items-center justify-center">
                 <i className={cfg.icon}></i>
               </div>
-              {label}
+              {cfg.shortLabel}
             </span>
           );
         })}
@@ -1169,17 +1188,17 @@ export default function HostApplications({ onPendingCountChange }: Props) {
         {/* Tabs + Search */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-wrap gap-3">
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-            {tabs.map((t) => (
+            {tabs.map((tab) => (
               <button
-                key={t.key}
-                onClick={() => setFilter(t.key)}
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
-                  filter === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                  filter === tab.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {t.label}
-                <span className={`text-xs font-semibold ${filter === t.key ? t.color : 'text-gray-400'}`}>
-                  {counts[t.key]}
+                {tab.label}
+                <span className={`text-xs font-semibold ${filter === tab.key ? tab.color : 'text-gray-400'}`}>
+                  {counts[tab.key]}
                 </span>
               </button>
             ))}
@@ -1192,7 +1211,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search host, property…"
+              placeholder={t('admin.hostApps.searchPlaceholder')}
               className="pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-64"
             />
           </div>
@@ -1205,7 +1224,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
               <div className="w-5 h-5 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line text-xl"></i>
               </div>
-              <span className="text-sm">Loading applications…</span>
+              <span className="text-sm">{t('admin.hostApps.loadingApplications')}</span>
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -1213,9 +1232,9 @@ export default function HostApplications({ onPendingCountChange }: Props) {
             <div className="w-12 h-12 flex items-center justify-center mb-3">
               <i className="ri-inbox-line text-4xl"></i>
             </div>
-            <p className="text-sm font-medium">No applications found</p>
+            <p className="text-sm font-medium">{t('admin.hostApps.empty.title')}</p>
             <p className="text-xs mt-1">
-              {filter === 'pending' ? 'No pending applications right now.' : 'Try adjusting your filters.'}
+              {filter === 'pending' ? t('admin.hostApps.empty.noPending') : t('admin.hostApps.empty.tryFilters')}
             </p>
           </div>
         ) : (
@@ -1223,7 +1242,17 @@ export default function HostApplications({ onPendingCountChange }: Props) {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['App ID', 'Applicant', 'Property', 'Location', 'Price/night', 'Agreement', 'Submitted', 'Status', 'Actions'].map((h) => (
+                  {[
+                    t('admin.hostApps.table.appId'),
+                    t('admin.hostApps.table.applicant'),
+                    t('admin.hostApps.table.property'),
+                    t('common.location'),
+                    t('admin.hostApps.pricePerNight'),
+                    t('admin.hostApps.table.agreement'),
+                    t('common.submitted'),
+                    t('common.statusLabel'),
+                    t('common.actions'),
+                  ].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
@@ -1283,13 +1312,13 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                       </td>
                       {/* Submitted */}
                       <td className="px-5 py-4 whitespace-nowrap">
-                        <span className="text-xs text-gray-400">{formatDate(app.created_at)}</span>
+                        <span className="text-xs text-gray-400">{formatDate(app.created_at, lang)}</span>
                       </td>
                       {/* Status */}
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusBadge(app.status)}`}>
                           <i className={`${statusIcon(app.status)} text-xs`}></i>
-                          {app.status}
+                          {statusLabel(t, app.status)}
                         </span>
                       </td>
                       {/* Actions */}
@@ -1302,7 +1331,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                             <div className="w-3 h-3 flex items-center justify-center">
                               <i className="ri-eye-line"></i>
                             </div>
-                            Review
+                            {t('admin.hostApps.actions.review')}
                           </button>
 
                           {isPending && (
@@ -1317,7 +1346,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                                 ) : (
                                   <div className="w-3 h-3 flex items-center justify-center"><i className="ri-check-line"></i></div>
                                 )}
-                                Approve
+                                {t('common.approve')}
                               </button>
                               <button
                                 onClick={() => setRejectTarget(app)}
@@ -1325,7 +1354,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-400 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
                               >
                                 <div className="w-3 h-3 flex items-center justify-center"><i className="ri-close-line"></i></div>
-                                Reject
+                                {t('common.reject')}
                               </button>
                             </>
                           )}
@@ -1336,40 +1365,40 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                                 onClick={() => handleResendApprovalEmail(app.id)}
                                 disabled={!!actionLoading}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
-                                title="Resend approval confirmation email to host"
+                                title={t('admin.hostApps.actions.resendApprovalEmailTitle')}
                               >
                                 {actionLoading === app.id + 'resend-approval' ? (
                                   <div className="w-3 h-3 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
                                 ) : (
                                   <div className="w-3 h-3 flex items-center justify-center"><i className="ri-mail-check-line"></i></div>
                                 )}
-                                Approval Email
+                                {t('admin.hostApps.actions.approvalEmail')}
                               </button>
                               <button
                                 onClick={() => handleSendAgreementReminder(app.id)}
                                 disabled={!!actionLoading}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
-                                title={app.agreement_reminder_sent_at ? `Last sent: ${formatDate(app.agreement_reminder_sent_at)}` : 'Send agreement reminder email'}
+                                title={app.agreement_reminder_sent_at ? t('admin.hostApps.actions.lastSent', { date: formatDate(app.agreement_reminder_sent_at, lang) }) : t('admin.hostApps.actions.sendReminderTitle')}
                               >
                                 {actionLoading === app.id + 'reminder' ? (
                                   <div className="w-3 h-3 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
                                 ) : (
                                   <div className="w-3 h-3 flex items-center justify-center"><i className="ri-mail-send-line"></i></div>
                                 )}
-                                {app.agreement_reminder_sent_at ? 'Resend Reminder' : 'Send Reminder'}
+                                {app.agreement_reminder_sent_at ? t('admin.hostApps.actions.resendReminder') : t('admin.hostApps.actions.sendReminder')}
                               </button>
                               <button
                                 onClick={() => handleAction(app.id, 'hide')}
                                 disabled={!!actionLoading}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-400 hover:bg-gray-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
-                                title="Hide from website (reversible)"
+                                title={t('admin.hostApps.actions.hideTitle')}
                               >
                                 {actionLoading === app.id + 'hide' ? (
                                   <div className="w-3 h-3 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
                                 ) : (
                                   <div className="w-3 h-3 flex items-center justify-center"><i className="ri-eye-off-line"></i></div>
                                 )}
-                                Hide
+                                {t('admin.hostApps.actions.hide')}
                               </button>
                               <button
                                 onClick={() => setDeleteTarget(app)}
@@ -1377,7 +1406,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                                 className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 hover:bg-red-50 disabled:opacity-50 text-red-500 text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
                               >
                                 <div className="w-3 h-3 flex items-center justify-center"><i className="ri-delete-bin-line"></i></div>
-                                Delete
+                                {t('common.delete')}
                               </button>
                             </>
                           )}
@@ -1394,7 +1423,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                                 ) : (
                                   <div className="w-3 h-3 flex items-center justify-center"><i className="ri-eye-line"></i></div>
                                 )}
-                                Publish
+                                {t('admin.hostApps.actions.publish')}
                               </button>
                               <button
                                 onClick={() => setDeleteTarget(app)}
@@ -1402,7 +1431,7 @@ export default function HostApplications({ onPendingCountChange }: Props) {
                                 className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 hover:bg-red-50 disabled:opacity-50 text-red-500 text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
                               >
                                 <div className="w-3 h-3 flex items-center justify-center"><i className="ri-delete-bin-line"></i></div>
-                                Delete
+                                {t('common.delete')}
                               </button>
                             </>
                           )}

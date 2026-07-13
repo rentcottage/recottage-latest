@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from '@lib/i18n';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
@@ -18,6 +19,7 @@ interface Experience {
 }
 
 export default function BookExperiencePage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const requestedId = searchParams.get('id');
 
@@ -83,13 +85,10 @@ export default function BookExperiencePage() {
       <SEO
         title={
           active
-            ? `Book ${active.title} | RentCottage.Ge`
-            : 'Book Georgian Experiences | RentCottage.Ge'
+            ? t('experience.seo.titleActive', { title: active.title })
+            : t('experience.seo.title')
         }
-        description={
-          active?.description ??
-          'Book authentic Georgian experiences. Immerse yourself in 8,000 years of culture.'
-        }
+        description={active?.description ?? t('experience.seo.description')}
         canonical={active ? `/book-experience?id=${active.id}` : '/book-experience'}
         ogImage={active?.image_url ?? undefined}
         jsonLd={jsonLd ?? undefined}
@@ -105,23 +104,23 @@ export default function BookExperiencePage() {
       >
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <p className="text-[11px] md:text-xs uppercase tracking-[2px] text-white/85 font-bold mb-2">
-            Authentic Georgian Experiences
+            {t('experience.hero.kicker')}
           </p>
           <h1 className="text-2xl md:text-[38px] font-extrabold text-white tracking-tight mb-1 md:mb-3">
-            Book Your Experience
+            {t('experience.hero.title')}
           </h1>
           <p className="text-white/90 text-xs md:text-base max-w-xl">
-            A cottage + an experience = the perfect getaway
+            {t('experience.hero.subtitle')}
           </p>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-16">
         {loading ? (
-          <div className="text-center py-16 text-gray-400 text-sm">Loading experiences…</div>
+          <div className="text-center py-16 text-gray-400 text-sm">{t('experience.loading')}</div>
         ) : experiences.length === 0 ? (
           <div className="text-center py-16 text-gray-400 text-sm">
-            No experiences are available right now. Please check back soon.
+            {t('experience.empty')}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 items-start">
@@ -164,7 +163,7 @@ export default function BookExperiencePage() {
                           onClick={() =>
                             setPhotoIndex((i) => (i === 0 ? photos.length - 1 : i - 1))
                           }
-                          aria-label="Previous photo"
+                          aria-label={t('experience.gallery.prevPhoto')}
                           className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 shadow"
                         >
                           <i className="ri-arrow-left-s-line text-lg"></i>
@@ -173,7 +172,7 @@ export default function BookExperiencePage() {
                           onClick={() =>
                             setPhotoIndex((i) => (i === photos.length - 1 ? 0 : i + 1))
                           }
-                          aria-label="Next photo"
+                          aria-label={t('experience.gallery.nextPhoto')}
                           className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 shadow"
                         >
                           <i className="ri-arrow-right-s-line text-lg"></i>
@@ -193,7 +192,7 @@ export default function BookExperiencePage() {
                           className={`relative flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition ${
                             i === photoIndex ? 'border-red-500' : 'border-transparent opacity-70 hover:opacity-100'
                           }`}
-                          aria-label={`Photo ${i + 1}`}
+                          aria-label={t('experience.gallery.photoN', { number: i + 1 })}
                         >
                           <img src={url} alt="" className="w-full h-full object-cover" />
                         </button>
@@ -210,12 +209,12 @@ export default function BookExperiencePage() {
                     </p>
 
                     <div className="border-t border-line pt-3 md:pt-5 flex items-baseline gap-2">
-                      <span className="text-xs text-gray-400">From</span>
+                      <span className="text-xs text-gray-400">{t('home.experiences.from')}</span>
                       <span className="text-2xl md:text-3xl font-extrabold text-red-500" translate="no">
                         {(active.currency_symbol || '₾')}
                         {Number(active.price_per_person).toFixed(0)}
                       </span>
-                      <span className="text-xs text-gray-400">/ person</span>
+                      <span className="text-xs text-gray-400">{t('home.experiences.perPerson')}</span>
                     </div>
                   </div>
                 </div>
@@ -231,7 +230,7 @@ export default function BookExperiencePage() {
                 />
               ) : (
                 <div className="text-center py-12 text-gray-400 text-sm">
-                  Pick an experience to start booking.
+                  {t('experience.pickToStart')}
                 </div>
               )}
             </div>

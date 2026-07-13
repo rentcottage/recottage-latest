@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { optimizedImageUrl, IMG_HERO, IMG_THUMB, IMG_CARD } from '../../../lib/imageUrl';
+import { useTranslation } from '@lib/i18n';
 
 interface PropertyGalleryProps {
   images: string[];
@@ -7,6 +8,7 @@ interface PropertyGalleryProps {
 }
 
 export default function PropertyGallery({ images, title }: PropertyGalleryProps) {
+  const { t } = useTranslation();
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
@@ -68,7 +70,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
           >
             <img
               src={optimizedImageUrl(safeImages[0], IMG_HERO, 75)}
-              alt={`${title} — photo 1`}
+              alt={t('property.gallery.photoAlt', { title, number: 1 })}
               fetchPriority="high"
               decoding="async"
               className="absolute inset-0 w-full h-full object-cover object-center"
@@ -82,7 +84,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                 className="absolute bottom-3.5 right-3.5 bg-white text-gray-800 text-[13px] font-bold px-4 py-2 rounded-[10px] flex items-center gap-1.5 hover:bg-gray-50 transition-colors shadow-card whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-image-2-line"></i>
-                All photos ({safeImages.length})
+                {t('property.gallery.allPhotos', { count: safeImages.length })}
               </button>
             )}
           </div>
@@ -96,7 +98,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
             >
               <img
                 src={optimizedImageUrl(img, IMG_CARD, 65)}
-                alt={`${title} — photo ${i + 2}`}
+                alt={t('property.gallery.photoAlt', { title, number: i + 2 })}
                 loading="lazy"
                 decoding="async"
                 className="absolute inset-0 w-full h-full object-cover object-center"
@@ -142,7 +144,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
             <img
               key={lightboxIndex}
               src={safeImages[lightboxIndex]}
-              alt={`${title} — photo ${lightboxIndex + 1}`}
+              alt={t('property.gallery.photoAlt', { title, number: lightboxIndex + 1 })}
               className="max-w-full max-h-full object-contain rounded-lg"
               style={{ maxHeight: 'calc(100vh - 200px)' }}
             />
@@ -187,7 +189,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                 >
                   <img
                     src={optimizedImageUrl(img, IMG_THUMB, 60)}
-                    alt={`Thumbnail ${idx + 1}`}
+                    alt={t('property.gallery.thumbnailAlt', { number: idx + 1 })}
                     loading="lazy"
                     decoding="async"
                     className="absolute inset-0 w-full h-full object-cover object-center"

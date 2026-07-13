@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from '@lib/i18n';
 import Header from '../../components/feature/Header';
 import SEO from '../../components/feature/SEO';
 
 const BOG_FN_BASE = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment';
 
 export default function PaymentFailedPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const bookingId = searchParams.get('booking_id');
@@ -44,8 +46,8 @@ export default function PaymentFailedPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <SEO
-        title="Payment Failed — RentCottage.Ge"
-        description="Your payment could not be completed. No charges have been made. Please try again."
+        title={t('payment.failed.seo.title')}
+        description={t('payment.failed.seo.description')}
         noIndex={true}
         canonical="/payment/failed"
       />
@@ -58,28 +60,27 @@ export default function PaymentFailedPage() {
             <i className="ri-close-circle-line text-4xl text-red-500"></i>
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">Payment Failed or Cancelled</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">{t('payment.failed.title')}</h1>
           <p className="text-gray-500 text-sm leading-relaxed mb-8">
-            Your payment was not completed. No charges have been made to your account.
-            You can try again or choose a different payment method.
+            {t('payment.failed.desc')}
           </p>
 
           {/* Reason hints */}
           <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 text-left mb-8">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Common reasons for failure:</p>
+            <p className="text-sm font-semibold text-gray-700 mb-3">{t('payment.failed.reasonsTitle')}</p>
             <ul className="space-y-2">
               {[
-                'Insufficient funds on card',
-                'Card declined by the bank',
-                'Payment session timed out',
-                'Transaction cancelled by you',
-                '3D Secure authentication failed',
-              ].map((reason, i) => (
+                'payment.failed.reasonInsufficientFunds',
+                'payment.failed.reasonCardDeclined',
+                'payment.failed.reasonSessionTimeout',
+                'payment.failed.reasonCancelledByYou',
+                'payment.failed.reason3dsFailed',
+              ].map((reasonKey, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
                   <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <i className="ri-information-line text-gray-400 text-xs"></i>
                   </div>
-                  {reason}
+                  {t(reasonKey)}
                 </li>
               ))}
             </ul>
@@ -87,10 +88,10 @@ export default function PaymentFailedPage() {
 
           {bookingId && (
             <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-6 text-left">
-              <p className="text-xs text-red-600 font-medium mb-0.5">Reference</p>
+              <p className="text-xs text-red-600 font-medium mb-0.5">{t('payment.reference')}</p>
               <p className="text-xs font-mono text-gray-600 break-all">{bookingId}</p>
               {statusUpdated && (
-                <p className="text-xs text-gray-400 mt-1">Booking status updated.</p>
+                <p className="text-xs text-gray-400 mt-1">{t('payment.failed.statusUpdated')}</p>
               )}
             </div>
           )}
@@ -100,20 +101,20 @@ export default function PaymentFailedPage() {
               onClick={() => navigate(-1 as never)}
               className="w-full bg-red-500 text-white py-3 rounded-lg text-sm font-medium cursor-pointer whitespace-nowrap hover:bg-red-600 transition-colors"
             >
-              Try Again
+              {t('payment.failed.tryAgain')}
             </button>
             <button
               onClick={() => navigate('/search')}
               className="w-full border border-gray-200 text-gray-700 py-3 rounded-lg text-sm font-medium cursor-pointer whitespace-nowrap hover:bg-gray-50 transition-colors"
             >
-              Browse Cottages
+              {t('payment.failed.browseCottages')}
             </button>
           </div>
 
           <p className="mt-6 text-xs text-gray-400">
-            Need help?{' '}
+            {t('payment.needHelp')}{' '}
             <a href="mailto:info.rentcottage@gmail.com" className="text-red-500 hover:underline">
-              Contact support
+              {t('payment.contactSupport')}
             </a>
           </p>
         </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useTranslation } from '@lib/i18n';
 import { optimizedImageUrl, IMG_CARD } from '../../lib/imageUrl';
 
 type CoverPosition = 'top' | 'center' | 'bottom';
@@ -17,6 +18,7 @@ export default function PropertyImageSlider({
   coverPosition = 'center',
   onFavoriteClick,
 }: PropertyImageSliderProps) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   // Adjacent slides are only mounted after the user shows slider intent
@@ -112,7 +114,7 @@ export default function PropertyImageSlider({
           <img
             key={i}
             src={url}
-            alt={`${title} - photo ${i + 1}`}
+            alt={t('imageSlider.photoAlt', { title, num: i + 1 })}
             loading="lazy"
             decoding="async"
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isPositionedCover ? positionClass[coverPosition] : 'object-center'}`}

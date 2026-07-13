@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
+import { useTranslation } from '@lib/i18n';
 
 interface BlockedRange {
   id: string;
@@ -23,15 +24,12 @@ interface Props {
   loading: boolean;
 }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
 function toDateStr(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-function fmt(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+function fmt(d: string, lang: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString(lang, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function isDateBlocked(dateStr: string, ranges: BlockedRange[], propId: string): boolean {
@@ -45,6 +43,7 @@ function isDateInRange(dateStr: string, start: string, end: string): boolean {
 }
 
 export default function HostBlockedDatesSection({ properties, loading: propsLoading }: Props) {
+  const { t, lang } = useTranslation();
   const { user } = useAuth();
   const [blockedRanges, setBlockedRanges] = useState<BlockedRange[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +94,13 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
     return days;
   }, [calYear, calMonth]);
 
+  // Localized Sun-first weekday labels (2023-12-31 is a Sunday).
+  const dayLabels = useMemo(
+    () => Array.from({ length: 7 }, (_, i) =>
+      new Date(2023, 11, 31 + i).toLocaleDateString(lang, { weekday: 'short' })),
+    [lang],
+  );
+
   const today = new Date().toISOString().split('T')[0];
 
   const handleDayClick = (dateStr: string) => {
@@ -131,9 +137,9 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
       host_email: user.email,
     });
     if (error) {
-      showToast('Failed to save blocked dates. Please try again.', 'error');
+      showToast(t('host.blockedDates.saveFailed'), 'error');
     } else {
-      showToast(selectEnd && selectEnd !== selectStart ? 'Dates blocked successfully!' : 'Date blocked successfully!', 'success');
+      showToast(selectEnd && selectEnd !== selectStart ? t('host.blockedDates.datesBlockedSuccess') : t('host.blockedDates.dateBlockedSuccess'), 'success');
       setSelectStart('');
       setSelectEnd('');
       setReason('');
@@ -146,9 +152,9 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
     setDeletingId(id);
     const { error } = await supabase.from('blocked_dates').delete().eq('id', id);
     if (error) {
-      showToast('Failed to remove blocked dates.', 'error');
+      showToast(t('host.blockedDates.removeFailed'), 'error');
     } else {
-      showToast('Blocked dates removed.', 'success');
+      showToast(t('host.blockedDates.removedSuccess'), 'success');
       setBlockedRanges((prev) => prev.filter((r) => r.id !== id));
     }
     setDeletingId(null);
@@ -166,32 +172,32 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Blocked Dates</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Mark dates unavailable to prevent guest bookings on specific days</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.blockedDates.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.blockedDates.subtitle')}</p>
       </div>
 
       {propsLoading ? (
         <div className="bg-white rounded-card border border-line shadow-card flex items-center justify-center py-16">
           <div className="flex items-center gap-2 text-gray-400">
             <div className="w-4 h-4 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
-            <span className="text-sm">Loading…</span>
+            <span className="text-sm">{t('common.loading')}</span>
           </div>
         </div>
       ) : properties.length === 0 ? (
         <div className="bg-white rounded-card border border-line shadow-card flex flex-col items-center py-16 text-gray-400">
           <div className="w-10 h-10 flex items-center justify-center mb-2"><i className="ri-home-smile-line text-3xl"></i></div>
-          <p className="text-sm">No properties yet</p>
-          <p className="text-xs mt-1">Submit a property to manage its availability</p>
+          <p className="text-sm">{t('host.blockedDates.noProperties')}</p>
+          <p className="text-xs mt-1">{t('host.blockedDates.noPropertiesHint')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
           {/* Left: Calendar picker */}
           <div className="md:col-span-3 bg-white rounded-card border border-line shadow-card p-4 md:p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Block New Dates</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('host.blockedDates.blockNewDates')}</h3>
 
             {/* Property selector */}
             <div className="mb-5">
-              <label className="block text-xs font-medium text-gray-500 mb-2">Property</label>
+              <label className="block text-xs font-medium text-gray-500 mb-2">{t('host.bookings.table.property')}</label>
               <select
                 value={selectedPropertyId}
                 onChange={(e) => setSelectedPropertyId(e.target.value)}
@@ -208,7 +214,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
               <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
                 <i className="ri-arrow-left-s-line text-gray-600"></i>
               </button>
-              <span className="text-sm font-semibold text-gray-900">{MONTHS[calMonth - 1]} {calYear}</span>
+              <span className="text-sm font-semibold text-gray-900">{new Date(calYear, calMonth - 1, 1).toLocaleDateString(lang, { month: 'long', year: 'numeric' })}</span>
               <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
                 <i className="ri-arrow-right-s-line text-gray-600"></i>
               </button>
@@ -216,7 +222,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
 
             {/* Day headers */}
             <div className="grid grid-cols-7 mb-2">
-              {DAYS.map((d) => (
+              {dayLabels.map((d) => (
                 <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d.slice(0, 2)}</div>
               ))}
             </div>
@@ -265,7 +271,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                       <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-red-400 rounded-full" />
                     )}
                     {isSingleSelected && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-emerald-200 font-normal">1 day</div>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-emerald-200 font-normal">{t('host.blockedDates.oneDay')}</div>
                     )}
                   </button>
                 );
@@ -276,15 +282,15 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
             <div className="flex items-center gap-5 mt-4 text-xs text-gray-400">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-emerald-600"></div>
-                <span>Selected</span>
+                <span>{t('host.blockedDates.selected')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-emerald-100"></div>
-                <span>Range</span>
+                <span>{t('host.blockedDates.range')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-red-100"></div>
-                <span>Already blocked</span>
+                <span>{t('host.blockedDates.alreadyBlocked')}</span>
               </div>
             </div>
 
@@ -293,22 +299,22 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
               <div className="mt-5 border-t border-gray-100 pt-5 space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <div className="flex-1 bg-emerald-50 rounded-lg px-3 py-2 text-center">
-                    <p className="text-xs text-gray-400 mb-0.5">From</p>
-                    <p className="font-semibold text-gray-900">{selectStart ? fmt(selectStart) : '—'}</p>
+                    <p className="text-xs text-gray-400 mb-0.5">{t('host.blockedDates.from')}</p>
+                    <p className="font-semibold text-gray-900">{selectStart ? fmt(selectStart, lang) : '—'}</p>
                   </div>
                   <div className="w-4 h-4 flex items-center justify-center text-gray-300">
                     <i className="ri-arrow-right-line"></i>
                   </div>
                   <div className="flex-1 bg-emerald-50 rounded-lg px-3 py-2 text-center">
-                    <p className="text-xs text-gray-400 mb-0.5">To</p>
-                    <p className="font-semibold text-gray-900">{selectEnd ? fmt(selectEnd) : (selectStart ? 'Same day (single)' : 'Select end date')}</p>
+                    <p className="text-xs text-gray-400 mb-0.5">{t('host.blockedDates.to')}</p>
+                    <p className="font-semibold text-gray-900">{selectEnd ? fmt(selectEnd, lang) : (selectStart ? t('host.blockedDates.sameDaySingle') : t('host.blockedDates.selectEndDate'))}</p>
                   </div>
                 </div>
                 <input
                   type="text"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="Reason (optional) — e.g. Personal use, Maintenance"
+                  placeholder={t('host.blockedDates.reasonPlaceholder')}
                   className="w-full text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
                 <div className="flex items-center gap-2">
@@ -320,12 +326,12 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                     {saving ? (
                       <>
                         <div className="w-3 h-3 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
-                        Saving…
+                        {t('common.saving')}
                       </>
                     ) : (
                       <>
                         <div className="w-4 h-4 flex items-center justify-center"><i className="ri-lock-line"></i></div>
-                        {selectEnd && selectEnd !== selectStart ? 'Block These Dates' : 'Block This Date'}
+                        {selectEnd && selectEnd !== selectStart ? t('host.blockedDates.blockTheseDates') : t('host.blockedDates.blockThisDate')}
                       </>
                     )}
                   </button>
@@ -333,12 +339,12 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                     onClick={() => { setSelectStart(''); setSelectEnd(''); setReason(''); }}
                     className="px-3 py-2.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                   >
-                    Clear
+                    {t('host.blockedDates.clear')}
                   </button>
                 </div>
                 {!selectEnd && selectStart && (
                   <p className="text-xs text-gray-400 text-center">
-                    Click the same date again to block just this day, or select a different date for a range.
+                    {t('host.blockedDates.singleDayHint')}
                   </p>
                 )}
               </div>
@@ -349,13 +355,13 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
           <div className="md:col-span-2 bg-white rounded-card border border-line shadow-card overflow-hidden flex flex-col">
             <div className="px-5 py-4 border-b border-gray-100">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">Blocked Periods</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{t('host.blockedDates.blockedPeriods')}</h3>
                 <button
                   onClick={fetchBlocked}
                   className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 cursor-pointer whitespace-nowrap"
                 >
                   <div className="w-3 h-3 flex items-center justify-center"><i className="ri-refresh-line"></i></div>
-                  Refresh
+                  {t('host.blockedDates.refresh')}
                 </button>
               </div>
               {/* Filter */}
@@ -364,7 +370,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                 onChange={(e) => setFilterPropertyId(e.target.value)}
                 className="w-full text-xs border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
               >
-                <option value="all">All properties</option>
+                <option value="all">{t('host.calendar.allProperties')}</option>
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
@@ -376,13 +382,13 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center gap-2 text-gray-400">
                     <div className="w-4 h-4 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
-                    <span className="text-xs">Loading…</span>
+                    <span className="text-xs">{t('common.loading')}</span>
                   </div>
                 </div>
               ) : filteredRanges.length === 0 ? (
                 <div className="flex flex-col items-center py-12 text-gray-400">
                   <div className="w-9 h-9 flex items-center justify-center mb-2"><i className="ri-calendar-check-line text-2xl"></i></div>
-                  <p className="text-xs text-center">No blocked dates yet.<br />All dates are available for guests.</p>
+                  <p className="text-xs text-center">{t('host.blockedDates.emptyTitle')}<br />{t('host.blockedDates.emptySubtitle')}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-50">
@@ -391,13 +397,13 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-gray-700 truncate mb-0.5">
-                            {propMap[r.property_id] || 'Unknown'}
+                            {propMap[r.property_id] || t('host.blockedDates.unknownProperty')}
                           </p>
                           <div className="flex items-center gap-1.5 text-xs text-gray-600">
                             <i className="ri-calendar-close-line text-red-400"></i>
-                            <span>{fmt(r.start_date)}</span>
+                            <span>{fmt(r.start_date, lang)}</span>
                             <span className="text-gray-400">→</span>
-                            <span>{fmt(r.end_date)}</span>
+                            <span>{fmt(r.end_date, lang)}</span>
                           </div>
                           {r.reason && (
                             <p className="text-xs text-gray-400 mt-1 italic">{r.reason}</p>
@@ -407,7 +413,7 @@ export default function HostBlockedDatesSection({ properties, loading: propsLoad
                           onClick={() => handleDelete(r.id)}
                           disabled={deletingId === r.id}
                           className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                          title="Remove block"
+                          title={t('host.blockedDates.removeBlock')}
                         >
                           {deletingId === r.id ? (
                             <div className="w-3 h-3 flex items-center justify-center animate-spin"><i className="ri-loader-4-line text-xs"></i></div>

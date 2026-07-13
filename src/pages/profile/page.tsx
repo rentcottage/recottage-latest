@@ -8,6 +8,7 @@ import PhoneVerifyModal from '../../components/feature/PhoneVerifyModal';
 import { supabase } from '../../lib/supabase';
 import { normalizeGeoPhone } from '../../lib/otp';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '@lib/i18n';
 import type { Booking } from '../../lib/supabase';
 
 interface UserProfile {
@@ -38,6 +39,7 @@ const saveAllUsers = (users: Record<string, StoredUser>) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Profile() {
+  const { t, lang } = useTranslation();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +158,7 @@ export default function Profile() {
         phone: '',
         bio: '',
         location: '',
-        joinDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        joinDate: new Date().toLocaleDateString(lang, { month: 'long', year: 'numeric' }),
         avatar: '',  // don't use meta.picture — user can upload their own
         verified: true,
       };
@@ -222,11 +224,11 @@ export default function Profile() {
 
     // Validate file type & size
     if (!file.type.startsWith('image/')) {
-      setAvatarError('Please select an image file.');
+      setAvatarError(t('profile.avatar.errorNotImage'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setAvatarError('Image must be under 5 MB.');
+      setAvatarError(t('profile.avatar.errorTooLarge'));
       return;
     }
 
@@ -243,7 +245,7 @@ export default function Profile() {
         .upload(filePath, file, { upsert: true, contentType: file.type });
 
       if (uploadError) {
-        setAvatarError('Upload failed. Please try again.');
+        setAvatarError(t('profile.avatar.errorUpload'));
         return;
       }
 
@@ -262,7 +264,7 @@ export default function Profile() {
 
       setAvatarUrl(freshUrl);
     } catch {
-      setAvatarError('Something went wrong. Please try again.');
+      setAvatarError(t('common.errorTryAgain'));
     } finally {
       setAvatarUploading(false);
       // Reset file input
@@ -292,7 +294,7 @@ export default function Profile() {
 
       setAvatarUrl('');
     } catch {
-      setAvatarError('Could not remove photo. Please try again.');
+      setAvatarError(t('profile.avatar.errorRemove'));
     } finally {
       setAvatarUploading(false);
     }
@@ -305,18 +307,18 @@ export default function Profile() {
   const handleSaveProfile = async () => {
     // Validate required name fields
     if (!editForm.firstName.trim()) {
-      setSaveProfileError('First name is required.');
+      setSaveProfileError(t('profile.edit.firstNameRequired'));
       return;
     }
     if (!editForm.lastName.trim()) {
-      setSaveProfileError('Last name is required.');
+      setSaveProfileError(t('profile.edit.lastNameRequired'));
       return;
     }
 
     // Phone is required and must be a valid Georgian number (so it can be SMS-verified).
     const normalizedNew = normalizeGeoPhone(editForm.phone);
     if (!normalizedNew) {
-      setSaveProfileError('Please enter a valid Georgian phone number (e.g. +995 555 12 34 56).');
+      setSaveProfileError(t('profile.edit.invalidPhone'));
       return;
     }
 
@@ -346,7 +348,7 @@ export default function Profile() {
         .from('profiles')
         .upsert(payload, { onConflict: 'id' });
       if (error) {
-        setSaveProfileError('Failed to save. Please try again.');
+        setSaveProfileError(t('profile.edit.saveFailed'));
         return;
       }
 
@@ -432,7 +434,7 @@ export default function Profile() {
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
-                  alt="Profile"
+                  alt={t('profile.avatar.alt')}
                   className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover object-top border-[3px] border-white/30 shadow-lg"
                 />
               ) : (
@@ -446,7 +448,7 @@ export default function Profile() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={avatarUploading}
                 className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
-                title="Change photo"
+                title={t('profile.avatar.changePhoto')}
               >
                 {avatarUploading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -484,7 +486,7 @@ export default function Profile() {
               <h1 className="text-xl md:text-2xl font-bold text-white leading-tight truncate">
                 {userProfile.firstName || userProfile.lastName
                   ? `${userProfile.firstName} ${userProfile.lastName}`.trim()
-                  : 'My Profile'}
+                  : t('header.myProfile')}
               </h1>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 mt-1.5">
                 {userProfile.location && (
@@ -499,7 +501,7 @@ export default function Profile() {
                   <div className="w-3.5 h-3.5 flex items-center justify-center">
                     <i className="ri-calendar-line text-xs"></i>
                   </div>
-                  <span className="text-xs">Joined {userProfile.joinDate}</span>
+                  <span className="text-xs">{t('profile.header.joined', { date: userProfile.joinDate })}</span>
                 </div>
                 {userProfile.email && (
                   <div className="flex items-center gap-1 text-white/50">
@@ -524,7 +526,7 @@ export default function Profile() {
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-edit-line text-sm"></i>
                 </div>
-                {isEditing ? 'Cancel' : 'Edit Profile'}
+                {isEditing ? t('common.cancel') : t('profile.editProfile')}
               </button>
             </div>
           </div>
@@ -539,10 +541,10 @@ export default function Profile() {
           <div className="border-b border-line overflow-hidden">
             <nav className="flex overflow-x-auto px-3 md:px-8 gap-0 md:space-x-8 scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {[
-                { id: 'profile', label: 'Profile', icon: 'ri-user-line' },
-                { id: 'bookings', label: 'My Bookings', icon: 'ri-calendar-check-line' },
-                { id: 'wishlist', label: 'Wishlist', icon: 'ri-heart-line' },
-                { id: 'reviews', label: 'Reviews', icon: 'ri-star-line' },
+                { id: 'profile', label: t('profile.tabs.profile'), icon: 'ri-user-line' },
+                { id: 'bookings', label: t('profile.tabs.myBookings'), icon: 'ri-calendar-check-line' },
+                { id: 'wishlist', label: t('profile.tabs.wishlist'), icon: 'ri-heart-line' },
+                { id: 'reviews', label: t('profile.tabs.reviews'), icon: 'ri-star-line' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -575,22 +577,20 @@ export default function Profile() {
                       <i className="ri-user-line text-red-500"></i>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-red-800">Profile incomplete</p>
+                      <p className="text-sm font-medium text-red-800">{t('profile.banners.incompleteTitle')}</p>
                       <p className="text-xs text-red-700 mt-0.5">
-                        Please add your{' '}
                         {!userProfile.firstName && !userProfile.lastName
-                          ? 'first and last name'
+                          ? t('profile.banners.addFirstAndLastName')
                           : !userProfile.firstName
-                          ? 'first name'
-                          : 'last name'}{' '}
-                        to complete your profile.
+                          ? t('profile.banners.addFirstName')
+                          : t('profile.banners.addLastName')}
                       </p>
                     </div>
                     <button
                       onClick={() => setIsEditing(true)}
                       className="flex-shrink-0 text-xs font-medium text-red-800 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg cursor-pointer whitespace-nowrap transition-colors"
                     >
-                      Complete
+                      {t('profile.banners.completeAction')}
                     </button>
                   </div>
                 )}
@@ -602,32 +602,32 @@ export default function Profile() {
                       <i className="ri-phone-line text-amber-500"></i>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-amber-800">Add a phone number</p>
+                      <p className="text-sm font-medium text-amber-800">{t('profile.banners.addPhoneTitle')}</p>
                       <p className="text-xs text-amber-700 mt-0.5">
-                        Adding a phone number makes it easier to stay in touch about your bookings.
+                        {t('profile.banners.addPhoneBody')}
                       </p>
                     </div>
                     <button
                       onClick={() => setIsEditing(true)}
                       className="flex-shrink-0 text-xs font-medium text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg cursor-pointer whitespace-nowrap transition-colors"
                     >
-                      Add
+                      {t('common.add')}
                     </button>
                   </div>
                 )}
 
                 {isEditing ? (
                   <div className="space-y-4 md:space-y-6">
-                    <h3 className="text-sm md:text-lg font-semibold text-gray-900">Edit Profile</h3>
+                    <h3 className="text-sm md:text-lg font-semibold text-gray-900">{t('profile.editProfile')}</h3>
 
                     {/* Photo management in edit mode */}
                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <p className="text-xs md:text-sm font-medium text-gray-700 mb-3">Profile Photo</p>
+                      <p className="text-xs md:text-sm font-medium text-gray-700 mb-3">{t('profile.avatar.sectionTitle')}</p>
                       <div className="flex items-center gap-4">
                         {avatarUrl ? (
                           <img
                             src={avatarUrl}
-                            alt="Profile"
+                            alt={t('profile.avatar.alt')}
                             className="w-16 h-16 rounded-full object-cover object-top border-2 border-white shadow-sm flex-shrink-0"
                           />
                         ) : (
@@ -644,12 +644,12 @@ export default function Profile() {
                             {avatarUploading ? (
                               <>
                                 <div className="w-3 h-3 border border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                                Uploading...
+                                {t('common.uploading')}
                               </>
                             ) : (
                               <>
                                 <i className="ri-upload-2-line"></i>
-                                {avatarUrl ? 'Change photo' : 'Upload photo'}
+                                {avatarUrl ? t('profile.avatar.changePhoto') : t('profile.avatar.uploadPhoto')}
                               </>
                             )}
                           </button>
@@ -660,10 +660,10 @@ export default function Profile() {
                               className="text-xs md:text-sm text-gray-500 hover:text-gray-700 cursor-pointer disabled:opacity-50 whitespace-nowrap flex items-center gap-1.5"
                             >
                               <i className="ri-delete-bin-line"></i>
-                              Remove photo
+                              {t('profile.avatar.removePhoto')}
                             </button>
                           )}
-                          <p className="text-xs text-gray-400">JPG, PNG, WebP · max 5 MB</p>
+                          <p className="text-xs text-gray-400">{t('profile.avatar.fileHint')}</p>
                           {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
                         </div>
                       </div>
@@ -672,7 +672,7 @@ export default function Profile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                       <div>
                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                          First Name <span className="text-red-500">*</span>
+                          {t('profile.fields.firstName')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -681,16 +681,16 @@ export default function Profile() {
                           className={`w-full p-2.5 md:p-3 text-sm border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                             !editForm.firstName.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'
                           }`}
-                          placeholder="Required"
+                          placeholder={t('common.required')}
                         />
                         {!editForm.firstName.trim() && (
-                          <p className="text-xs text-red-500 mt-1">First name is required</p>
+                          <p className="text-xs text-red-500 mt-1">{t('profile.edit.firstNameRequired')}</p>
                         )}
                       </div>
 
                       <div>
                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                          Last Name <span className="text-red-500">*</span>
+                          {t('profile.fields.lastName')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -699,16 +699,16 @@ export default function Profile() {
                           className={`w-full p-2.5 md:p-3 text-sm border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                             !editForm.lastName.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'
                           }`}
-                          placeholder="Required"
+                          placeholder={t('common.required')}
                         />
                         {!editForm.lastName.trim() && (
-                          <p className="text-xs text-red-500 mt-1">Last name is required</p>
+                          <p className="text-xs text-red-500 mt-1">{t('profile.edit.lastNameRequired')}</p>
                         )}
                       </div>
 
                       <div>
                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                          Email
+                          {t('profile.fields.email')}
                         </label>
                         <input
                           type="email"
@@ -720,7 +720,7 @@ export default function Profile() {
 
                       <div>
                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                          Phone <span className="text-red-500">*</span>
+                          {t('profile.fields.phone')} <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -734,17 +734,17 @@ export default function Profile() {
                               setEditForm(prev => ({ ...prev, phone: e.target.value }));
                               if (saveProfileError) setSaveProfileError('');
                             }}
-                            placeholder="+995 555 000 000"
+                            placeholder={t('profile.edit.phonePlaceholder')}
                             className="w-full pl-9 pr-3 py-2.5 md:py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           />
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Georgian number. Changing it requires SMS verification.</p>
+                        <p className="text-xs text-gray-400 mt-1">{t('profile.edit.phoneHint')}</p>
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                        Location
+                        {t('profile.fields.location')}
                       </label>
                       <input
                         type="text"
@@ -756,7 +756,7 @@ export default function Profile() {
 
                     <div>
                       <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
-                        Bio
+                        {t('profile.fields.bio')}
                       </label>
                       <textarea
                         value={editForm.bio}
@@ -775,45 +775,45 @@ export default function Profile() {
 
                     <div className="flex gap-3 md:gap-4 pt-2 md:pt-4">
                       <Button onClick={handleSaveProfile} variant="primary" disabled={saveProfileLoading}>
-                        {saveProfileLoading ? 'Saving...' : 'Save Changes'}
+                        {saveProfileLoading ? t('common.saving') : t('profile.edit.saveChanges')}
                       </Button>
                       <Button onClick={handleCancelEdit} variant="outline" disabled={saveProfileLoading}>
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4 md:space-y-6">
-                    <h3 className="text-sm md:text-lg font-semibold text-gray-900">Profile Information</h3>
+                    <h3 className="text-sm md:text-lg font-semibold text-gray-900">{t('profile.view.title')}</h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                       <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-500">First Name</label>
+                        <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.firstName')}</label>
                         <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.firstName || '—'}</p>
                       </div>
 
                       <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-500">Last Name</label>
+                        <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.lastName')}</label>
                         <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.lastName || '—'}</p>
                       </div>
 
                       <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-500">Email</label>
+                        <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.email')}</label>
                         <p className="mt-0.5 text-sm md:text-base text-gray-900 break-all">{userProfile.email}</p>
                       </div>
 
                       <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-500">Phone</label>
+                        <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.phone')}</label>
                         <div className="mt-0.5 flex items-center gap-2 flex-wrap">
                           <p className="text-sm md:text-base text-gray-900">{userProfile.phone || '—'}</p>
                           {userProfile.phone && (phoneVerified ? (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
-                              <i className="ri-checkbox-circle-line"></i> Verified
+                              <i className="ri-checkbox-circle-line"></i> {t('profile.phone.verified')}
                             </span>
                           ) : (
                             <>
                               <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                                <i className="ri-error-warning-line"></i> Not verified
+                                <i className="ri-error-warning-line"></i> {t('profile.phone.notVerified')}
                               </span>
                               <button
                                 type="button"
@@ -823,7 +823,7 @@ export default function Profile() {
                                 }}
                                 className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer"
                               >
-                                <i className="ri-shield-check-line"></i> Verify now
+                                <i className="ri-shield-check-line"></i> {t('profile.phone.verifyNow')}
                               </button>
                             </>
                           ))}
@@ -831,19 +831,19 @@ export default function Profile() {
                       </div>
 
                       <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-500">Location</label>
+                        <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.location')}</label>
                         <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.location || '—'}</p>
                       </div>
 
                       <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-500">Member Since</label>
+                        <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.memberSince')}</label>
                         <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.joinDate || '—'}</p>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs md:text-sm font-medium text-gray-500">Bio</label>
-                      <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.bio || 'No bio added yet.'}</p>
+                      <label className="block text-xs md:text-sm font-medium text-gray-500">{t('profile.fields.bio')}</label>
+                      <p className="mt-0.5 text-sm md:text-base text-gray-900">{userProfile.bio || t('profile.view.noBio')}</p>
                     </div>
                   </div>
                 )}
@@ -854,33 +854,33 @@ export default function Profile() {
             {activeTab === 'bookings' && (
               <div>
                 <div className="flex items-center justify-between mb-4 md:mb-6">
-                  <h3 className="text-sm md:text-lg font-semibold text-gray-900">My Bookings</h3>
+                  <h3 className="text-sm md:text-lg font-semibold text-gray-900">{t('profile.tabs.myBookings')}</h3>
                   <button
                     onClick={() => { const email = user?.email; if (email) loadBookings(email); }}
                     className="text-xs md:text-sm text-red-500 hover:text-red-600 cursor-pointer flex items-center gap-1 whitespace-nowrap"
                   >
                     <div className="w-3.5 h-3.5 flex items-center justify-center"><i className="ri-refresh-line"></i></div>
-                    Refresh
+                    {t('common.refresh')}
                   </button>
                 </div>
 
                 {bookingsLoading ? (
                   <div className="text-center py-16">
                     <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500 text-sm">Loading your bookings...</p>
+                    <p className="text-gray-500 text-sm">{t('profile.bookings.loading')}</p>
                   </div>
                 ) : bookings.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <i className="ri-calendar-line text-2xl text-gray-400"></i>
                     </div>
-                    <h4 className="text-base font-medium text-gray-900 mb-2">No bookings yet</h4>
-                    <p className="text-gray-500 text-sm mb-6">Your booking requests will appear here once you book a cottage.</p>
+                    <h4 className="text-base font-medium text-gray-900 mb-2">{t('profile.bookings.emptyTitle')}</h4>
+                    <p className="text-gray-500 text-sm mb-6">{t('profile.bookings.emptyBody')}</p>
                     <button
                       onClick={() => navigate('/search')}
                       className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      Explore Cottages
+                      {t('profile.bookings.exploreCottages')}
                     </button>
                   </div>
                 ) : (
@@ -900,16 +900,16 @@ export default function Profile() {
             {/* Wishlist Tab */}
             {activeTab === 'wishlist' && (
               <div>
-                <h3 className="text-sm md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">Wishlist</h3>
-                <p className="text-sm text-gray-600">Your saved properties will appear here.</p>
+                <h3 className="text-sm md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">{t('profile.tabs.wishlist')}</h3>
+                <p className="text-sm text-gray-600">{t('profile.wishlist.empty')}</p>
               </div>
             )}
 
             {/* Reviews Tab */}
             {activeTab === 'reviews' && (
               <div>
-                <h3 className="text-sm md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">Reviews</h3>
-                <p className="text-sm text-gray-600">Your reviews will appear here.</p>
+                <h3 className="text-sm md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">{t('profile.tabs.reviews')}</h3>
+                <p className="text-sm text-gray-600">{t('profile.reviews.empty')}</p>
               </div>
             )}
           </div>
@@ -923,8 +923,8 @@ export default function Profile() {
         open={verifyOpen}
         userId={user?.id ?? ''}
         initialPhone={verifyPhone}
-        title="Verify your phone number"
-        reason="We'll text a 6-digit code to confirm this number is yours."
+        title={t('profile.phone.verifyTitle')}
+        reason={t('profile.phone.verifyReason')}
         onVerified={handleProfilePhoneVerified}
         onClose={() => setVerifyOpen(false)}
       />

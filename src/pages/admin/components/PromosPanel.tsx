@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { todayInGeorgia, type Promo } from '../../../lib/promos';
+import { useTranslation } from '@lib/i18n';
 
 // promos writes are RLS-locked; admins read/write through the password-gated function.
 const ADMIN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
@@ -26,16 +27,16 @@ function getLiveStatus(promo: Promo): PromoLiveStatus {
   return 'live';
 }
 
-const STATUS_STYLES: Record<PromoLiveStatus, { badge: string; label: string; icon: string }> = {
-  live:      { badge: 'bg-green-100 text-green-700', label: 'Live',      icon: 'ri-checkbox-circle-line' },
-  scheduled: { badge: 'bg-amber-100 text-amber-700', label: 'Scheduled', icon: 'ri-time-line' },
-  expired:   { badge: 'bg-gray-100 text-gray-500',   label: 'Expired',   icon: 'ri-calendar-close-line' },
-  inactive:  { badge: 'bg-gray-100 text-gray-500',   label: 'Inactive',  icon: 'ri-pause-circle-line' },
+const STATUS_STYLES: Record<PromoLiveStatus, { badge: string; labelKey: string; icon: string }> = {
+  live:      { badge: 'bg-green-100 text-green-700', labelKey: 'admin.promos.status.live',      icon: 'ri-checkbox-circle-line' },
+  scheduled: { badge: 'bg-amber-100 text-amber-700', labelKey: 'admin.promos.status.scheduled', icon: 'ri-time-line' },
+  expired:   { badge: 'bg-gray-100 text-gray-500',   labelKey: 'admin.promos.status.expired',   icon: 'ri-calendar-close-line' },
+  inactive:  { badge: 'bg-gray-100 text-gray-500',   labelKey: 'admin.promos.status.inactive',  icon: 'ri-pause-circle-line' },
 };
 
-function formatDateShort(d: string | null): string {
+function formatDateShort(d: string | null, lang: string): string {
   if (!d) return '—';
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(d + 'T00:00:00').toLocaleDateString(lang, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 interface FormState {
@@ -65,6 +66,7 @@ interface EditorProps {
 }
 
 function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<FormState>(() =>
     initial
       ? {
@@ -87,20 +89,20 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
   const handleSave = async () => {
     setError('');
     if (!form.title.trim()) {
-      setError('Title is required.');
+      setError(t('common.titleRequired'));
       return;
     }
     if (!form.location.trim()) {
-      setError('Location is required — e.g. Batumi (matches Georgian spelling too).');
+      setError(t('admin.promos.locationRequired'));
       return;
     }
     const pct = Number(form.discount_percent);
     if (!Number.isFinite(pct) || pct <= 0 || pct > 90) {
-      setError('Discount must be between 1 and 90 percent.');
+      setError(t('admin.promos.discountInvalid'));
       return;
     }
     if (form.starts_at && form.ends_at && form.ends_at < form.starts_at) {
-      setError('End date cannot be before start date.');
+      setError(t('admin.promos.endBeforeStart'));
       return;
     }
 
@@ -116,11 +118,11 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
         active: form.active,
       };
       const res = await adminPost({ action: 'save-promo', promo: payload, promoId: initial?.id });
-      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Failed to save.');
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || t('common.failedToSave'));
       onSaved();
       onClose();
     } catch (e: unknown) {
-      let msg = 'Failed to save.';
+      let msg = t('common.failedToSave');
       if (e instanceof Error) msg = e.message;
       else if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
         msg = (e as { message: string }).message;
@@ -136,12 +138,12 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
       <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h3 className="text-lg font-bold text-gray-900">
-            {initial ? 'Edit Promo' : 'Add Promo'}
+            {initial ? t('admin.promos.editTitle') : t('admin.promos.addTitle')}
           </h3>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <i className="ri-close-line"></i>
           </button>
@@ -149,33 +151,33 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.title')}</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
-              placeholder="e.g. Summer in Batumi — 10% off"
+              placeholder={t('admin.promos.titlePlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-              <span className="text-xs font-normal text-gray-400 ml-1">(optional, shown on the homepage banner)</span>
+              {t('common.description')}
+              <span className="text-xs font-normal text-gray-400 ml-1">{t('admin.promos.descriptionHint')}</span>
             </label>
             <textarea
               value={form.description}
               onChange={(e) => update('description', e.target.value)}
               rows={2}
-              placeholder="Book any Batumi cottage this July and save."
+              placeholder={t('admin.promos.descriptionPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.promos.discountLabel')}</label>
               <input
                 type="number"
                 min="1"
@@ -189,14 +191,14 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-                <span className="text-xs font-normal text-gray-400 ml-1">(city or region)</span>
+                {t('common.location')}
+                <span className="text-xs font-normal text-gray-400 ml-1">{t('admin.promos.locationHint')}</span>
               </label>
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => update('location', e.target.value)}
-                placeholder="e.g. Batumi or Adjara"
+                placeholder={t('admin.promos.locationPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
               />
             </div>
@@ -205,8 +207,8 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start date
-                <span className="text-xs font-normal text-gray-400 ml-1">(empty = now)</span>
+                {t('admin.promos.startDate')}
+                <span className="text-xs font-normal text-gray-400 ml-1">{t('admin.promos.startDateHint')}</span>
               </label>
               <input
                 type="date"
@@ -217,8 +219,8 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                End date
-                <span className="text-xs font-normal text-gray-400 ml-1">(inclusive, empty = no end)</span>
+                {t('admin.promos.endDate')}
+                <span className="text-xs font-normal text-gray-400 ml-1">{t('admin.promos.endDateHint')}</span>
               </label>
               <input
                 type="date"
@@ -237,15 +239,13 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
               onChange={(e) => update('active', e.target.checked)}
               className="w-4 h-4 accent-red-500"
             />
-            <span className="text-sm font-medium text-gray-700">Active</span>
-            <span className="text-xs text-gray-400">— uncheck to prepare a promo without publishing it</span>
+            <span className="text-sm font-medium text-gray-700">{t('common.active')}</span>
+            <span className="text-xs text-gray-400">{t('admin.promos.activeHint')}</span>
           </label>
 
           <div className="text-xs text-gray-500 bg-gray-50 border border-line rounded-lg px-3 py-2 leading-relaxed">
             <i className="ri-information-line mr-1"></i>
-            Guests see the promo on the homepage, on search results for this location, and the
-            discount is applied automatically at checkout on matching cottages. Location matching
-            is bilingual (Batumi ↔ ბათუმი).
+            {t('admin.promos.infoNote')}
           </div>
 
           {error && (
@@ -261,14 +261,14 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving…' : initial ? 'Save changes' : 'Add promo'}
+            {saving ? t('common.saving') : initial ? t('common.saveChanges') : t('admin.promos.addPromo')}
           </button>
         </div>
       </div>
@@ -277,6 +277,7 @@ function PromoEditor({ initial, onClose, onSaved }: EditorProps) {
 }
 
 export default function PromosPanel() {
+  const { t, lang } = useTranslation();
   const [items, setItems] = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
   const [editorFor, setEditorFor] = useState<Promo | null | 'new'>(null);
@@ -289,13 +290,14 @@ export default function PromosPanel() {
     try {
       const res = await adminPost({ action: 'fetch-promos' });
       const data = (await res.json().catch(() => ({}))) as { promos?: Promo[]; error?: string };
-      if (!res.ok) throw new Error(data.error || 'Failed to load promos.');
+      if (!res.ok) throw new Error(data.error || t('admin.promos.loadFailed'));
       setItems(data.promos ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load promos.');
+      setError(e instanceof Error ? e.message : t('admin.promos.loadFailed'));
       setItems([]);
     }
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -303,13 +305,13 @@ export default function PromosPanel() {
   }, [load]);
 
   const handleDelete = async (promo: Promo) => {
-    if (!confirm(`Delete promo "${promo.title}"? This cannot be undone.`)) return;
+    if (!confirm(t('admin.promos.deleteConfirm', { title: promo.title }))) return;
     setDeleting(promo.id);
     const res = await adminPost({ action: 'delete-promo', promoId: promo.id });
     setDeleting(null);
     if (!res.ok) {
-      const msg = ((await res.json().catch(() => ({}))) as { error?: string }).error || 'Unknown error';
-      alert(`Failed to delete: ${msg}`);
+      const msg = ((await res.json().catch(() => ({}))) as { error?: string }).error || t('common.unknownError');
+      alert(t('common.failedToDelete', { error: msg }));
       return;
     }
     void load();
@@ -323,8 +325,8 @@ export default function PromosPanel() {
             <i className="ri-price-tag-3-line text-orange-600 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Offers &amp; Promos</h2>
-            <p className="text-xs text-gray-400">Location discounts — auto-applied at checkout</p>
+            <h2 className="text-base font-bold text-gray-900">{t('home.promos.title')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.promos.subtitle')}</p>
           </div>
         </div>
         <button
@@ -332,30 +334,30 @@ export default function PromosPanel() {
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg cursor-pointer whitespace-nowrap"
         >
           <i className="ri-add-line"></i>
-          Add promo
+          {t('admin.promos.addPromo')}
         </button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-sm text-gray-400 gap-3">
-          <i className="ri-loader-4-line animate-spin"></i> Loading promos…
+          <i className="ri-loader-4-line animate-spin"></i> {t('admin.promos.loading')}
         </div>
       ) : error ? (
         <div className="px-6 py-8 text-sm text-red-600 bg-red-50">{error}</div>
       ) : items.length === 0 ? (
         <div className="px-6 py-12 text-center text-sm text-gray-400">
-          No promos yet. Click <b>Add promo</b> to create your first offer.
+          {t('admin.promos.emptyPrefix')} <b>{t('admin.promos.addPromo')}</b> {t('admin.promos.emptySuffix')}
         </div>
       ) : (
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
-              <th className="text-left px-6 py-3 font-medium">Discount</th>
-              <th className="text-left px-6 py-3 font-medium">Title</th>
-              <th className="text-left px-6 py-3 font-medium">Location</th>
-              <th className="text-left px-6 py-3 font-medium">Dates</th>
-              <th className="text-left px-6 py-3 font-medium">Status</th>
-              <th className="text-right px-6 py-3 font-medium">Actions</th>
+              <th className="text-left px-6 py-3 font-medium">{t('admin.promos.table.discount')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('common.title')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('common.location')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('admin.promos.table.dates')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('common.statusLabel')}</th>
+              <th className="text-right px-6 py-3 font-medium">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -382,12 +384,12 @@ export default function PromosPanel() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-xs text-gray-500 whitespace-nowrap">
-                    {formatDateShort(promo.starts_at)} — {formatDateShort(promo.ends_at)}
+                    {formatDateShort(promo.starts_at, lang)} — {formatDateShort(promo.ends_at, lang)}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${style.badge}`}>
                       <i className={`${style.icon} text-xs`}></i>
-                      {style.label}
+                      {t(style.labelKey)}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-right whitespace-nowrap">
@@ -395,14 +397,14 @@ export default function PromosPanel() {
                       onClick={() => setEditorFor(promo)}
                       className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md cursor-pointer"
                     >
-                      Edit
+                      {t('common.edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(promo)}
                       disabled={deleting === promo.id}
                       className="px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded-md cursor-pointer disabled:opacity-50"
                     >
-                      {deleting === promo.id ? 'Deleting…' : 'Delete'}
+                      {deleting === promo.id ? t('common.deleting') : t('common.delete')}
                     </button>
                   </td>
                 </tr>

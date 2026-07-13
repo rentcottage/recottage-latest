@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useTranslation } from '@lib/i18n';
 
 export interface Experience {
   id: string;
@@ -49,10 +50,10 @@ function statusBadge(status: Experience['status']) {
   return 'bg-gray-100 text-gray-500';
 }
 
-function formatStatus(status: Experience['status']) {
-  if (status === 'coming_soon') return 'Coming Soon';
-  if (status === 'archived') return 'Archived';
-  return 'Active';
+function statusLabelKey(status: Experience['status']) {
+  if (status === 'coming_soon') return 'home.experiences.comingSoon';
+  if (status === 'archived') return 'admin.experiences.status.archived';
+  return 'common.active';
 }
 
 interface FormState {
@@ -88,6 +89,7 @@ interface EditorProps {
 }
 
 function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<FormState>(() =>
     initial
       ? {
@@ -178,16 +180,16 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
   const handleSave = async () => {
     setError('');
     if (!form.title.trim()) {
-      setError('Title is required.');
+      setError(t('common.titleRequired'));
       return;
     }
     if (!form.description.trim()) {
-      setError('Description is required.');
+      setError(t('admin.experiences.descriptionRequired'));
       return;
     }
     const priceNum = Number(form.price);
     if (!Number.isFinite(priceNum) || priceNum < 0) {
-      setError('Price must be a non-negative number.');
+      setError(t('admin.experiences.priceInvalid'));
       return;
     }
     const orderNum = Number.parseInt(form.display_order, 10);
@@ -206,12 +208,12 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
         gallery_urls: rest,
       };
       const res = await adminPost({ action: 'save-experience', experience: payload, experienceId: initial?.id });
-      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Failed to save.');
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || t('common.failedToSave'));
       onSaved();
       onClose();
     } catch (e: unknown) {
       // Supabase errors are plain objects, not Error instances, so handle both.
-      let msg = 'Failed to save.';
+      let msg = t('common.failedToSave');
       if (e instanceof Error) msg = e.message;
       else if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
         msg = (e as { message: string }).message;
@@ -227,12 +229,12 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
       <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h3 className="text-lg font-bold text-gray-900">
-            {initial ? 'Edit Experience' : 'Add Experience'}
+            {initial ? t('admin.experiences.editTitle') : t('admin.experiences.addTitle')}
           </h3>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <i className="ri-close-line"></i>
           </button>
@@ -240,23 +242,23 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.title')}</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
-              placeholder="e.g. Traditional Cooking Class"
+              placeholder={t('admin.experiences.titlePlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.description')}</label>
             <textarea
               value={form.description}
               onChange={(e) => update('description', e.target.value)}
               rows={4}
-              placeholder="What guests will experience…"
+              placeholder={t('admin.experiences.descriptionPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
             />
           </div>
@@ -264,7 +266,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price per person (₾)
+                {t('admin.experiences.pricePerPerson')}
               </label>
               <input
                 type="number"
@@ -277,23 +279,23 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.statusLabel')}</label>
               <select
                 value={form.status}
                 onChange={(e) => update('status', e.target.value as Experience['status'])}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-300"
               >
-                <option value="active">Active</option>
-                <option value="coming_soon">Coming Soon</option>
-                <option value="archived">Archived (hidden)</option>
+                <option value="active">{t('common.active')}</option>
+                <option value="coming_soon">{t('home.experiences.comingSoon')}</option>
+                <option value="archived">{t('admin.experiences.status.archivedHidden')}</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Display order
-              <span className="text-xs font-normal text-gray-400 ml-1">(lower = shown first)</span>
+              {t('admin.experiences.displayOrder')}
+              <span className="text-xs font-normal text-gray-400 ml-1">{t('admin.experiences.displayOrderHint')}</span>
             </label>
             <input
               type="number"
@@ -306,9 +308,9 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-sm font-medium text-gray-700">
-                Photos
+                {t('admin.experiences.photos')}
                 <span className="text-xs font-normal text-gray-400 ml-1">
-                  (first one is the cover, max {MAX_IMAGES})
+                  {t('admin.experiences.photosHint', { max: MAX_IMAGES })}
                 </span>
               </label>
               <span className="text-xs text-gray-400">
@@ -326,7 +328,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                     <img src={img.preview} alt="" className="w-full h-full object-cover" />
                     {idx === 0 && (
                       <span className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
-                        Cover
+                        {t('admin.experiences.cover')}
                       </span>
                     )}
                     <div className="absolute inset-x-0 bottom-0 flex justify-between p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition">
@@ -336,7 +338,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                           onClick={() => moveImage(img.key, -1)}
                           disabled={idx === 0}
                           className="w-6 h-6 flex items-center justify-center rounded bg-white/90 text-gray-700 text-xs disabled:opacity-30"
-                          aria-label="Move left"
+                          aria-label={t('admin.experiences.moveLeft')}
                         >
                           <i className="ri-arrow-left-s-line"></i>
                         </button>
@@ -345,7 +347,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                           onClick={() => moveImage(img.key, 1)}
                           disabled={idx === images.length - 1}
                           className="w-6 h-6 flex items-center justify-center rounded bg-white/90 text-gray-700 text-xs disabled:opacity-30"
-                          aria-label="Move right"
+                          aria-label={t('admin.experiences.moveRight')}
                         >
                           <i className="ri-arrow-right-s-line"></i>
                         </button>
@@ -354,7 +356,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                         type="button"
                         onClick={() => removeImage(img.key)}
                         className="w-6 h-6 flex items-center justify-center rounded bg-white/90 text-red-600 text-xs"
-                        aria-label="Remove"
+                        aria-label={t('common.remove')}
                       >
                         <i className="ri-close-line"></i>
                       </button>
@@ -374,7 +376,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                   }`}
                 >
                   <i className="ri-image-add-line"></i>
-                  Choose files
+                  {t('admin.experiences.chooseFiles')}
                   <input
                     type="file"
                     accept="image/*"
@@ -399,7 +401,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                       addPastedUrl();
                     }
                   }}
-                  placeholder="…or paste an image URL"
+                  placeholder={t('admin.experiences.pasteUrlPlaceholder')}
                   disabled={remainingSlots <= 0}
                   className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50"
                 />
@@ -409,13 +411,13 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
                   disabled={!pasteUrl.trim() || remainingSlots <= 0}
                   className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
                 >
-                  Add URL
+                  {t('admin.experiences.addUrl')}
                 </button>
               </div>
               <p className="text-xs text-gray-400">
                 {remainingSlots > 0
-                  ? `Upload up to ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'} (JPG/PNG).`
-                  : `Maximum of ${MAX_IMAGES} photos reached. Remove one to add another.`}
+                  ? t('admin.experiences.uploadUpTo', { count: remainingSlots })
+                  : t('admin.experiences.maxPhotosReached', { max: MAX_IMAGES })}
               </p>
             </div>
           </div>
@@ -433,14 +435,14 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving…' : initial ? 'Save changes' : 'Add experience'}
+            {saving ? t('common.saving') : initial ? t('common.saveChanges') : t('admin.experiences.addExperience')}
           </button>
         </div>
       </div>
@@ -449,6 +451,7 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
 }
 
 export default function ExperiencesPanel() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [editorFor, setEditorFor] = useState<Experience | null | 'new'>(null);
@@ -477,13 +480,13 @@ export default function ExperiencesPanel() {
   }, [load]);
 
   const handleDelete = async (exp: Experience) => {
-    if (!confirm(`Delete "${exp.title}"? This cannot be undone.`)) return;
+    if (!confirm(t('admin.experiences.deleteConfirm', { title: exp.title }))) return;
     setDeleting(exp.id);
     const res = await adminPost({ action: 'delete-experience', experienceId: exp.id });
     setDeleting(null);
     if (!res.ok) {
-      const msg = ((await res.json().catch(() => ({}))) as { error?: string }).error || 'Unknown error';
-      alert(`Failed to delete: ${msg}`);
+      const msg = ((await res.json().catch(() => ({}))) as { error?: string }).error || t('common.unknownError');
+      alert(t('common.failedToDelete', { error: msg }));
       return;
     }
     void load();
@@ -497,8 +500,8 @@ export default function ExperiencesPanel() {
             <i className="ri-goblet-line text-purple-600 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Experiences</h2>
-            <p className="text-xs text-gray-400">Manage homepage experience cards</p>
+            <h2 className="text-base font-bold text-gray-900">{t('notFound.experiences')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.experiences.subtitle')}</p>
           </div>
         </div>
         <button
@@ -506,30 +509,30 @@ export default function ExperiencesPanel() {
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg cursor-pointer whitespace-nowrap"
         >
           <i className="ri-add-line"></i>
-          Add experience
+          {t('admin.experiences.addExperience')}
         </button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-sm text-gray-400 gap-3">
-          <i className="ri-loader-4-line animate-spin"></i> Loading experiences…
+          <i className="ri-loader-4-line animate-spin"></i> {t('admin.experiences.loading')}
         </div>
       ) : error ? (
         <div className="px-6 py-8 text-sm text-red-600 bg-red-50">{error}</div>
       ) : items.length === 0 ? (
         <div className="px-6 py-12 text-center text-sm text-gray-400">
-          No experiences yet. Click <b>Add experience</b> to create one.
+          {t('admin.experiences.emptyPrefix')} <b>{t('admin.experiences.addExperience')}</b> {t('admin.experiences.emptySuffix')}
         </div>
       ) : (
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
-              <th className="text-left px-6 py-3 font-medium">Order</th>
-              <th className="text-left px-6 py-3 font-medium">Image</th>
-              <th className="text-left px-6 py-3 font-medium">Title</th>
-              <th className="text-left px-6 py-3 font-medium">Price</th>
-              <th className="text-left px-6 py-3 font-medium">Status</th>
-              <th className="text-right px-6 py-3 font-medium">Actions</th>
+              <th className="text-left px-6 py-3 font-medium">{t('admin.experiences.table.order')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('admin.experiences.table.image')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('common.title')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('common.price')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('common.statusLabel')}</th>
+              <th className="text-right px-6 py-3 font-medium">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -556,13 +559,13 @@ export default function ExperiencesPanel() {
                 <td className="px-6 py-3 font-semibold text-gray-900">
                   {exp.currency_symbol || '₾'}
                   {Number(exp.price_per_person).toFixed(0)}
-                  <span className="text-xs font-normal text-gray-400"> / person</span>
+                  <span className="text-xs font-normal text-gray-400"> {t('home.experiences.perPerson')}</span>
                 </td>
                 <td className="px-6 py-3">
                   <span
                     className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(exp.status)}`}
                   >
-                    {formatStatus(exp.status)}
+                    {t(statusLabelKey(exp.status))}
                   </span>
                 </td>
                 <td className="px-6 py-3 text-right whitespace-nowrap">
@@ -570,14 +573,14 @@ export default function ExperiencesPanel() {
                     onClick={() => setEditorFor(exp)}
                     className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md cursor-pointer"
                   >
-                    Edit
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={() => handleDelete(exp)}
                     disabled={deleting === exp.id}
                     className="px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded-md cursor-pointer disabled:opacity-50"
                   >
-                    {deleting === exp.id ? 'Deleting…' : 'Delete'}
+                    {deleting === exp.id ? t('common.deleting') : t('common.delete')}
                   </button>
                 </td>
               </tr>

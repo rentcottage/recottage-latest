@@ -1,8 +1,10 @@
+import { useTranslation } from '@lib/i18n';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
 
 export default function Privacy() {
+  const { t, lang } = useTranslation();
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
   const jsonLd = {
@@ -17,7 +19,7 @@ export default function Privacy() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="Privacy Policy — RentCottage.Ge"
+        title={t('privacy.seo.title')}
         description="Learn how RentCottage.Ge collects, uses and protects your personal information when you use our Georgian cottage rental platform."
         canonical="/privacy"
         jsonLd={jsonLd}
@@ -28,22 +30,22 @@ export default function Privacy() {
       <div className="relative w-full h-[180px] sm:h-[240px] md:h-[320px] overflow-hidden">
         <img
           src="https://readdy.ai/api/search-image?query=serene%20Georgian%20Gudauri%20mountain%20valley%20pine%20forest%20misty%20morning%20fog%20rolling%20hills%20no%20people%20wide%20open%20landscape%20soft%20diffused%20light%20pale%20green%20and%20grey%20tones%20tranquil%20nature%20clean%20minimal%20aerial%20Caucasus%20range&width=1600&height=460&seq=privacy-hero-01&orientation=landscape"
-          alt="Georgian mountain valley"
+          alt={t('privacy.heroAlt')}
           className="w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-black/28" />
         <div className="absolute inset-0 flex flex-col justify-end px-4 pb-5 sm:pb-8 md:pb-12">
           <div className="max-w-4xl mx-auto w-full">
             <div className="flex items-center gap-2 text-xs sm:text-sm text-white/70 mb-2 sm:mb-3">
-              <a href="/" className="hover:text-white transition-colors cursor-pointer">Home</a>
+              <a href="/" className="hover:text-white transition-colors cursor-pointer">{t('common.home')}</a>
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-arrow-right-s-line text-white/50"></i>
               </div>
-              <span className="text-white/90">Privacy Policy</span>
+              <span className="text-white/90">{t('privacy.title')}</span>
             </div>
-            <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 sm:mb-2">Privacy Policy</h1>
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 sm:mb-2">{t('privacy.title')}</h1>
             <p className="text-white/70 text-xs sm:text-sm">
-              Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {t('common.lastUpdated', { date: new Date().toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' }) })}
             </p>
           </div>
         </div>
@@ -53,165 +55,165 @@ export default function Privacy() {
         <div className="bg-white">
           <div className="prose max-w-none">
             <p className="sr-only">
-              Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {t('common.lastUpdated', { date: new Date().toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' }) })}
             </p>
 
             {[
               {
-                title: '1. Information We Collect',
+                title: t('privacy.s1Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Personal Information</h3>
-                    <p className="text-xs sm:text-sm">When you use RentCottage.Ge, we may collect the following personal information:</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s1PersonalTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s1PersonalIntro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Name, email address, and phone number</li>
-                      <li>Profile information and photos</li>
-                      <li>Payment information (processed securely through third-party providers)</li>
-                      <li>Government-issued ID for verification purposes</li>
-                      <li>Communication preferences</li>
+                      <li>{t('privacy.s1PersonalLi1')}</li>
+                      <li>{t('privacy.s1PersonalLi2')}</li>
+                      <li>{t('privacy.s1PersonalLi3')}</li>
+                      <li>{t('privacy.s1PersonalLi4')}</li>
+                      <li>{t('privacy.s1PersonalLi5')}</li>
                     </ul>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900 mt-4">Usage Information</h3>
-                    <p className="text-xs sm:text-sm">We automatically collect information about how you use our platform:</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900 mt-4">{t('privacy.s1UsageTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s1UsageIntro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Device information (IP address, browser type, operating system)</li>
-                      <li>Usage patterns and preferences</li>
-                      <li>Location data (with your permission)</li>
-                      <li>Cookies and similar tracking technologies</li>
-                    </ul>
-                  </div>
-                )
-              },
-              {
-                title: '2. How We Use Your Information',
-                content: (
-                  <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">We use your information to:</p>
-                    <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Provide and improve our cottage rental services</li>
-                      <li>Process bookings and payments</li>
-                      <li>Communicate with you about your reservations</li>
-                      <li>Verify your identity and prevent fraud</li>
-                      <li>Send you marketing communications (with your consent)</li>
-                      <li>Comply with legal obligations</li>
-                      <li>Resolve disputes and provide customer support</li>
+                      <li>{t('privacy.s1UsageLi1')}</li>
+                      <li>{t('privacy.s1UsageLi2')}</li>
+                      <li>{t('privacy.s1UsageLi3')}</li>
+                      <li>{t('privacy.s1UsageLi4')}</li>
                     </ul>
                   </div>
                 )
               },
               {
-                title: '3. Information Sharing',
+                title: t('privacy.s2Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">We may share your information with:</p>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Hosts and Guests</h3>
-                    <p className="text-xs sm:text-sm">When you make or receive a booking, we share necessary information to facilitate the transaction, including contact details and booking information.</p>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Service Providers</h3>
-                    <p className="text-xs sm:text-sm">We work with trusted third-party service providers who help us operate our platform, including:</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s2Intro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Payment processors</li>
-                      <li>Identity verification services</li>
-                      <li>Customer support tools</li>
-                      <li>Analytics providers</li>
+                      <li>{t('privacy.s2Li1')}</li>
+                      <li>{t('privacy.s2Li2')}</li>
+                      <li>{t('privacy.s2Li3')}</li>
+                      <li>{t('privacy.s2Li4')}</li>
+                      <li>{t('privacy.s2Li5')}</li>
+                      <li>{t('privacy.s2Li6')}</li>
+                      <li>{t('privacy.s2Li7')}</li>
                     </ul>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Legal Requirements</h3>
-                    <p className="text-xs sm:text-sm">We may disclose your information when required by law or to protect our rights and safety.</p>
                   </div>
                 )
               },
               {
-                title: '4. Data Security',
+                title: t('privacy.s3Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">We implement appropriate security measures to protect your personal information:</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s3Intro')}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s3HostsGuestsTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s3HostsGuestsBody')}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s3ProvidersTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s3ProvidersIntro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Encryption of sensitive data in transit and at rest</li>
-                      <li>Regular security assessments and updates</li>
-                      <li>Limited access to personal information on a need-to-know basis</li>
-                      <li>Secure payment processing through certified providers</li>
+                      <li>{t('privacy.s3ProvidersLi1')}</li>
+                      <li>{t('privacy.s3ProvidersLi2')}</li>
+                      <li>{t('privacy.s3ProvidersLi3')}</li>
+                      <li>{t('privacy.s3ProvidersLi4')}</li>
                     </ul>
-                    <p className="text-xs sm:text-sm">However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s3LegalTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s3LegalBody')}</p>
                   </div>
                 )
               },
               {
-                title: '5. Your Rights and Choices',
+                title: t('privacy.s4Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">You have the following rights regarding your personal information:</p>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Access and Correction</h3>
-                    <p className="text-xs sm:text-sm">You can access and update your personal information through your account settings.</p>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Data Portability</h3>
-                    <p className="text-xs sm:text-sm">You can request a copy of your personal data in a structured, machine-readable format.</p>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Deletion</h3>
-                    <p className="text-xs sm:text-sm">You can request deletion of your personal information, subject to certain legal and operational requirements.</p>
-                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">Marketing Communications</h3>
-                    <p className="text-xs sm:text-sm">You can opt out of marketing communications at any time by following the unsubscribe instructions in our emails.</p>
-                  </div>
-                )
-              },
-              {
-                title: '6. Cookies and Tracking',
-                content: (
-                  <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">We use cookies and similar technologies to:</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s4Intro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Remember your preferences and settings</li>
-                      <li>Analyze website traffic and usage patterns</li>
-                      <li>Provide personalized content and advertisements</li>
-                      <li>Improve our services and user experience</li>
+                      <li>{t('privacy.s4Li1')}</li>
+                      <li>{t('privacy.s4Li2')}</li>
+                      <li>{t('privacy.s4Li3')}</li>
+                      <li>{t('privacy.s4Li4')}</li>
                     </ul>
-                    <p className="text-xs sm:text-sm">You can control cookie settings through your browser preferences, but disabling cookies may affect website functionality.</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s4Outro')}</p>
                   </div>
                 )
               },
               {
-                title: '7. International Data Transfers',
+                title: t('privacy.s5Title'),
                 content: (
-                  <p className="text-xs sm:text-sm text-gray-700">Our information may be transferred to and processed in countries other than Georgia. We ensure appropriate safeguards are in place to protect your data during international transfers.</p>
+                  <div className="space-y-3 text-gray-700">
+                    <p className="text-xs sm:text-sm">{t('privacy.s5Intro')}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s5AccessTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s5AccessBody')}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s5PortabilityTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s5PortabilityBody')}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s5DeletionTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s5DeletionBody')}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900">{t('privacy.s5MarketingTitle')}</h3>
+                    <p className="text-xs sm:text-sm">{t('privacy.s5MarketingBody')}</p>
+                  </div>
                 )
               },
               {
-                title: '8. Data Retention',
+                title: t('privacy.s6Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">We retain your personal information for as long as necessary to:</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s6Intro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Provide our services to you</li>
-                      <li>Comply with legal obligations</li>
-                      <li>Resolve disputes and enforce agreements</li>
-                      <li>Improve our services</li>
+                      <li>{t('privacy.s6Li1')}</li>
+                      <li>{t('privacy.s6Li2')}</li>
+                      <li>{t('privacy.s6Li3')}</li>
+                      <li>{t('privacy.s6Li4')}</li>
                     </ul>
-                    <p className="text-xs sm:text-sm">When we no longer need your information, we will securely delete or anonymize it.</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s6Outro')}</p>
                   </div>
                 )
               },
               {
-                title: "9. Children's Privacy",
+                title: t('privacy.s7Title'),
                 content: (
-                  <p className="text-xs sm:text-sm text-gray-700">Our services are not intended for children under 18 years of age. We do not knowingly collect personal information from children under 18. If we become aware that we have collected personal information from a child under 18, we will take steps to delete such information.</p>
+                  <p className="text-xs sm:text-sm text-gray-700">{t('privacy.s7Body')}</p>
                 )
               },
               {
-                title: '10. Changes to This Policy',
+                title: t('privacy.s8Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">We may update this Privacy Policy from time to time. We will notify you of any material changes by:</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s8Intro')}</p>
                     <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Posting the updated policy on our website</li>
-                      <li>Sending you an email notification</li>
-                      <li>Displaying a prominent notice on our platform</li>
+                      <li>{t('privacy.s8Li1')}</li>
+                      <li>{t('privacy.s2Li6')}</li>
+                      <li>{t('privacy.s8Li3')}</li>
+                      <li>{t('privacy.s8Li4')}</li>
                     </ul>
-                    <p className="text-xs sm:text-sm">Your continued use of our services after any changes indicates your acceptance of the updated policy.</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s8Outro')}</p>
                   </div>
                 )
               },
               {
-                title: '11. Contact Us',
+                title: t('privacy.s9Title'),
+                content: (
+                  <p className="text-xs sm:text-sm text-gray-700">{t('privacy.s9Body')}</p>
+                )
+              },
+              {
+                title: t('privacy.s10Title'),
                 content: (
                   <div className="space-y-3 text-gray-700">
-                    <p className="text-xs sm:text-sm">If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
+                    <p className="text-xs sm:text-sm">{t('privacy.s10Intro')}</p>
+                    <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
+                      <li>{t('privacy.s10Li1')}</li>
+                      <li>{t('privacy.s10Li2')}</li>
+                      <li>{t('privacy.s10Li3')}</li>
+                    </ul>
+                    <p className="text-xs sm:text-sm">{t('privacy.s10Outro')}</p>
+                  </div>
+                )
+              },
+              {
+                title: t('privacy.s11Title'),
+                content: (
+                  <div className="space-y-3 text-gray-700">
+                    <p className="text-xs sm:text-sm">{t('privacy.s11Intro')}</p>
                     <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mt-3">
-                      <h3 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">Email</h3>
+                      <h3 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 sm:mb-2">{t('common.email')}</h3>
                       <p className="text-gray-600 text-xs sm:text-sm">info.rentcottage@gmail.com</p>
                     </div>
                   </div>
@@ -230,10 +232,9 @@ export default function Privacy() {
                   <i className="ri-information-line text-blue-500 text-sm sm:text-base"></i>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-blue-900 text-xs sm:text-sm md:text-base mb-1 sm:mb-2">Your Privacy Matters</h3>
+                  <h3 className="font-semibold text-blue-900 text-xs sm:text-sm md:text-base mb-1 sm:mb-2">{t('privacy.matterTitle')}</h3>
                   <p className="text-blue-800 text-xs sm:text-sm">
-                    We are committed to protecting your privacy and being transparent about how we use your information.
-                    If you have any concerns or questions, please don't hesitate to contact us.
+                    {t('privacy.matterBody')}
                   </p>
                 </div>
               </div>

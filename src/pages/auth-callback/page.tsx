@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from '@lib/i18n';
 import { upsertProfile, checkEmailBlocked } from '../../hooks/useAuth';
 
 /**
@@ -55,6 +56,7 @@ async function needsPhoneCompletion(userId: string, provider: string): Promise<b
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
 
@@ -140,7 +142,9 @@ export default function AuthCallback() {
       } catch (err) {
         console.error('Auth callback error:', err);
         if (!cancelled) {
-          setError('Authentication failed. Please try again.');
+          // Store the i18n key — the render below resolves it via t() so the
+          // message re-translates if the language changes.
+          setError('authPages.callback.authFailed');
           setTimeout(() => navigate('/'), 3000);
         }
       }
@@ -157,15 +161,15 @@ export default function AuthCallback() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5">
             <i className="ri-forbid-2-line text-red-500 text-2xl"></i>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Not Allowed</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('authPages.callback.blockedTitle')}</h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
-            This email address is not allowed to register. Registration with this email is blocked.
+            {t('authPages.callback.blockedDesc')}
           </p>
           <a
             href="/"
             className="inline-block px-6 py-2.5 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap"
           >
-            Back to Home
+            {t('authPages.callback.backToHome')}
           </a>
         </div>
       </div>
@@ -179,8 +183,8 @@ export default function AuthCallback() {
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i className="ri-error-warning-line text-red-500 text-xl"></i>
           </div>
-          <p className="text-gray-800 font-medium">{error}</p>
-          <p className="text-gray-400 text-sm mt-1">Redirecting you back...</p>
+          <p className="text-gray-800 font-medium">{t(error)}</p>
+          <p className="text-gray-400 text-sm mt-1">{t('authPages.callback.redirecting')}</p>
         </div>
       </div>
     );
@@ -190,8 +194,8 @@ export default function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="text-center">
         <div className="w-12 h-12 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-5"></div>
-        <p className="text-gray-700 font-medium">Completing sign in...</p>
-        <p className="text-gray-400 text-sm mt-1">Just a moment</p>
+        <p className="text-gray-700 font-medium">{t('authPages.callback.completingSignIn')}</p>
+        <p className="text-gray-400 text-sm mt-1">{t('authPages.justAMoment')}</p>
       </div>
     </div>
   );

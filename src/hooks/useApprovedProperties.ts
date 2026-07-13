@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { translateStatic } from '@lib/i18n';
 
 export interface NormalizedProperty {
   id: string;
@@ -98,7 +99,7 @@ export function useApprovedProperties() {
         setDbProperties((data || []).map(normalizeRow));
       } catch (e) {
         console.error('[useApprovedProperties] Unexpected error:', e);
-        setError('Failed to load listings');
+        setError(translateStatic('misc.failedToLoadListings'));
       } finally {
         setLoading(false);
       }

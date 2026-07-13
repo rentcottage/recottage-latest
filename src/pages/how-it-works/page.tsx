@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
+import { useTranslation } from '@lib/i18n';
 
 export default function HowItWorks() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('guests');
   const navigate = useNavigate();
 
@@ -36,7 +38,7 @@ export default function HowItWorks() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="How RentCottage.Ge Works — Book Georgian Cottages Easily"
+        title={t('howItWorks.seo.title')}
         description="Learn how to search, book and stay in authentic Georgian cottages. Simple 4-step process for guests and hosts. Safe payments, verified properties and local Georgian support."
         keywords="how to book Georgian cottage, Georgia cottage rental guide, rent cottage Georgia steps, Georgian vacation rental process"
         canonical="/how-it-works"
@@ -48,16 +50,16 @@ export default function HowItWorks() {
       <section className="relative w-full h-[260px] md:h-[400px] overflow-hidden">
         <img
           src="https://readdy.ai/api/search-image?query=charming%20traditional%20Georgian%20wooden%20cottage%20with%20carved%20balcony%20nestled%20in%20lush%20green%20Caucasus%20mountain%20valley%20Svaneti%20style%20architecture%20stone%20walls%20surrounded%20by%20wildflowers%20alpine%20meadow%20warm%20afternoon%20light%20no%20people%20premium%20travel%20photography%20wide%20angle%20landscape&width=1600&height=560&seq=how-it-works-hero-2025&orientation=landscape"
-          alt="Georgian cottage in mountain valley"
+          alt={t('howItWorks.hero.imageAlt')}
           className="w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-black/40" />
         <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4">
           <h1 className="text-2xl md:text-5xl font-bold text-white mb-3 md:mb-4">
-            How It Works
+            {t('header.nav.howItWorks')}
           </h1>
           <p className="text-sm md:text-xl text-white/90 mb-4 md:mb-8 max-w-2xl">
-            Discover how easy it is to find your perfect Georgian cottage or become a successful host
+            {t('howItWorks.hero.subtitle')}
           </p>
         </div>
       </section>
@@ -74,7 +76,7 @@ export default function HowItWorks() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              For Guests
+              {t('howItWorks.tabs.guests')}
             </button>
             <button
               onClick={() => setActiveTab('hosts')}
@@ -84,7 +86,7 @@ export default function HowItWorks() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              For Hosts
+              {t('howItWorks.tabs.hosts')}
             </button>
           </div>
         </div>
@@ -93,9 +95,9 @@ export default function HowItWorks() {
         {activeTab === 'guests' && (
           <div>
             <div className="text-center mb-6 md:mb-12">
-              <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Your Journey to the Perfect Georgian Getaway</h2>
+              <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">{t('howItWorks.guests.title')}</h2>
               <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
-                From search to checkout, we&apos;ve made finding and booking your ideal cottage simple and secure
+                {t('howItWorks.guests.subtitle')}
               </p>
             </div>
 
@@ -104,52 +106,52 @@ export default function HowItWorks() {
               {[
                 {
                   step: '1',
-                  title: 'Search & Discover',
-                  description: 'Enter your destination, dates, and number of guests to find available cottages',
+                  title: t('howItWorks.guests.step1Title'),
+                  description: t('howItWorks.guests.step1Desc'),
                   details: [
-                    'Browse through hundreds of verified Georgian cottages',
-                    'Use filters to find exactly what you\'re looking for',
-                    'View detailed photos, amenities, and guest reviews',
-                    'Compare prices and locations easily'
+                    t('howItWorks.guests.step1Detail1'),
+                    t('howItWorks.guests.step1Detail2'),
+                    t('howItWorks.guests.step1Detail3'),
+                    t('howItWorks.guests.step1Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Person%20using%20laptop%20to%20search%20for%20Georgian%20cottages%20online%2C%20beautiful%20cottage%20listings%20on%20screen%2C%20modern%20search%20interface%2C%20comfortable%20home%20setting%2C%20travel%20planning%20experience&width=600&height=400&seq=guestStep1&orientation=landscape',
                   color: 'red'
                 },
                 {
                   step: '2',
-                  title: 'Connect with Hosts',
-                  description: 'Message hosts directly to ask questions and request bookings',
+                  title: t('howItWorks.guests.step2Title'),
+                  description: t('howItWorks.guests.step2Desc'),
                   details: [
-                    'Send booking requests with your travel details',
-                    'Ask hosts about local recommendations and amenities',
-                    'Get responses within 24 hours',
-                    'Build confidence through direct communication'
+                    t('howItWorks.guests.step2Detail1'),
+                    t('howItWorks.guests.step2Detail2'),
+                    t('howItWorks.guests.step2Detail3'),
+                    t('howItWorks.guests.step2Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Friendly%20Georgian%20host%20welcoming%20guests%20via%20video%20call%2C%20warm%20smile%2C%20traditional%20Georgian%20cottage%20in%20background%2C%20personal%20connection%2C%20hospitality%20culture%2C%20authentic%20communication&width=600&height=400&seq=guestStep2&orientation=landscape',
                   color: 'blue'
                 },
                 {
                   step: '3',
-                  title: 'Secure Booking',
-                  description: 'Complete your reservation with our secure payment system',
+                  title: t('howItWorks.guests.step3Title'),
+                  description: t('howItWorks.guests.step3Desc'),
                   details: [
-                    'Pay securely through our encrypted platform',
-                    'Receive instant booking confirmation',
-                    'Get detailed check-in instructions',
-                    'Access 24/7 customer support during business hours'
+                    t('howItWorks.guests.step3Detail1'),
+                    t('howItWorks.guests.step3Detail2'),
+                    t('howItWorks.guests.step3Detail3'),
+                    t('howItWorks.guests.step3Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Secure%20online%20payment%20interface%20for%20cottage%20booking%2C%20credit%20card%20and%20mobile%20payment%20options%2C%20security%20icons%2C%20confirmation%20screen%2C%20trust%20and%20safety%20elements&width=600&height=400&seq=guestStep3&orientation=landscape',
                   color: 'green'
                 },
                 {
                   step: '4',
-                  title: 'Enjoy Your Stay',
-                  description: 'Arrive at your cottage and experience authentic Georgian hospitality',
+                  title: t('howItWorks.guests.step4Title'),
+                  description: t('howItWorks.guests.step4Desc'),
                   details: [
-                    'Easy check-in with clear instructions',
-                    'Enjoy all listed amenities and local experiences',
-                    'Get support from your host throughout your stay',
-                    'Leave reviews to help future guests'
+                    t('howItWorks.guests.step4Detail1'),
+                    t('howItWorks.guests.step4Detail2'),
+                    t('howItWorks.guests.step4Detail3'),
+                    t('howItWorks.guests.step4Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Happy%20family%20enjoying%20stay%20at%20Georgian%20cottage%2C%20beautiful%20mountain%20views%2C%20traditional%20architecture%2C%20outdoor%20activities%2C%20authentic%20cultural%20experience%2C%20memorable%20vacation%20moments&width=600&height=400&seq=guestStep4&orientation=landscape',
                   color: 'purple'
@@ -190,12 +192,12 @@ export default function HowItWorks() {
 
             {/* Guest Benefits */}
             <div className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-8 md:mb-16">
-              <h3 className="text-base md:text-2xl font-bold text-gray-900 text-center mb-5 md:mb-8">Why Choose RentCottage.Ge?</h3>
+              <h3 className="text-base md:text-2xl font-bold text-gray-900 text-center mb-5 md:mb-8">{t('howItWorks.guests.whyTitle')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8">
                 {[
-                  { icon: 'ri-shield-check-line', color: 'red', title: 'Verified Properties', desc: 'All cottages are inspected and verified by our team for quality and safety' },
-                  { icon: 'ri-customer-service-line', color: 'blue', title: 'Local Support', desc: 'Get help from our Georgian team who knows the country inside and out' },
-                  { icon: 'ri-money-dollar-circle-line', color: 'green', title: 'Best Price Guarantee', desc: 'Find the same cottage cheaper elsewhere? We\'ll match the price' },
+                  { icon: 'ri-shield-check-line', color: 'red', title: t('howItWorks.guests.benefit1Title'), desc: t('howItWorks.guests.benefit1Desc') },
+                  { icon: 'ri-customer-service-line', color: 'blue', title: t('howItWorks.guests.benefit2Title'), desc: t('howItWorks.guests.benefit2Desc') },
+                  { icon: 'ri-money-dollar-circle-line', color: 'green', title: t('howItWorks.guests.benefit3Title'), desc: t('howItWorks.guests.benefit3Desc') },
                 ].map(({ icon, color, title, desc }) => (
                   <div key={title} className="text-center">
                     <div className={`w-12 h-12 md:w-16 md:h-16 bg-${color}-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4`}>
@@ -216,7 +218,7 @@ export default function HowItWorks() {
                 onClick={() => navigate('/search')}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 md:px-8 py-2.5 md:py-4 rounded-lg font-medium text-sm md:text-lg transition-colors cursor-pointer whitespace-nowrap"
               >
-                Start Your Search
+                {t('howItWorks.guests.cta')}
               </button>
             </div>
           </div>
@@ -226,9 +228,9 @@ export default function HowItWorks() {
         {activeTab === 'hosts' && (
           <div>
             <div className="text-center mb-6 md:mb-12">
-              <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Your Path to Successful Hosting</h2>
+              <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">{t('howItWorks.hosts.title')}</h2>
               <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
-                Turn your Georgian cottage into a profitable business while sharing your culture with travelers
+                {t('howItWorks.hosts.subtitle')}
               </p>
             </div>
 
@@ -237,52 +239,52 @@ export default function HowItWorks() {
               {[
                 {
                   step: '1',
-                  title: 'List Your Property',
-                  description: 'Create a compelling listing that showcases your cottage\'s unique charm',
+                  title: t('howItWorks.hosts.step1Title'),
+                  description: t('howItWorks.hosts.step1Desc'),
                   details: [
-                    'Upload high-quality photos of your cottage',
-                    'Write an engaging description highlighting unique features',
-                    'Set competitive pricing for your area',
-                    'List all amenities and nearby attractions'
+                    t('howItWorks.hosts.step1Detail1'),
+                    t('howItWorks.hosts.step1Detail2'),
+                    t('howItWorks.hosts.step1Detail3'),
+                    t('howItWorks.hosts.step1Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Georgian%20cottage%20owner%20taking%20professional%20photos%20of%20beautiful%20traditional%20cottage%2C%20camera%20equipment%2C%20staging%20interior%20spaces%2C%20creating%20attractive%20listing%2C%20mountain%20backdrop&width=600&height=400&seq=hostStep1&orientation=landscape',
                   color: 'red'
                 },
                 {
                   step: '2',
-                  title: 'Get Verified',
-                  description: 'Our team reviews and approves your listing to ensure quality standards',
+                  title: t('howItWorks.hosts.step2Title'),
+                  description: t('howItWorks.hosts.step2Desc'),
                   details: [
-                    'Complete identity verification process',
-                    'Schedule property inspection with our team',
-                    'Receive feedback and recommendations',
-                    'Get approved and go live on the platform'
+                    t('howItWorks.hosts.step2Detail1'),
+                    t('howItWorks.hosts.step2Detail2'),
+                    t('howItWorks.hosts.step2Detail3'),
+                    t('howItWorks.hosts.step2Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Professional%20property%20inspector%20reviewing%20Georgian%20cottage%2C%20checklist%20in%20hand%2C%20quality%20assessment%2C%20safety%20verification%2C%20approval%20process%2C%20official%20documentation&width=600&height=400&seq=hostStep2&orientation=landscape',
                   color: 'blue'
                 },
                 {
                   step: '3',
-                  title: 'Welcome Guests',
-                  description: 'Start receiving bookings and providing exceptional hospitality',
+                  title: t('howItWorks.hosts.step3Title'),
+                  description: t('howItWorks.hosts.step3Desc'),
                   details: [
-                    'Respond to booking inquiries within 24 hours',
-                    'Communicate with guests before and during their stay',
-                    'Provide local recommendations and support',
-                    'Maintain your property to high standards'
+                    t('howItWorks.hosts.step3Detail1'),
+                    t('howItWorks.hosts.step3Detail2'),
+                    t('howItWorks.hosts.step3Detail3'),
+                    t('howItWorks.hosts.step3Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Georgian%20host%20warmly%20welcoming%20international%20guests%20at%20cottage%20entrance%2C%20traditional%20Georgian%20hospitality%2C%20cultural%20exchange%2C%20friendly%20greeting%2C%20authentic%20experience&width=600&height=400&seq=hostStep3&orientation=landscape',
                   color: 'green'
                 },
                 {
                   step: '4',
-                  title: 'Earn & Grow',
-                  description: 'Build your reputation and increase your income through great reviews',
+                  title: t('howItWorks.hosts.step4Title'),
+                  description: t('howItWorks.hosts.step4Desc'),
                   details: [
-                    'Receive payments securely through our platform',
-                    'Get reviews from satisfied guests',
-                    'Access host resources and support',
-                    'Expand your hosting business over time'
+                    t('howItWorks.hosts.step4Detail1'),
+                    t('howItWorks.hosts.step4Detail2'),
+                    t('howItWorks.hosts.step4Detail3'),
+                    t('howItWorks.hosts.step4Detail4')
                   ],
                   image: 'https://readdy.ai/api/search-image?query=Successful%20Georgian%20cottage%20host%20reviewing%20positive%20guest%20feedback%20on%20tablet%2C%20earnings%20dashboard%2C%20five-star%20reviews%2C%20business%20growth%2C%20financial%20success&width=600&height=400&seq=hostStep4&orientation=landscape',
                   color: 'purple'
@@ -323,12 +325,12 @@ export default function HowItWorks() {
 
             {/* Host Benefits */}
             <div className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-8 md:mb-16">
-              <h3 className="text-base md:text-2xl font-bold text-gray-900 text-center mb-5 md:mb-8">Why Host with Us?</h3>
+              <h3 className="text-base md:text-2xl font-bold text-gray-900 text-center mb-5 md:mb-8">{t('howItWorks.hosts.whyTitle')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8">
                 {[
-                  { icon: 'ri-money-dollar-circle-line', color: 'green', title: 'Competitive Earnings', desc: 'Keep the majority of your booking revenue with our low commission rates' },
-                  { icon: 'ri-shield-check-line', color: 'blue', title: 'Host Protection', desc: 'Comprehensive insurance coverage and verified guest screening' },
-                  { icon: 'ri-customer-service-line', color: 'purple', title: 'Dedicated Support', desc: 'Get help from our host specialists during business hours' },
+                  { icon: 'ri-money-dollar-circle-line', color: 'green', title: t('howItWorks.hosts.benefit1Title'), desc: t('howItWorks.hosts.benefit1Desc') },
+                  { icon: 'ri-shield-check-line', color: 'blue', title: t('becomeHost.benefits.protectionTitle'), desc: t('howItWorks.hosts.benefit2Desc') },
+                  { icon: 'ri-customer-service-line', color: 'purple', title: t('howItWorks.hosts.benefit3Title'), desc: t('howItWorks.hosts.benefit3Desc') },
                 ].map(({ icon, color, title, desc }) => (
                   <div key={title} className="text-center">
                     <div className={`w-12 h-12 md:w-16 md:h-16 bg-${color}-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4`}>
@@ -349,7 +351,7 @@ export default function HowItWorks() {
                 onClick={() => navigate('/become-host')}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 md:px-8 py-2.5 md:py-4 rounded-lg font-medium text-sm md:text-lg transition-colors cursor-pointer whitespace-nowrap"
               >
-                Start Hosting Today
+                {t('howItWorks.hosts.cta')}
               </button>
             </div>
           </div>

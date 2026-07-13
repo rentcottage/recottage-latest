@@ -9,6 +9,7 @@ import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
+import { useTranslation, translateVocab } from '@lib/i18n';
 
 // Georgian regions for the Region filter
 const GEORGIAN_REGIONS = [
@@ -42,6 +43,7 @@ const QUICK_FILTERS: { label: string; amenity: string }[] = [
 ];
 
 export default function SearchResults() {
+  const { t, lang } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { dbProperties, loading: dbLoading } = useApprovedProperties();
 
@@ -263,9 +265,9 @@ export default function SearchResults() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString(lang, {
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -285,12 +287,12 @@ export default function SearchResults() {
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
   const pageTitle = location
-    ? `Cottage Rentals in ${location} — RentCottage.Ge`
-    : 'Search Georgian Cottage Rentals — RentCottage.Ge';
+    ? t('search.seo.titleWithLocation', { location })
+    : t('search.seo.title');
 
   const pageDescription = location
-    ? `Browse verified Georgian cottage rentals in ${location}. Filter by price, amenities and property type. Book authentic Georgian cottages and mountain retreats.`
-    : 'Browse hundreds of verified Georgian cottages, mountain retreats and lakeside properties. Filter by location, price and amenities. Find your perfect cottage rental in Georgia.';
+    ? t('search.seo.descriptionWithLocation', { location })
+    : t('search.seo.description');
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -328,30 +330,30 @@ export default function SearchResults() {
             >
               {/* Where */}
               <div className="flex-1 min-w-0 px-3 py-2.5 text-left border-r border-line">
-                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Where</div>
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">{t('search.where')}</div>
                 <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                  {location ? location.split(',')[0] : 'Any'}
+                  {location ? location.split(',')[0] : t('search.any')}
                 </div>
               </div>
               {/* Check-in */}
               <div className="flex-1 min-w-0 px-3 py-2.5 text-left border-r border-line">
-                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Check-in</div>
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">{t('search.checkIn')}</div>
                 <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                  {checkIn ? formatDate(checkIn) : 'Add'}
+                  {checkIn ? formatDate(checkIn) : t('search.add')}
                 </div>
               </div>
               {/* Check-out */}
               <div className="flex-1 min-w-0 px-3 py-2.5 text-left border-r border-line">
-                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Check-out</div>
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">{t('search.checkOut')}</div>
                 <div className="text-[10px] font-medium text-gray-800 truncate leading-none">
-                  {checkOut ? formatDate(checkOut) : 'Add'}
+                  {checkOut ? formatDate(checkOut) : t('search.add')}
                 </div>
               </div>
               {/* Guests */}
               <div className="flex-1 min-w-0 px-3 py-2.5 text-left">
-                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">Guests</div>
+                <div className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">{t('search.guestsLabel')}</div>
                 <div className="text-[10px] font-medium text-gray-800 truncate leading-none" translate="no">
-                  {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
+                  {t('common.guests', { count: parseInt(guests, 10) })}
                 </div>
               </div>
               {/* Search icon */}
@@ -375,7 +377,7 @@ export default function SearchResults() {
                       : 'bg-white border-line text-gray-700 hover:border-red-500 hover:text-red-500'
                   }`}
                 >
-                  {f.label}
+                  {translateVocab(t, 'amenities', f.amenity)}
                 </button>
               );
             })}
@@ -388,16 +390,18 @@ export default function SearchResults() {
         <div className="mb-8">
           <h1 className="text-xl md:text-[26px] font-extrabold text-ink tracking-tight mb-2">
             {category && !location
-              ? `${category.charAt(0).toUpperCase() + category.slice(1)} Cottages`
+              ? t('search.categoryCottages', { category: translateVocab(t, 'categories', category.charAt(0).toUpperCase() + category.slice(1)) })
               : location
-              ? `Cottages in ${location}${category ? ` — ${category.charAt(0).toUpperCase() + category.slice(1)}` : ''}`
-              : 'All Cottages'}
+              ? category
+                ? t('search.cottagesInWithCategory', { location, category: translateVocab(t, 'categories', category.charAt(0).toUpperCase() + category.slice(1)) })
+                : t('search.cottagesIn', { location })
+              : t('search.allCottages')}
           </h1>
           <div className="flex flex-wrap items-center text-sm text-gray-600 gap-4">
             {checkIn && checkOut && (
               <span>{formatDate(checkIn)} - {formatDate(checkOut)}</span>
             )}
-            <span translate="no">{`${guests} ${guests === '1' ? 'guest' : 'guests'}`}</span>
+            <span translate="no">{t('common.guests', { count: parseInt(guests, 10) })}</span>
             {selectedRegions.map(region => (
               <button
                 key={region}
@@ -405,7 +409,7 @@ export default function SearchResults() {
                 className="inline-flex items-center gap-1 bg-red-50 text-red-600 text-xs font-medium px-2.5 py-1 rounded-full border border-red-200 hover:bg-red-100 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <i className="ri-map-pin-line text-xs"></i>
-                {region}
+                {t(`search.regions.${region}`)}
                 <i className="ri-close-line text-xs"></i>
               </button>
             ))}
@@ -414,14 +418,14 @@ export default function SearchResults() {
                 <span className="w-3 h-3 flex items-center justify-center animate-spin">
                   <i className="ri-loader-4-line"></i>
                 </span>
-                Loading live listings…
+                {t('home.featured.loadingLive')}
               </span>
             ) : (() => {
               const isFiltered = !!(location || category || selectedAmenities.length > 0 || selectedPropertyTypes.length > 0 || priceRange[1] < maxPrice);
               const displayCount = totalCount;
               const label = isFiltered
-                ? `${displayCount} cottage${displayCount !== 1 ? 's' : ''} found`
-                : `${displayCount} cottage${displayCount !== 1 ? 's' : ''} available`;
+                ? t('search.cottagesFound', { count: displayCount })
+                : t('search.cottagesAvailable', { count: displayCount });
               return (
                 <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
@@ -446,9 +450,9 @@ export default function SearchResults() {
                   −{searchPromo.discount_percent}% · {searchPromo.title}
                 </p>
                 <p className="text-xs text-green-700 mt-0.5 leading-snug">
-                  Discount applied automatically at checkout on eligible cottages
+                  {t('search.promoAppliedAtCheckout')}
                   {searchPromo.ends_at && (
-                    <> · until {new Date(searchPromo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</>
+                    <> · {t('home.promos.until', { date: new Date(searchPromo.ends_at + 'T00:00:00').toLocaleDateString(lang, { day: 'numeric', month: 'long' }) })}</>
                   )}
                 </p>
               </div>
@@ -461,18 +465,18 @@ export default function SearchResults() {
           <div className="hidden lg:block lg:w-72 flex-shrink-0">
             <div className="bg-white border border-line rounded-card p-[22px] sticky top-24">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[17px] font-extrabold text-ink">Filters</h3>
+                <h3 className="text-[17px] font-extrabold text-ink">{t('search.filters')}</h3>
                 <button
                   onClick={clearFilters}
                   className="text-[13px] font-bold text-red-500 hover:text-red-600 cursor-pointer"
                 >
-                  Clear all
+                  {t('search.clearAll')}
                 </button>
               </div>
 
               {/* Price Range */}
               <div className="pb-5">
-                <h4 className="text-sm font-bold text-ink mb-3">Price Range</h4>
+                <h4 className="text-sm font-bold text-ink mb-3">{t('search.priceRange')}</h4>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">₾0</span>
@@ -500,7 +504,7 @@ export default function SearchResults() {
 
               {/* Amenities */}
               <div className="border-t border-line pt-4 pb-1">
-                <h4 className="text-sm font-bold text-ink mb-3">Amenities</h4>
+                <h4 className="text-sm font-bold text-ink mb-3">{t('search.amenities')}</h4>
                 <div className="space-y-3">
                   {amenitiesList.map((amenity) => (
                     <label key={amenity} className="flex items-center cursor-pointer">
@@ -510,7 +514,7 @@ export default function SearchResults() {
                         onChange={() => handleAmenityToggle(amenity)}
                         className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                       />
-                      <span className="ml-3 text-sm text-gray-700">{amenity}</span>
+                      <span className="ml-3 text-sm text-gray-700">{translateVocab(t, 'amenities', amenity)}</span>
                     </label>
                   ))}
                 </div>
@@ -518,7 +522,7 @@ export default function SearchResults() {
 
               {/* Property Type */}
               <div className="border-t border-line pt-4 pb-1">
-                <h4 className="text-sm font-bold text-ink mb-3">Property Type</h4>
+                <h4 className="text-sm font-bold text-ink mb-3">{t('search.propertyType')}</h4>
                 <div className="space-y-3">
                   {['Cottage', 'Cabin', 'House', 'Farmhouse', 'Winery'].map((type) => (
                     <label key={type} className="flex items-center cursor-pointer">
@@ -528,7 +532,7 @@ export default function SearchResults() {
                         onChange={() => handlePropertyTypeToggle(type)}
                         className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                       />
-                      <span className="ml-3 text-sm text-gray-700">{type}</span>
+                      <span className="ml-3 text-sm text-gray-700">{translateVocab(t, 'propertyType', type)}</span>
                     </label>
                   ))}
                 </div>
@@ -536,7 +540,7 @@ export default function SearchResults() {
 
               {/* Region */}
               <div className="border-t border-line pt-4">
-                <h4 className="text-sm font-bold text-ink mb-3">Region</h4>
+                <h4 className="text-sm font-bold text-ink mb-3">{t('search.region')}</h4>
                 <div className="space-y-3">
                   {GEORGIAN_REGIONS.map((region) => (
                     <label key={region} className="flex items-center cursor-pointer">
@@ -546,7 +550,7 @@ export default function SearchResults() {
                         onChange={() => handleRegionToggle(region)}
                         className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                       />
-                      <span className="ml-3 text-sm text-gray-700">{region}</span>
+                      <span className="ml-3 text-sm text-gray-700">{t(`search.regions.${region}`)}</span>
                     </label>
                   ))}
                 </div>
@@ -567,22 +571,22 @@ export default function SearchResults() {
                   <div className="w-4 h-4 flex items-center justify-center mr-2">
                     <i className="ri-filter-line"></i>
                   </div>
-                  Filters
+                  {t('search.filters')}
                 </button>
               </div>
 
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-soft hidden sm:inline">Sort by:</span>
+                <span className="text-sm text-soft hidden sm:inline">{t('search.sortBy')}</span>
                 <select
                   value={sortBy}
                   onChange={(e) => updateFilterParam('sort', e.target.value === 'alphabetical' ? '' : e.target.value)}
                   className="border-[1.5px] border-line rounded-[10px] px-3 py-2 text-sm text-ink bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer pr-8"
                 >
-                  <option value="alphabetical">Alphabetical (A–Z)</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                  <option value="reviews">Most Reviews</option>
+                  <option value="alphabetical">{t('search.sortAlphabetical')}</option>
+                  <option value="price-low">{t('search.sortPriceLow')}</option>
+                  <option value="price-high">{t('search.sortPriceHigh')}</option>
+                  <option value="rating">{t('search.sortRating')}</option>
+                  <option value="reviews">{t('search.sortReviews')}</option>
                 </select>
               </div>
             </div>
@@ -602,18 +606,18 @@ export default function SearchResults() {
                   </div>
                 </div>
                 <h3 className="text-base md:text-xl font-semibold text-gray-900 mb-2">
-                  {category ? `No ${category} properties available right now.` : 'No cottages found'}
+                  {category ? t('search.noCategoryProperties', { category: translateVocab(t, 'categories', category.charAt(0).toUpperCase() + category.slice(1)) }) : t('search.noCottagesFound')}
                 </h3>
                 <p className="text-gray-600 mb-6">
                   {category
-                    ? `Check back soon — hosts with ${category.toLowerCase()} properties will appear here once registered.`
-                    : 'Try adjusting your search criteria or filters to find more options.'}
+                    ? t('search.checkBackCategory', { category: translateVocab(t, 'categories', category.charAt(0).toUpperCase() + category.slice(1)) })
+                    : t('search.tryAdjusting')}
                 </p>
                 <button
                   onClick={clearFilters}
                   className="bg-red-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  Clear Filters
+                  {t('search.clearFilters')}
                 </button>
               </div>
             )}
@@ -624,12 +628,12 @@ export default function SearchResults() {
                   onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
                   className="bg-white border-[1.5px] border-line text-ink px-8 py-3 rounded-[10px] font-bold hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap inline-flex items-center gap-2"
                 >
-                  Load More Cottages
+                  {t('search.loadMore')}
                 </button>
               </div>
             )}
             {!hasMore && filteredProperties.length > 0 && sortedFilteredProperties.length > PAGE_SIZE && (
-              <p className="text-center mt-10 text-sm text-gray-400">All cottages loaded</p>
+              <p className="text-center mt-10 text-sm text-gray-400">{t('search.allLoaded')}</p>
             )}
           </div>
         </div>
@@ -642,7 +646,7 @@ export default function SearchResults() {
             <div className="p-5">
               {/* Header */}
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-semibold text-gray-900">Search Details</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{t('search.searchDetails')}</h3>
                 <button
                   onClick={() => setShowSearchModal(false)}
                   className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -654,13 +658,13 @@ export default function SearchResults() {
               <div className="space-y-4">
                 {/* Where */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Where</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">{t('search.where')}</label>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                     <input
                       type="text"
                       value={modalLocation}
                       onChange={(e) => setModalLocation(e.target.value)}
-                      placeholder="Search destinations"
+                      placeholder={t('search.searchDestinations')}
                       className="text-sm text-gray-800 bg-transparent border-none outline-none w-full placeholder-gray-400"
                     />
                   </div>
@@ -668,7 +672,7 @@ export default function SearchResults() {
 
                 {/* Check-in */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Check-in</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">{t('search.checkIn')}</label>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                     <input
                       type="date"
@@ -682,7 +686,7 @@ export default function SearchResults() {
 
                 {/* Check-out */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Check-out</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">{t('search.checkOut')}</label>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                     <input
                       type="date"
@@ -696,10 +700,10 @@ export default function SearchResults() {
 
                 {/* Guests */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Guests</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">{t('search.guestsLabel')}</label>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
                     <span className="text-sm text-gray-800" translate="no">
-                      {`${modalGuests} ${modalGuests === '1' ? 'guest' : 'guests'}`}
+                      {t('common.guests', { count: parseInt(modalGuests, 10) })}
                     </span>
                     <div className="flex items-center gap-3">
                       <button
@@ -736,7 +740,7 @@ export default function SearchResults() {
                 className="mt-6 w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold text-sm cursor-pointer transition-colors whitespace-nowrap flex items-center justify-center gap-2"
               >
                 <i className="ri-search-line"></i>
-                Search
+                {t('common.search')}
               </button>
             </div>
           </div>
@@ -749,7 +753,7 @@ export default function SearchResults() {
           <div className="bg-white w-full max-h-[80vh] overflow-y-auto rounded-t-xl">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm md:text-lg font-semibold text-gray-900">Filters</h3>
+                <h3 className="text-sm md:text-lg font-semibold text-gray-900">{t('search.filters')}</h3>
                 <button
                   onClick={() => setShowFilters(false)}
                   className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -761,7 +765,7 @@ export default function SearchResults() {
               <div className="space-y-8">
                 {/* Price Range */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-4">Price Range</h4>
+                  <h4 className="font-medium text-gray-900 mb-4">{t('search.priceRange')}</h4>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">₾0</span>
@@ -789,7 +793,7 @@ export default function SearchResults() {
 
                 {/* Amenities */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-4">Amenities</h4>
+                  <h4 className="font-medium text-gray-900 mb-4">{t('search.amenities')}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {amenitiesList.map((amenity) => (
                       <label key={amenity} className="flex items-center cursor-pointer">
@@ -799,7 +803,7 @@ export default function SearchResults() {
                           onChange={() => handleAmenityToggle(amenity)}
                           className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                         />
-                        <span className="ml-3 text-sm text-gray-700">{amenity}</span>
+                        <span className="ml-3 text-sm text-gray-700">{translateVocab(t, 'amenities', amenity)}</span>
                       </label>
                     ))}
                   </div>
@@ -807,7 +811,7 @@ export default function SearchResults() {
 
                 {/* Property Type */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-4">Property Type</h4>
+                  <h4 className="font-medium text-gray-900 mb-4">{t('search.propertyType')}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {['Cottage', 'Cabin', 'House', 'Farmhouse', 'Winery'].map((type) => (
                       <label key={type} className="flex items-center cursor-pointer">
@@ -817,7 +821,7 @@ export default function SearchResults() {
                           onChange={() => handlePropertyTypeToggle(type)}
                           className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                         />
-                        <span className="ml-3 text-sm text-gray-700">{type}</span>
+                        <span className="ml-3 text-sm text-gray-700">{translateVocab(t, 'propertyType', type)}</span>
                       </label>
                     ))}
                   </div>
@@ -825,7 +829,7 @@ export default function SearchResults() {
 
                 {/* Region */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-4">Region</h4>
+                  <h4 className="font-medium text-gray-900 mb-4">{t('search.region')}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {GEORGIAN_REGIONS.map((region) => (
                       <label key={region} className="flex items-center cursor-pointer">
@@ -835,7 +839,7 @@ export default function SearchResults() {
                           onChange={() => handleRegionToggle(region)}
                           className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                         />
-                        <span className="ml-2 text-sm text-gray-700 leading-tight">{region}</span>
+                        <span className="ml-2 text-sm text-gray-700 leading-tight">{t(`search.regions.${region}`)}</span>
                       </label>
                     ))}
                   </div>
@@ -847,13 +851,13 @@ export default function SearchResults() {
                   onClick={clearFilters}
                   className="flex-1 bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  Clear All
+                  {t('search.clearAll')}
                 </button>
                 <button
                   onClick={() => setShowFilters(false)}
                   className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  Show Results
+                  {t('search.showResults')}
                 </button>
               </div>
             </div>

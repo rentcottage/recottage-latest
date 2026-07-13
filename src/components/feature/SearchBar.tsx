@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { filterCitiesBilingual } from '../../lib/locationNormalizer';
+import { useTranslation } from '@lib/i18n';
 
 export default function SearchBar() {
+  const { t, lang } = useTranslation();
   const [showWhereDropdown, setShowWhereDropdown] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [checkIn, setCheckIn] = useState('');
@@ -26,16 +28,16 @@ export default function SearchBar() {
   }, [searchParams]);
 
   const popularDestinations = [
-    { name: 'Tbilisi', description: 'Capital city with rich history' },
-    { name: 'Batumi', description: 'Black Sea coastal resort' },
-    { name: 'Kutaisi', description: 'Ancient city in western Georgia' },
-    { name: 'Mtskheta', description: 'UNESCO World Heritage site' },
-    { name: 'Sighnaghi', description: 'City of Love in wine region' },
-    { name: 'Gudauri', description: 'Mountain ski resort' },
-    { name: 'Borjomi', description: 'Famous for mineral water springs' },
-    { name: 'Telavi', description: 'Heart of Kakheti wine region' },
-    { name: 'Gori', description: 'Historic city in central Georgia' },
-    { name: 'Mestia', description: 'Gateway to Svaneti mountains' },
+    { name: 'Tbilisi', description: t('search.destinations.tbilisiDesc') },
+    { name: 'Batumi', description: t('search.destinations.batumiDesc') },
+    { name: 'Kutaisi', description: t('search.destinations.kutaisiDesc') },
+    { name: 'Mtskheta', description: t('search.destinations.mtskhetaDesc') },
+    { name: 'Sighnaghi', description: t('search.destinations.sighnaghiDesc') },
+    { name: 'Gudauri', description: t('search.destinations.gudauriDesc') },
+    { name: 'Borjomi', description: t('search.destinations.borjomiDesc') },
+    { name: 'Telavi', description: t('search.destinations.telaviDesc') },
+    { name: 'Gori', description: t('search.destinations.goriDesc') },
+    { name: 'Mestia', description: t('search.destinations.mestiaDesc') },
   ];
 
   const handleLocationSelect = (location: string) => {
@@ -57,7 +59,7 @@ export default function SearchBar() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(lang, { day: 'numeric', month: 'short' });
   };
 
   return (
@@ -67,7 +69,7 @@ export default function SearchBar() {
 
         {/* Where — single row */}
         <div className="relative bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">Where</span>
+          <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('search.where')}</span>
           <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
           <input
             type="text"
@@ -82,7 +84,7 @@ export default function SearchBar() {
               setShowGuestsDropdown(false);
             }}
             onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
-            placeholder="Search destinations"
+            placeholder={t('search.searchDestinations')}
             className="text-xs text-gray-600 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-400"
           />
           {selectedLocation && (
@@ -98,7 +100,7 @@ export default function SearchBar() {
               <div className="p-3">
                 {selectedLocation.length > 0 ? (
                   <>
-                    <h3 className="text-xs font-semibold text-gray-700 mb-2">Matching destinations</h3>
+                    <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('search.matchingDestinations')}</h3>
                     <div className="space-y-1">
                       {filterCitiesBilingual(georgianCities, selectedLocation)
                         .slice(0, 6)
@@ -118,13 +120,13 @@ export default function SearchBar() {
                           </div>
                         ))}
                       {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && (
-                        <div className="p-2 text-center text-xs text-gray-500">No destinations found</div>
+                        <div className="p-2 text-center text-xs text-gray-500">{t('search.noDestinationsFound')}</div>
                       )}
                     </div>
                   </>
                 ) : (
                   <>
-                    <h3 className="text-xs font-semibold text-gray-700 mb-2">Popular destinations</h3>
+                    <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('home.destinations.title')}</h3>
                     <div className="space-y-1">
                       {popularDestinations.map((destination, index) => (
                         <div
@@ -153,11 +155,11 @@ export default function SearchBar() {
         <div className="grid grid-cols-2 gap-1">
           {/* Check-in */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">In</span>
+            <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('search.inShort')}</span>
             <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
             <div className="flex-1 min-w-0 relative">
               <span className="text-xs text-gray-500 block truncate">
-                {checkIn ? formatDate(checkIn) : 'Add date'}
+                {checkIn ? formatDate(checkIn) : t('search.addDate')}
               </span>
               <input
                 type="date"
@@ -171,11 +173,11 @@ export default function SearchBar() {
 
           {/* Check-out */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">Out</span>
+            <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('search.outShort')}</span>
             <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
             <div className="flex-1 min-w-0 relative">
               <span className="text-xs text-gray-500 block truncate">
-                {checkOut ? formatDate(checkOut) : 'Add date'}
+                {checkOut ? formatDate(checkOut) : t('search.addDate')}
               </span>
               <input
                 type="date"
@@ -196,10 +198,10 @@ export default function SearchBar() {
             setShowWhereDropdown(false);
           }}
         >
-          <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">Guests</span>
+          <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('search.guestsLabel')}</span>
           <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
           <span className="text-xs text-gray-600 flex-1" translate="no">
-            {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
+            {t('common.guests', { count: parseInt(guests, 10) })}
           </span>
           <div className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0">
             <i className="ri-arrow-down-s-line text-sm"></i>
@@ -209,8 +211,8 @@ export default function SearchBar() {
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900">Guests</h4>
-                    <p className="text-xs text-gray-500">Ages 13 or above</p>
+                    <h4 className="text-sm font-medium text-gray-900">{t('search.guestsLabel')}</h4>
+                    <p className="text-xs text-gray-500">{t('search.agesHint')}</p>
                   </div>
                   <div className="flex items-center space-x-3">
                     <button
@@ -255,7 +257,7 @@ export default function SearchBar() {
           className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-semibold text-sm cursor-pointer transition-colors whitespace-nowrap flex items-center justify-center gap-2"
         >
           <i className="ri-search-line"></i>
-          Search
+          {t('common.search')}
         </button>
       </div>
 
@@ -263,7 +265,7 @@ export default function SearchBar() {
       <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] bg-white rounded-card shadow-card">
         {/* Where */}
         <div className="relative px-5 py-3.5 border-r border-line text-left">
-          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Where</div>
+          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('search.where')}</div>
           <input
             type="text"
             value={selectedLocation}
@@ -277,7 +279,7 @@ export default function SearchBar() {
               setShowGuestsDropdown(false);
             }}
             onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
-            placeholder="Search destinations"
+            placeholder={t('search.searchDestinations')}
             className="text-[15px] text-ink bg-transparent border-none outline-none w-full placeholder-gray-400"
           />
 
@@ -286,7 +288,7 @@ export default function SearchBar() {
               <div className="p-4">
                 {selectedLocation.length > 0 ? (
                   <>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Matching destinations</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('search.matchingDestinations')}</h3>
                     <div className="space-y-2">
                       {filterCitiesBilingual(georgianCities, selectedLocation)
                         .slice(0, 8)
@@ -306,13 +308,13 @@ export default function SearchBar() {
                           </div>
                         ))}
                       {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && (
-                        <div className="p-3 text-center text-gray-500">No destinations found</div>
+                        <div className="p-3 text-center text-gray-500">{t('search.noDestinationsFound')}</div>
                       )}
                     </div>
                   </>
                 ) : (
                   <>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Popular destinations</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('home.destinations.title')}</h3>
                     <div className="space-y-2">
                       {popularDestinations.map((destination, index) => (
                         <div
@@ -339,27 +341,27 @@ export default function SearchBar() {
 
         {/* Check-in */}
         <div className="px-5 py-3.5 border-r border-line text-left">
-          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Check-in</div>
+          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('search.checkIn')}</div>
           <input
             type="date"
             value={checkIn}
             onChange={(e) => setCheckIn(e.target.value)}
             min={new Date().toISOString().split('T')[0]}
             className="text-[15px] text-ink bg-transparent border-none outline-none w-full cursor-pointer"
-            placeholder="Add dates"
+            placeholder={t('search.addDates')}
           />
         </div>
 
         {/* Check-out */}
         <div className="px-5 py-3.5 border-r border-line text-left">
-          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Check-out</div>
+          <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('search.checkOut')}</div>
           <input
             type="date"
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
             min={checkIn || new Date().toISOString().split('T')[0]}
             className="text-[15px] text-ink bg-transparent border-none outline-none w-full cursor-pointer"
-            placeholder="Add dates"
+            placeholder={t('search.addDates')}
           />
         </div>
 
@@ -372,9 +374,9 @@ export default function SearchBar() {
               setShowWhereDropdown(false);
             }}
           >
-            <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">Guests</div>
+            <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('search.guestsLabel')}</div>
             <div className="text-[15px] text-ink" translate="no">
-              {`${guests} ${guests === '1' ? 'guest' : 'guests'}`}
+              {t('common.guests', { count: parseInt(guests, 10) })}
             </div>
           </div>
 
@@ -383,8 +385,8 @@ export default function SearchBar() {
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-gray-900">Guests</h4>
-                    <p className="text-sm text-gray-600">Ages 13 or above</p>
+                    <h4 className="font-medium text-gray-900">{t('search.guestsLabel')}</h4>
+                    <p className="text-sm text-gray-600">{t('search.agesHint')}</p>
                   </div>
                   <div className="flex items-center space-x-3">
                     <button
@@ -427,7 +429,7 @@ export default function SearchBar() {
           className="bg-red-500 hover:bg-red-600 text-white font-bold text-base px-7 rounded-r-[16px] flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap"
         >
           <i className="ri-search-line text-lg"></i>
-          Search
+          {t('common.search')}
         </button>
       </div>
     </>

@@ -9,6 +9,7 @@ import SEO from '../../components/feature/SEO';
 import { supabase } from '../../lib/supabase';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, applyPromoDiscount, type Promo } from '../../lib/promos';
+import { useTranslation, translateVocab } from '@lib/i18n';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
 
@@ -29,6 +30,7 @@ interface ICalBlockedRange {
 }
 
 export default function PropertyDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -189,11 +191,11 @@ export default function PropertyDetail() {
     const platforms = new Set<string>();
     icalBlockedRanges.forEach((r) => {
       if (!(end < r.start_date || start > r.end_date)) {
-        platforms.add(r.platform ?? 'External');
+        platforms.add(r.platform ?? t('property.externalPlatform'));
       }
     });
     return Array.from(platforms);
-  }, [icalBlockedRanges]);
+  }, [icalBlockedRanges, t]);
 
   const calculateNights = () => {
     if (!checkIn || !checkOut) return 0;
@@ -239,8 +241,8 @@ export default function PropertyDetail() {
     const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
     const shareUrl = `${siteUrl}/property/${id}`;
     const shareData = {
-      title: property?.title ?? 'Georgian Cottage',
-      text: `Check out this cottage in ${property?.location ?? 'Georgia'} on RentCottage.Ge!`,
+      title: property?.title ?? t('property.shareTitleFallback'),
+      text: t('property.shareText', { location: property?.location ?? t('property.shareLocationFallback') }),
       url: shareUrl,
     };
     if (navigator.share && navigator.canShare?.(shareData)) {
@@ -265,17 +267,17 @@ export default function PropertyDetail() {
 
     if (!bookingCaptchaToken) {
       setSubmitStatus('error');
-      setBookingError('Please complete the CAPTCHA verification.');
+      setBookingError(t('property.errors.captcha'));
       return;
     }
 
-    if (!checkIn || !checkOut || !guests) { setSubmitStatus('error'); setBookingError('Please fill in all dates and guest count.'); return; }
+    if (!checkIn || !checkOut || !guests) { setSubmitStatus('error'); setBookingError(t('property.errors.fillDates')); return; }
     const nights = calculateNights();
-    if (nights <= 0) { setSubmitStatus('error'); setBookingError('Check-out must be after check-in.'); return; }
+    if (nights <= 0) { setSubmitStatus('error'); setBookingError(t('property.errors.checkoutAfterCheckin')); return; }
 
     if (isDateRangeBlocked(checkIn, checkOut)) {
       setSubmitStatus('error');
-      setBookingError('The selected dates are unavailable. Please choose different dates.');
+      setBookingError(t('property.errors.datesUnavailable'));
       return;
     }
 
@@ -295,7 +297,7 @@ export default function PropertyDetail() {
     const hasPhone = profile?.phone && profile.phone.trim().length > 0;
     if (!hasPhone) {
       setSubmitStatus('error');
-      setBookingError('Please add a phone number to your profile before making a booking. Go to My Profile to complete your account.');
+      setBookingError(t('property.errors.phoneRequired'));
       return;
     }
 
@@ -347,7 +349,7 @@ export default function PropertyDetail() {
         } else {
           const msg = `Payment system returned no redirect URL. Response: ${JSON.stringify(data)}`;
           console.error('[handleBooking]', msg);
-          setBookingError('Payment system error: no checkout URL returned. Please try again.');
+          setBookingError(t('property.errors.paymentNoUrl'));
           setSubmitStatus('error');
           setBookingCaptchaToken('');
         }
@@ -367,7 +369,7 @@ export default function PropertyDetail() {
     } catch (err) {
       const msg = `Network error: ${String(err)}`;
       console.error('[handleBooking]', msg);
-      setBookingError('Network error. Please check your connection and try again.');
+      setBookingError(t('property.errors.network'));
       setSubmitStatus('error');
       setBookingCaptchaToken('');
     } finally {
@@ -382,7 +384,7 @@ export default function PropertyDetail() {
           <div className="w-5 h-5 flex items-center justify-center animate-spin">
             <i className="ri-loader-4-line text-xl"></i>
           </div>
-          <span className="text-sm">Loading property...</span>
+          <span className="text-sm">{t('property.loading')}</span>
         </div>
       </div>
     );
@@ -443,9 +445,9 @@ export default function PropertyDetail() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title={`${property.title} — ${property.location} Cottage Rental | RentCottage.Ge`}
-        description={`Book ${property.title} in ${property.location}, Georgia. ₾${property.price}/night · ${property.bedrooms || 1} bedrooms · Rating ${property.rating}. Authentic Georgian cottage experience with verified host.`}
-        keywords={`${property.location} cottage rental, Georgian cottage ${property.location}, rent cottage Georgia`}
+        title={t('property.seo.title', { title: property.title, location: property.location })}
+        description={t('property.seo.description', { title: property.title, location: property.location, price: property.price, bedrooms: property.bedrooms || 1, rating: property.rating })}
+        keywords={t('property.seo.keywords', { location: property.location })}
         canonical={`/property/${property.id}`}
         ogType="product"
         ogImage={property.image}
@@ -460,7 +462,7 @@ export default function PropertyDetail() {
           className="inline-flex items-center gap-1 text-sm font-semibold text-red-500 hover:text-red-600 mb-3 md:mb-4 cursor-pointer whitespace-nowrap"
         >
           <i className="ri-arrow-left-line"></i>
-          Back to search results
+          {t('property.backToResults')}
         </button>
 
         {/* Property Title Row */}
@@ -475,12 +477,12 @@ export default function PropertyDetail() {
               <span className="inline-flex items-center gap-1 font-bold">
                 <i className="ri-star-fill text-red-500"></i>
                 <span translate="no">{property.rating}</span>
-                <span className="font-semibold text-soft">({property.reviews} reviews)</span>
+                <span className="font-semibold text-soft">({t('common.reviews', { count: property.reviews })})</span>
               </span>
               {isDbProperty && (
                 <span className="inline-flex items-center gap-1 bg-[#222] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                   <i className="ri-verified-badge-fill"></i>
-                  Verified
+                  {t('property.verified')}
                 </span>
               )}
             </div>
@@ -491,7 +493,7 @@ export default function PropertyDetail() {
               className="inline-flex items-center gap-1.5 border-[1.5px] border-line hover:border-red-500 hover:text-red-500 bg-white text-gray-700 text-[13.5px] font-bold rounded-full px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
             >
               <i className={shareCopied ? 'ri-check-line text-green-500' : 'ri-share-line'}></i>
-              <span className={shareCopied ? 'text-green-600' : ''}>{shareCopied ? 'Copied!' : 'Share'}</span>
+              <span className={shareCopied ? 'text-green-600' : ''}>{shareCopied ? t('property.copied') : t('property.share')}</span>
             </button>
             {/* Decorative save — no favorites backend today */}
             <button
@@ -500,7 +502,7 @@ export default function PropertyDetail() {
               className="inline-flex items-center gap-1.5 border-[1.5px] border-line hover:border-red-500 hover:text-red-500 bg-white text-gray-700 text-[13.5px] font-bold rounded-full px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
             >
               <i className={saved ? 'ri-heart-fill text-red-500' : 'ri-heart-line'}></i>
-              <span>Save</span>
+              <span>{t('common.save')}</span>
             </button>
           </div>
         </div>
@@ -517,22 +519,22 @@ export default function PropertyDetail() {
                 {property.host?.trim()?.charAt(0)?.toUpperCase() || 'H'}
               </div>
               <div className="min-w-0">
-                <h2 className="text-[16px] font-bold text-ink truncate">Hosted by {property.host}</h2>
-                <p className="text-[13.5px] text-soft">Superhost · 3 years hosting</p>
+                <h2 className="text-[16px] font-bold text-ink truncate">{t('property.hostedBy', { host: property.host })}</h2>
+                <p className="text-[13.5px] text-soft">{t('property.superhostTenure')}</p>
               </div>
               <span className="ml-auto flex-shrink-0 bg-red-50 text-red-500 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                 <i className="ri-star-fill"></i>
-                Superhost
+                {t('property.superhost')}
               </span>
             </div>
 
             {/* Key facts */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
               {[
-                { icon: 'ri-group-line', label: `${property.maxGuests || 1} guests`, sub: 'Maximum' },
-                { icon: 'ri-hotel-bed-line', label: `${property.bedrooms || 1} bedroom${(property.bedrooms || 1) === 1 ? '' : 's'}`, sub: 'Sleeping' },
-                { icon: 'ri-drop-line', label: `${property.bathrooms || 1} bathroom${(property.bathrooms || 1) === 1 ? '' : 's'}`, sub: 'Private' },
-                { icon: 'ri-verified-badge-line', label: 'Verified', sub: 'Checked listing' },
+                { icon: 'ri-group-line', label: t('common.guests', { count: property.maxGuests || 1 }), sub: t('property.factGuestsSub') },
+                { icon: 'ri-hotel-bed-line', label: t('common.bedrooms', { count: property.bedrooms || 1 }), sub: t('property.factBedroomsSub') },
+                { icon: 'ri-drop-line', label: t('common.bathrooms', { count: property.bathrooms || 1 }), sub: t('property.factBathroomsSub') },
+                { icon: 'ri-verified-badge-line', label: t('property.verified'), sub: t('property.factVerifiedSub') },
               ].map((fact) => (
                 <div key={fact.label} className="bg-[#fafafa] border border-line rounded-xl p-3.5 text-center">
                   <i className={`${fact.icon} text-xl text-ink`}></i>
@@ -544,11 +546,11 @@ export default function PropertyDetail() {
 
             {/* About this place — full description */}
             <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
-              <h3 className="text-xl font-extrabold text-ink mb-3.5">About this place</h3>
+              <h3 className="text-xl font-extrabold text-ink mb-3.5">{t('property.aboutTitle')}</h3>
               {(() => {
                 const fullText = property.description
                   ? property.description
-                  : `Experience authentic Georgian hospitality in this beautifully restored ${property.title.toLowerCase()}. Located in the heart of ${property.location}, this charming property offers stunning views and easy access to local attractions. The space features traditional Georgian architecture combined with modern amenities for your comfort. Perfect for couples, families, or small groups looking to explore the beauty of Georgia while enjoying a peaceful retreat. Your host ${property.host} is a local expert who can provide insider tips on the best restaurants, hiking trails, and cultural experiences in the area.`;
+                  : t('property.descriptionFallback', { title: property.title.toLowerCase(), location: property.location, host: property.host });
                 const PREVIEW_LENGTH = 400;
                 const isLong = fullText.length > PREVIEW_LENGTH;
                 const displayText = !showFullDesc && isLong ? `${fullText.slice(0, PREVIEW_LENGTH).trimEnd()}…` : fullText;
@@ -560,7 +562,7 @@ export default function PropertyDetail() {
                         onClick={() => setShowFullDesc((v) => !v)}
                         className="mt-3 flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-600 cursor-pointer whitespace-nowrap"
                       >
-                        {showFullDesc ? 'Show less' : 'Show more'}
+                        {showFullDesc ? t('common.showLess') : t('common.showMore')}
                         <div className="w-4 h-4 flex items-center justify-center">
                           <i className={`${showFullDesc ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} text-base`}></i>
                         </div>
@@ -578,7 +580,7 @@ export default function PropertyDetail() {
               const shown = showAllAmenities ? property.amenities : property.amenities.slice(0, AMENITY_PREVIEW);
               return (
               <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
-                <h3 className="text-xl font-extrabold text-ink mb-3.5">What this place offers</h3>
+                <h3 className="text-xl font-extrabold text-ink mb-3.5">{t('property.amenitiesTitle')}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                   {shown.map((amenity: string) => (
                     <div key={amenity} className="flex items-center gap-2.5 text-[14.5px] text-gray-700">
@@ -599,7 +601,7 @@ export default function PropertyDetail() {
                           'ri-checkbox-circle-line'
                         } text-red-500`}></i>
                       </div>
-                      <span>{amenity}</span>
+                      <span>{translateVocab(t, 'amenities', amenity)}</span>
                     </div>
                   ))}
                 </div>
@@ -608,7 +610,7 @@ export default function PropertyDetail() {
                     onClick={() => setShowAllAmenities((v) => !v)}
                     className="mt-3.5 inline-flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-600 cursor-pointer whitespace-nowrap"
                   >
-                    {showAllAmenities ? 'Show less' : `All amenities (${property.amenities.length})`}
+                    {showAllAmenities ? t('common.showLess') : t('property.allAmenities', { count: property.amenities.length })}
                     <i className={showAllAmenities ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'}></i>
                   </button>
                 )}
@@ -619,7 +621,7 @@ export default function PropertyDetail() {
             {/* Location Section */}
             {hasLocation && (
               <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
-                <h3 className="text-xl font-extrabold text-ink mb-3.5">Where you&apos;ll be</h3>
+                <h3 className="text-xl font-extrabold text-ink mb-3.5">{t('property.locationTitle')}</h3>
 
                 {/* Address text */}
                 {property.address && (
@@ -635,7 +637,7 @@ export default function PropertyDetail() {
                 {getMapEmbedSrc() && (
                   <div className="w-full h-64 md:h-80 rounded-xl overflow-hidden border border-gray-200 mb-3">
                     <iframe
-                      title="Property location map"
+                      title={t('property.mapTitle')}
                       src={getMapEmbedSrc()!}
                       width="100%"
                       height="100%"
@@ -658,7 +660,7 @@ export default function PropertyDetail() {
                     <div className="w-4 h-4 flex items-center justify-center">
                       <i className="ri-map-2-line text-red-500"></i>
                     </div>
-                    View on Google Maps
+                    {t('property.viewOnGoogleMaps')}
                     <div className="w-4 h-4 flex items-center justify-center">
                       <i className="ri-external-link-line text-gray-400 text-xs"></i>
                     </div>

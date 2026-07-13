@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from '@lib/i18n';
+import type { TranslateFn, Lang } from '@lib/i18n';
 const ADMIN_HOST_ACTIONS_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
@@ -16,17 +18,17 @@ interface CompletedBooking {
   created_at: string;
 }
 
-function formatDate(str: string) {
-  return new Date(str).toLocaleDateString('en-GB', {
+function formatDate(str: string, lang: Lang) {
+  return new Date(str).toLocaleDateString(lang, {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
 
-function paymentMethodLabel(method: string | null): string {
+function paymentMethodLabel(t: TranslateFn, method: string | null): string {
   if (!method) return '—';
-  if (method === 'bog') return 'BOG Pay';
-  if (method === 'cash') return 'Cash';
-  if (method === 'bank_transfer') return 'Bank Transfer';
+  if (method === 'bog') return t('admin.completed.methodBog');
+  if (method === 'cash') return t('admin.completed.methodCash');
+  if (method === 'bank_transfer') return t('admin.completed.methodBank');
   return method;
 }
 
@@ -39,20 +41,29 @@ function paymentStatusBadge(status: string | null) {
 
 const PAYMENT_METHODS = ['All Methods', 'BOG Pay', 'Cash', 'Bank Transfer'];
 
-function exportToCSV(rows: CompletedBooking[]) {
+// Display-only mapping: filter option constants → raw payment_method values,
+// so the visible label can be translated while the filter state keeps the
+// original English constants.
+const methodMapForLabels: Record<string, string> = {
+  'BOG Pay': 'bog',
+  'Cash': 'cash',
+  'Bank Transfer': 'bank_transfer',
+};
+
+function exportToCSV(t: TranslateFn, rows: CompletedBooking[]) {
   const headers = [
-    'Booking ID',
-    'Property',
-    'Location',
-    'Check-in',
-    'Check-out',
-    'Guests',
-    'Total Price (GEL)',
-    'Payment Method',
-    'Payment Status',
-    'Booking Status',
-    'Completed On',
-    'Booked On',
+    t('common.bookingId'),
+    t('common.property'),
+    t('admin.completed.csvLocation'),
+    t('common.checkIn'),
+    t('common.checkOut'),
+    t('common.guestsLabel'),
+    t('admin.completed.csvTotalPriceGel'),
+    t('common.paymentMethod'),
+    t('common.paymentStatus'),
+    t('admin.completed.csvBookingStatus'),
+    t('admin.completed.completedOn'),
+    t('admin.completed.csvBookedOn'),
   ];
 
   const escape = (val: string | number | null | undefined) => {
@@ -71,9 +82,9 @@ function exportToCSV(rows: CompletedBooking[]) {
     b.check_out,
     b.guests,
     b.total_price,
-    paymentMethodLabel(b.payment_method),
+    paymentMethodLabel(t, b.payment_method),
     b.payment_status ?? '',
-    'Completed',
+    t('admin.completed.statusCompleted'),
     b.check_out,
     b.created_at ? b.created_at.split('T')[0] : '',
   ].map(escape).join(','));
@@ -92,6 +103,7 @@ function exportToCSV(rows: CompletedBooking[]) {
 }
 
 export default function CompletedBookingsPanel() {
+  const { t, lang } = useTranslation();
   const [bookings, setBookings] = useState<CompletedBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -176,8 +188,8 @@ export default function CompletedBookingsPanel() {
               <i className="ri-medal-line text-emerald-600 text-base"></i>
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Completed Bookings</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Confirmed stays where check-out date has passed</p>
+              <h2 className="text-base font-bold text-gray-900">{t('admin.completed.title')}</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{t('admin.completed.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -192,21 +204,21 @@ export default function CompletedBookingsPanel() {
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-filter-3-line text-sm"></i>
               </div>
-              Filters
+              {t('common.filters')}
               {hasActiveFilters && (
                 <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
               )}
             </button>
             <button
-              onClick={() => exportToCSV(filtered)}
+              onClick={() => exportToCSV(t, filtered)}
               disabled={filtered.length === 0}
-              title={filtered.length === 0 ? 'No data to export' : `Export ${filtered.length} booking${filtered.length !== 1 ? 's' : ''} to CSV`}
+              title={filtered.length === 0 ? t('admin.completed.noDataToExport') : t('admin.completed.exportTitle', { count: filtered.length })}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer whitespace-nowrap bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-download-2-line text-sm"></i>
               </div>
-              Export CSV
+              {t('admin.completed.exportCsv')}
             </button>
             <button
               onClick={fetchCompleted}
@@ -215,7 +227,7 @@ export default function CompletedBookingsPanel() {
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-refresh-line text-sm"></i>
               </div>
-              Refresh
+              {t('common.refresh')}
             </button>
           </div>
         </div>
@@ -223,23 +235,23 @@ export default function CompletedBookingsPanel() {
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-4 mt-5">
           <div className="bg-emerald-50 rounded-xl p-4">
-            <p className="text-xs text-emerald-600 font-medium mb-1">Total Completed</p>
+            <p className="text-xs text-emerald-600 font-medium mb-1">{t('admin.completed.totalCompleted')}</p>
             <p className="text-2xl font-bold text-emerald-700">{filtered.length}</p>
             {filtered.length !== bookings.length && (
-              <p className="text-xs text-emerald-500 mt-0.5">of {bookings.length} total</p>
+              <p className="text-xs text-emerald-500 mt-0.5">{t('admin.completed.ofTotal', { count: bookings.length })}</p>
             )}
           </div>
           <div className="bg-emerald-50 rounded-xl p-4">
-            <p className="text-xs text-emerald-600 font-medium mb-1">Total Revenue</p>
-            <p className="text-2xl font-bold text-emerald-700">₾{totalRevenue.toLocaleString()}</p>
+            <p className="text-xs text-emerald-600 font-medium mb-1">{t('admin.completed.totalRevenue')}</p>
+            <p className="text-2xl font-bold text-emerald-700">₾{totalRevenue.toLocaleString(lang)}</p>
             {filtered.length !== bookings.length && (
-              <p className="text-xs text-emerald-500 mt-0.5">filtered results</p>
+              <p className="text-xs text-emerald-500 mt-0.5">{t('admin.completed.filteredResults')}</p>
             )}
           </div>
           <div className="bg-emerald-50 rounded-xl p-4">
-            <p className="text-xs text-emerald-600 font-medium mb-1">Avg. Booking Value</p>
+            <p className="text-xs text-emerald-600 font-medium mb-1">{t('admin.completed.avgBookingValue')}</p>
             <p className="text-2xl font-bold text-emerald-700">
-              {filtered.length > 0 ? `₾${Math.round(totalRevenue / filtered.length).toLocaleString()}` : '—'}
+              {filtered.length > 0 ? `₾${Math.round(totalRevenue / filtered.length).toLocaleString(lang)}` : '—'}
             </p>
           </div>
         </div>
@@ -251,7 +263,7 @@ export default function CompletedBookingsPanel() {
           <div className="flex items-end gap-4 flex-wrap">
             {/* Property search */}
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Property / Location</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('admin.completed.propertyLocation')}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                   <i className="ri-search-line text-gray-400 text-sm"></i>
@@ -260,7 +272,7 @@ export default function CompletedBookingsPanel() {
                   type="text"
                   value={searchProperty}
                   onChange={(e) => setSearchProperty(e.target.value)}
-                  placeholder="Search property name…"
+                  placeholder={t('admin.completed.searchPropertyPlaceholder')}
                   className="w-full pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white"
                 />
               </div>
@@ -268,7 +280,7 @@ export default function CompletedBookingsPanel() {
 
             {/* Payment method */}
             <div className="min-w-[160px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Payment Method</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('common.paymentMethod')}</label>
               <div className="relative">
                 <select
                   value={filterPaymentMethod}
@@ -276,7 +288,9 @@ export default function CompletedBookingsPanel() {
                   className="w-full appearance-none pl-3 pr-8 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white cursor-pointer"
                 >
                   {PAYMENT_METHODS.map((m) => (
-                    <option key={m}>{m}</option>
+                    <option key={m} value={m}>
+                      {m === 'All Methods' ? t('admin.completed.allMethods') : paymentMethodLabel(t, methodMapForLabels[m])}
+                    </option>
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
@@ -287,7 +301,7 @@ export default function CompletedBookingsPanel() {
 
             {/* Date from */}
             <div className="min-w-[150px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Check-out From</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('admin.completed.checkOutFrom')}</label>
               <input
                 type="date"
                 value={filterDateFrom}
@@ -298,7 +312,7 @@ export default function CompletedBookingsPanel() {
 
             {/* Date to */}
             <div className="min-w-[150px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Check-out To</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('admin.completed.checkOutTo')}</label>
               <input
                 type="date"
                 value={filterDateTo}
@@ -316,7 +330,7 @@ export default function CompletedBookingsPanel() {
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-close-line text-sm"></i>
                 </div>
-                Clear
+                {t('common.clear')}
               </button>
             )}
           </div>
@@ -330,7 +344,7 @@ export default function CompletedBookingsPanel() {
             <div className="w-5 h-5 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line text-xl"></i>
             </div>
-            <span className="text-sm">Loading completed bookings…</span>
+            <span className="text-sm">{t('admin.completed.loading')}</span>
           </div>
         </div>
       ) : filtered.length === 0 ? (
@@ -338,18 +352,18 @@ export default function CompletedBookingsPanel() {
           <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-4">
             <i className="ri-medal-line text-3xl text-gray-300"></i>
           </div>
-          <p className="text-sm font-medium text-gray-500">No completed bookings found</p>
+          <p className="text-sm font-medium text-gray-500">{t('admin.completed.empty')}</p>
           <p className="text-xs mt-1 text-gray-400">
             {hasActiveFilters
-              ? 'Try adjusting your filters.'
-              : 'Completed stays will appear here once check-out dates have passed.'}
+              ? t('admin.completed.tryAdjustingFilters')
+              : t('admin.completed.emptyHint')}
           </p>
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
               className="mt-3 text-xs text-emerald-600 hover:text-emerald-700 cursor-pointer underline"
             >
-              Clear all filters
+              {t('admin.completed.clearAllFilters')}
             </button>
           )}
         </div>
@@ -359,16 +373,16 @@ export default function CompletedBookingsPanel() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 {[
-                  'Booking ID',
-                  'Property',
-                  'Check-in',
-                  'Check-out',
-                  'Guests',
-                  'Total',
-                  'Payment Method',
-                  'Payment Status',
-                  'Status',
-                  'Completed On',
+                  t('common.bookingId'),
+                  t('common.property'),
+                  t('common.checkIn'),
+                  t('common.checkOut'),
+                  t('common.guestsLabel'),
+                  t('common.total'),
+                  t('common.paymentMethod'),
+                  t('common.paymentStatus'),
+                  t('common.statusLabel'),
+                  t('admin.completed.completedOn'),
                 ].map((h) => (
                   <th
                     key={h}
@@ -402,12 +416,12 @@ export default function CompletedBookingsPanel() {
 
                   {/* Check-in */}
                   <td className="px-5 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-700">{formatDate(b.check_in)}</span>
+                    <span className="text-sm text-gray-700">{formatDate(b.check_in, lang)}</span>
                   </td>
 
                   {/* Check-out */}
                   <td className="px-5 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-700">{formatDate(b.check_out)}</span>
+                    <span className="text-sm text-gray-700">{formatDate(b.check_out, lang)}</span>
                   </td>
 
                   {/* Guests */}
@@ -422,7 +436,7 @@ export default function CompletedBookingsPanel() {
 
                   {/* Total */}
                   <td className="px-5 py-4 whitespace-nowrap">
-                    <span className="text-sm font-bold text-gray-900">₾{Number(b.total_price).toLocaleString()}</span>
+                    <span className="text-sm font-bold text-gray-900">₾{Number(b.total_price).toLocaleString(lang)}</span>
                   </td>
 
                   {/* Payment Method */}
@@ -431,7 +445,7 @@ export default function CompletedBookingsPanel() {
                       <div className="w-4 h-4 flex items-center justify-center">
                         <i className="ri-bank-card-line text-gray-400 text-xs"></i>
                       </div>
-                      <span className="text-sm text-gray-700">{paymentMethodLabel(b.payment_method)}</span>
+                      <span className="text-sm text-gray-700">{paymentMethodLabel(t, b.payment_method)}</span>
                     </div>
                   </td>
 
@@ -449,7 +463,7 @@ export default function CompletedBookingsPanel() {
                             : 'ri-close-circle-line'
                         }`}
                       ></i>
-                      {b.payment_status ?? 'Unknown'}
+                      {b.payment_status ?? t('common.unknown')}
                     </span>
                   </td>
 
@@ -457,13 +471,13 @@ export default function CompletedBookingsPanel() {
                   <td className="px-5 py-4">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 whitespace-nowrap">
                       <i className="ri-medal-line text-xs"></i>
-                      Completed
+                      {t('admin.completed.statusCompleted')}
                     </span>
                   </td>
 
                   {/* Completed On (check-out date) */}
                   <td className="px-5 py-4 whitespace-nowrap">
-                    <span className="text-xs text-gray-500">{formatDate(b.check_out)}</span>
+                    <span className="text-xs text-gray-500">{formatDate(b.check_out, lang)}</span>
                   </td>
                 </tr>
               ))}
@@ -473,21 +487,21 @@ export default function CompletedBookingsPanel() {
           {/* Footer summary */}
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">
-              Showing <span className="font-semibold text-gray-700">{filtered.length}</span> completed booking{filtered.length !== 1 ? 's' : ''}
-              {hasActiveFilters && ` (filtered from ${bookings.length})`}
+              {t('admin.completed.showingCompleted', { count: filtered.length })}
+              {hasActiveFilters && ` ${t('admin.completed.filteredFrom', { total: bookings.length })}`}
             </span>
             <div className="flex items-center gap-4">
               <span className="text-sm font-bold text-emerald-700">
-                Total Revenue: ₾{totalRevenue.toLocaleString()}
+                {t('admin.completed.totalRevenueAmount', { amount: totalRevenue.toLocaleString(lang) })}
               </span>
               <button
-                onClick={() => exportToCSV(filtered)}
+                onClick={() => exportToCSV(t, filtered)}
                 className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer transition-colors"
               >
                 <div className="w-3.5 h-3.5 flex items-center justify-center">
                   <i className="ri-file-download-line text-xs"></i>
                 </div>
-                Download CSV
+                {t('admin.completed.downloadCsv')}
               </button>
             </div>
           </div>

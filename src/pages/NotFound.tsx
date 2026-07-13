@@ -9,7 +9,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEO
-        title="Page not found — RentCottage.Ge"
+        title={`${t('notFound.title')} — RentCottage.Ge`}
         description="The page you were looking for does not exist or has been moved."
         noIndex
       />

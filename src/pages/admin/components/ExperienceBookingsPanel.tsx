@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@lib/i18n';
 const ADMIN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
 const ANON = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 const adminHeaders = () => ({
@@ -25,26 +26,26 @@ interface ExperienceBooking {
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
 type TypeFilter = 'all' | 'wine_tasting' | 'cooking_class';
 
-const STATUS_CONFIG: Record<string, { label: string; badgeClass: string; icon: string }> = {
-  pending: { label: 'Pending', badgeClass: 'bg-amber-100 text-amber-700', icon: 'ri-time-line' },
-  confirmed: { label: 'Confirmed', badgeClass: 'bg-green-100 text-green-700', icon: 'ri-checkbox-circle-line' },
-  completed: { label: 'Completed', badgeClass: 'bg-blue-100 text-blue-700', icon: 'ri-check-double-line' },
-  cancelled: { label: 'Cancelled', badgeClass: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' },
+const STATUS_CONFIG: Record<string, { labelKey: string; badgeClass: string; icon: string }> = {
+  pending: { labelKey: 'admin.experienceBookings.status.pending', badgeClass: 'bg-amber-100 text-amber-700', icon: 'ri-time-line' },
+  confirmed: { labelKey: 'admin.experienceBookings.status.confirmed', badgeClass: 'bg-green-100 text-green-700', icon: 'ri-checkbox-circle-line' },
+  completed: { labelKey: 'admin.experienceBookings.status.completed', badgeClass: 'bg-blue-100 text-blue-700', icon: 'ri-check-double-line' },
+  cancelled: { labelKey: 'admin.experienceBookings.status.cancelled', badgeClass: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' },
 };
 
-const EXP_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  wine_tasting: { label: 'Wine Tasting', icon: 'ri-goblet-line', color: 'text-purple-600', bg: 'bg-purple-50' },
-  cooking_class: { label: 'Cooking Class', icon: 'ri-restaurant-line', color: 'text-orange-600', bg: 'bg-orange-50' },
+const EXP_CONFIG: Record<string, { labelKey: string; icon: string; color: string; bg: string }> = {
+  wine_tasting: { labelKey: 'admin.experienceBookings.type.wineTasting', icon: 'ri-goblet-line', color: 'text-purple-600', bg: 'bg-purple-50' },
+  cooking_class: { labelKey: 'admin.experienceBookings.type.cookingClass', icon: 'ri-restaurant-line', color: 'text-orange-600', bg: 'bg-orange-50' },
 };
 
-function formatDate(str: string) {
-  return new Date(str + 'T00:00:00').toLocaleDateString('en-GB', {
+function formatDate(str: string, lang: string) {
+  return new Date(str + 'T00:00:00').toLocaleDateString(lang, {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
 
-function formatCreated(str: string) {
-  return new Date(str).toLocaleString('en-GB', {
+function formatCreated(str: string, lang: string) {
+  return new Date(str).toLocaleString(lang, {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
@@ -56,13 +57,14 @@ interface ActionMenuProps {
 }
 
 function ActionMenu({ booking, onStatusChange, loading }: ActionMenuProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const actions = ([
-    { status: 'confirmed', label: 'Confirm', icon: 'ri-checkbox-circle-line', color: 'text-green-600' },
-    { status: 'completed', label: 'Mark Completed', icon: 'ri-check-double-line', color: 'text-blue-600' },
-    { status: 'cancelled', label: 'Cancel', icon: 'ri-close-circle-line', color: 'text-red-500' },
-    { status: 'pending', label: 'Reset to Pending', icon: 'ri-restart-line', color: 'text-gray-500' },
+    { status: 'confirmed', label: t('common.confirm'), icon: 'ri-checkbox-circle-line', color: 'text-green-600' },
+    { status: 'completed', label: t('admin.experienceBookings.markCompleted'), icon: 'ri-check-double-line', color: 'text-blue-600' },
+    { status: 'cancelled', label: t('common.cancel'), icon: 'ri-close-circle-line', color: 'text-red-500' },
+    { status: 'pending', label: t('admin.experienceBookings.resetToPending'), icon: 'ri-restart-line', color: 'text-gray-500' },
   ] as { status: ExperienceBooking['status']; label: string; icon: string; color: string }[])
     .filter((a) => a.status !== booking.status);
 
@@ -76,7 +78,7 @@ function ActionMenu({ booking, onStatusChange, loading }: ActionMenuProps) {
         <div className="w-3 h-3 flex items-center justify-center">
           <i className="ri-more-2-fill text-gray-500"></i>
         </div>
-        Actions
+        {t('common.actions')}
       </button>
       {open && (
         <>
@@ -108,6 +110,7 @@ function ActionMenu({ booking, onStatusChange, loading }: ActionMenuProps) {
 }
 
 export default function ExperienceBookingsPanel() {
+  const { t, lang } = useTranslation();
   const [bookings, setBookings] = useState<ExperienceBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -141,9 +144,9 @@ export default function ExperienceBookingsPanel() {
       setBookings((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status } : b))
       );
-      showToast(`Status updated to "${STATUS_CONFIG[status].label}".`, 'success');
+      showToast(t('admin.experienceBookings.statusUpdated', { status: t(STATUS_CONFIG[status].labelKey) }), 'success');
     } else {
-      showToast('Failed to update status. Please try again.', 'error');
+      showToast(t('admin.experienceBookings.statusUpdateFailed'), 'error');
     }
     setActionLoading(null);
   };
@@ -171,11 +174,11 @@ export default function ExperienceBookingsPanel() {
   };
 
   const statusTabs: { key: StatusFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: counts.total },
-    { key: 'pending', label: 'Pending', count: counts.pending },
-    { key: 'confirmed', label: 'Confirmed', count: counts.confirmed },
-    { key: 'completed', label: 'Completed', count: counts.completed },
-    { key: 'cancelled', label: 'Cancelled', count: counts.cancelled },
+    { key: 'all', label: t('common.all'), count: counts.total },
+    { key: 'pending', label: t('admin.experienceBookings.status.pending'), count: counts.pending },
+    { key: 'confirmed', label: t('admin.experienceBookings.status.confirmed'), count: counts.confirmed },
+    { key: 'completed', label: t('admin.experienceBookings.status.completed'), count: counts.completed },
+    { key: 'cancelled', label: t('admin.experienceBookings.status.cancelled'), count: counts.cancelled },
   ];
 
   return (
@@ -187,31 +190,31 @@ export default function ExperienceBookingsPanel() {
             <i className="ri-goblet-line text-orange-500 text-base"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Experience Booking Requests</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Wine Tasting &amp; Cooking Class requests</p>
+            <h2 className="text-base font-bold text-gray-900">{t('admin.experienceBookings.title')}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{t('admin.experienceBookings.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           {/* Type filter pills */}
           <div className="flex gap-1.5">
             {([
-              { key: 'all' as TypeFilter, label: 'All types' },
-              { key: 'wine_tasting' as TypeFilter, label: '🍷 Wine Tasting' },
-              { key: 'cooking_class' as TypeFilter, label: '🍳 Cooking Class' },
-            ]).map((t) => (
+              { key: 'all' as TypeFilter, label: t('admin.experienceBookings.allTypes') },
+              { key: 'wine_tasting' as TypeFilter, label: t('admin.experienceBookings.wineTastingPill') },
+              { key: 'cooking_class' as TypeFilter, label: t('admin.experienceBookings.cookingClassPill') },
+            ]).map((f) => (
               <button
-                key={t.key}
-                onClick={() => setTypeFilter(t.key)}
+                key={f.key}
+                onClick={() => setTypeFilter(f.key)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
-                  typeFilter === t.key
+                  typeFilter === f.key
                     ? 'bg-gray-900 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {t.label}
-                {t.key !== 'all' && (
+                {f.label}
+                {f.key !== 'all' && (
                   <span className="ml-1 opacity-60">
-                    {t.key === 'wine_tasting' ? counts.wine : counts.cooking}
+                    {f.key === 'wine_tasting' ? counts.wine : counts.cooking}
                   </span>
                 )}
               </button>
@@ -224,7 +227,7 @@ export default function ExperienceBookingsPanel() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -232,19 +235,19 @@ export default function ExperienceBookingsPanel() {
       {/* Status tabs + search */}
       <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-b border-gray-100">
         <div className="flex items-center gap-1 bg-white border border-line rounded-lg p-0.5">
-          {statusTabs.map((t) => (
+          {statusTabs.map((tab) => (
             <button
-              key={t.key}
-              onClick={() => setStatusFilter(t.key)}
+              key={tab.key}
+              onClick={() => setStatusFilter(tab.key)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                statusFilter === t.key
+                statusFilter === tab.key
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t.label}
-              <span className={`text-xs ${statusFilter === t.key ? 'text-white/70' : 'text-gray-400'}`}>
-                {t.count}
+              {tab.label}
+              <span className={`text-xs ${statusFilter === tab.key ? 'text-white/70' : 'text-gray-400'}`}>
+                {tab.count}
               </span>
             </button>
           ))}
@@ -257,7 +260,7 @@ export default function ExperienceBookingsPanel() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or phone…"
+            placeholder={t('admin.experienceBookings.searchPlaceholder')}
             className="pl-8 pr-4 py-1.5 text-xs border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-52"
           />
         </div>
@@ -270,7 +273,7 @@ export default function ExperienceBookingsPanel() {
             <div className="w-5 h-5 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line text-xl"></i>
             </div>
-            <span className="text-sm">Loading requests…</span>
+            <span className="text-sm">{t('admin.experienceBookings.loading')}</span>
           </div>
         </div>
       ) : filtered.length === 0 ? (
@@ -278,18 +281,20 @@ export default function ExperienceBookingsPanel() {
           <div className="w-12 h-12 flex items-center justify-center mb-3">
             <i className="ri-inbox-line text-4xl"></i>
           </div>
-          <p className="text-sm font-medium">No experience requests found</p>
+          <p className="text-sm font-medium">{t('admin.experienceBookings.emptyTitle')}</p>
           <p className="text-xs mt-1">
             {bookings.length === 0
-              ? 'No booking requests submitted yet.'
-              : 'Try adjusting your filters.'}
+              ? t('admin.experienceBookings.emptyNone')
+              : t('admin.experienceBookings.emptyFiltered')}
           </p>
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
           {filtered.map((b) => {
-            const expCfg = EXP_CONFIG[b.experience_type] ?? { label: b.experience_type ?? 'Experience', icon: 'ri-star-line', color: 'text-gray-600', bg: 'bg-gray-100' };
-            const stCfg = STATUS_CONFIG[b.status] ?? { label: b.status ?? 'Unknown', badgeClass: 'bg-gray-100 text-gray-700', icon: 'ri-question-line' };
+            const expCfg = EXP_CONFIG[b.experience_type] ?? { labelKey: '', icon: 'ri-star-line', color: 'text-gray-600', bg: 'bg-gray-100' };
+            const expLabel = expCfg.labelKey ? t(expCfg.labelKey) : (b.experience_type ?? t('admin.experienceBookings.type.fallback'));
+            const stCfg = STATUS_CONFIG[b.status] ?? { labelKey: '', badgeClass: 'bg-gray-100 text-gray-700', icon: 'ri-question-line' };
+            const stLabel = stCfg.labelKey ? t(stCfg.labelKey) : (b.status ?? t('admin.experienceBookings.status.unknown'));
             const isExpanded = expandedId === b.id;
             return (
               <div key={b.id}>
@@ -308,11 +313,11 @@ export default function ExperienceBookingsPanel() {
                             <span className="text-sm font-semibold text-gray-900">{b.customer_name}</span>
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${expCfg.bg} ${expCfg.color}`}>
                               <i className={`${expCfg.icon} text-xs`}></i>
-                              {expCfg.label}
+                              {expLabel}
                             </span>
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${stCfg.badgeClass}`}>
                               <i className={`${stCfg.icon} text-xs`}></i>
-                              {stCfg.label}
+                              {stLabel}
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-3 mt-1.5">
@@ -339,7 +344,7 @@ export default function ExperienceBookingsPanel() {
                             className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors whitespace-nowrap"
                           >
                             <i className={isExpanded ? 'ri-chevron-up-line' : 'ri-chevron-down-line'}></i>
-                            {isExpanded ? 'Hide' : 'Details'}
+                            {isExpanded ? t('admin.experienceBookings.hide') : t('admin.experienceBookings.details')}
                           </button>
                         </div>
                       </div>
@@ -348,18 +353,18 @@ export default function ExperienceBookingsPanel() {
                       <div className="flex flex-wrap gap-4 mt-2">
                         <span className="flex items-center gap-1 text-xs text-gray-500">
                           <i className="ri-calendar-event-line text-gray-400"></i>
-                          {formatDate(b.preferred_date)}
+                          {formatDate(b.preferred_date, lang)}
                           {b.preferred_time && (
-                            <span className="text-gray-400 ml-0.5">at {b.preferred_time}</span>
+                            <span className="text-gray-400 ml-0.5">{t('admin.experienceBookings.atTime', { time: b.preferred_time })}</span>
                           )}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-gray-500">
                           <i className="ri-group-line text-gray-400"></i>
-                          {b.guests} {b.guests === 1 ? 'guest' : 'guests'}
+                          {t('common.guests', { count: b.guests })}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-gray-400">
                           <i className="ri-time-line"></i>
-                          Submitted {formatCreated(b.created_at)}
+                          {t('admin.experienceBookings.submitted', { date: formatCreated(b.created_at, lang) })}
                         </span>
                         <span className="text-xs text-gray-400 font-mono truncate max-w-[100px]">
                           #{b.id.slice(0, 8)}
@@ -374,7 +379,7 @@ export default function ExperienceBookingsPanel() {
                   <div className="px-6 pb-4 pt-1 bg-gray-50 border-t border-gray-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-3">
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contact Details</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.experienceBookings.contactDetails')}</p>
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <i className="ri-user-line text-gray-400 w-4"></i>
                           {b.customer_name}
@@ -395,26 +400,26 @@ export default function ExperienceBookingsPanel() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Booking Details</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.experienceBookings.bookingDetails')}</p>
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <i className="ri-calendar-event-line text-gray-400 w-4"></i>
-                          {formatDate(b.preferred_date)}
+                          {formatDate(b.preferred_date, lang)}
                           {b.preferred_time && <span className="text-gray-500">— {b.preferred_time}</span>}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <i className="ri-group-line text-gray-400 w-4"></i>
-                          {b.guests} {b.guests === 1 ? 'guest' : 'guests'}
+                          {t('common.guests', { count: b.guests })}
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <i className={`${expCfg.icon} ${expCfg.color} w-4`}></i>
-                          <span className={`font-medium ${expCfg.color}`}>{expCfg.label}</span>
+                          <span className={`font-medium ${expCfg.color}`}>{expLabel}</span>
                         </div>
                       </div>
                     </div>
                     {b.message && (
                       <div className="mt-2 pt-3 border-t border-line">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                          Message / Special Requests
+                          {t('admin.experienceBookings.messageSpecialRequests')}
                         </p>
                         <p className="text-sm text-gray-700 leading-relaxed bg-white rounded-lg px-4 py-3 border border-gray-100">
                           {b.message}
@@ -430,7 +435,7 @@ export default function ExperienceBookingsPanel() {
                         <div className="w-3.5 h-3.5 flex items-center justify-center">
                           <i className="ri-phone-line"></i>
                         </div>
-                        Call Customer
+                        {t('admin.experienceBookings.callCustomer')}
                       </a>
                       {b.customer_email && (
                         <a
@@ -440,7 +445,7 @@ export default function ExperienceBookingsPanel() {
                           <div className="w-3.5 h-3.5 flex items-center justify-center">
                             <i className="ri-mail-send-line"></i>
                           </div>
-                          Send Email
+                          {t('admin.experienceBookings.sendEmail')}
                         </a>
                       )}
                     </div>

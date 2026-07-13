@@ -75,7 +75,7 @@ function seasonByMonth(m: number): SeasonKey {
 }
 
 export default function HomePage() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [selectedHelpTopic, setSelectedHelpTopic] = useState<string>('');
 
@@ -421,10 +421,10 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
-            { name: 'Gudauri', tag: t('home.destinations.gudauriTag'), img: '/redesign/region-gudauri.jpg' },
-            { name: 'Bakuriani', tag: t('home.destinations.bakurianiTag'), img: '/redesign/region-bakuriani.jpg' },
-            { name: 'Kakheti', tag: t('home.destinations.kakhetiTag'), img: '/redesign/region-kakheti.jpg' },
-            { name: 'Kazbegi', tag: t('home.destinations.kazbegiTag'), img: '/redesign/region-kazbegi.jpg' },
+            { name: 'Gudauri', label: t('home.destinations.gudauri'), tag: t('home.destinations.gudauriTag'), img: '/redesign/region-gudauri.jpg' },
+            { name: 'Bakuriani', label: t('home.destinations.bakuriani'), tag: t('home.destinations.bakurianiTag'), img: '/redesign/region-bakuriani.jpg' },
+            { name: 'Kakheti', label: t('home.destinations.kakheti'), tag: t('home.destinations.kakhetiTag'), img: '/redesign/region-kakheti.jpg' },
+            { name: 'Kazbegi', label: t('home.destinations.kazbegi'), tag: t('home.destinations.kazbegiTag'), img: '/redesign/region-kazbegi.jpg' },
           ].map((region) => (
             <button
               key={region.name}
@@ -434,7 +434,7 @@ export default function HomePage() {
             >
               <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
               <span className="relative z-10 text-white">
-                <span className="block text-lg md:text-[19px] font-extrabold">{region.name}</span>
+                <span className="block text-lg md:text-[19px] font-extrabold">{region.label}</span>
                 <span className="block text-xs md:text-[13px] opacity-90">{region.tag}</span>
               </span>
             </button>
@@ -497,7 +497,7 @@ export default function HomePage() {
                       {promo.ends_at && (
                         <span className="inline-flex items-center gap-1 text-white/80 text-[11px] md:text-xs font-medium">
                           <i className="ri-time-line text-xs"></i>
-                          {t('home.promos.until', { date: new Date(promo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) })}
+                          {t('home.promos.until', { date: new Date(promo.ends_at + 'T00:00:00').toLocaleDateString(lang, { day: 'numeric', month: 'long' }) })}
                         </span>
                       )}
                     </div>
@@ -768,9 +768,9 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
           {[
-            { text: t('home.reviews.review1'), who: 'Nino K. · Gudauri, January 2026' },
-            { text: t('home.reviews.review2'), who: 'Giorgi M. · Bakuriani, February 2026' },
-            { text: t('home.reviews.review3'), who: 'Tamar B. · Sighnaghi, October 2025' },
+            { text: t('home.reviews.review1'), who: t('home.reviews.who1') },
+            { text: t('home.reviews.review2'), who: t('home.reviews.who2') },
+            { text: t('home.reviews.review3'), who: t('home.reviews.who3') },
           ].map((review, i) => (
             <div key={i} className="bg-white rounded-card shadow-card p-6">
               <div className="text-red-500 tracking-[2px] mb-2.5" translate="no" aria-hidden="true">★★★★★</div>
@@ -1171,7 +1171,7 @@ export default function HomePage() {
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="relative">
               <img
-                alt="Traditional Georgian Wine Tasting"
+                alt={t('home.wineModal.imageAlt')}
                 className="w-full h-64 object-cover object-top"
                 src="https://readdy.ai/api/search-image?query=Traditional%20Georgian%20wine%20cellar%20tasting%20experience%2C%20ancient%20qvevri%20clay%20vessels%2C%20wine%20master%20pouring%20amber%20wine%2C%20rustic%20stone%20cellar%2C%20candlelit%20atmosphere%2C%20traditional%20Georgian%20winemaking%2C%20authentic%20vineyard%20setting&width=800&height=400&seq=winetastingmodal&orientation=landscape"
               />
@@ -1187,77 +1187,75 @@ export default function HomePage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                    Traditional Georgian Wine Tasting
+                    {t('home.wineModal.title')}
                   </h2>
 
                   <div className="flex items-center gap-4 mb-6">
                     <div className="flex items-center gap-1">
                       <i className="ri-time-line text-red-500"></i>
-                      <span className="text-gray-600">2-3 hours</span>
+                      <span className="text-gray-600">{t('home.wineModal.duration')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <i className="ri-group-line text-red-500"></i>
-                      <span className="text-gray-600">2-12 people</span>
+                      <span className="text-gray-600">{t('home.wineModal.groupSize')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <i className="ri-map-pin-line text-red-500"></i>
-                      <span className="text-gray-600">Kakheti Region</span>
+                      <span className="text-gray-600">{t('home.wineModal.location')}</span>
                     </div>
                   </div>
 
                   <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">Experience Overview</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">{t('home.wineModal.overviewTitle')}</h3>
                     <p className="text-gray-600 leading-relaxed">
-                      Discover Georgia&apos;s 8,000‑year‑old winemaking tradition in an authentic cellar
-                      setting. Taste unique amber wines made in traditional qvevri clay vessels, learn about
-                      ancient techniques, and enjoy local cheese and bread pairings with a master sommelier.
+                      {t('home.wineModal.overviewText')}
                     </p>
                   </div>
 
                   <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">What You&apos;ll Taste</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">{t('home.wineModal.whatYoullTaste')}</h3>
                     <ul className="space-y-2 text-gray-600">
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>5 premium Georgian wines including rare amber varieties</span>
+                        <span>{t('home.wineModal.taste1')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Traditional qvevri wines aged underground</span>
+                        <span>{t('home.wineModal.taste2')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Local Saperavi, Rkatsiteli, and Mtsvane varieties</span>
+                        <span>{t('home.wineModal.taste3')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Artisanal Georgian cheese and fresh bread</span>
+                        <span>{t('home.wineModal.taste4')}</span>
                       </li>
                     </ul>
                   </div>
 
                   <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">Experience Includes</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">{t('home.wineModal.includesTitle')}</h3>
                     <ul className="space-y-2 text-gray-600">
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Professional wine tasting with expert sommelier</span>
+                        <span>{t('home.wineModal.includes1')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Traditional cellar and qvevri tour</span>
+                        <span>{t('home.wineModal.includes2')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Local cheese, bread, and snack pairings</span>
+                        <span>{t('home.wineModal.includes3')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Transportation from Tbilisi (optional)</span>
+                        <span>{t('home.wineModal.includes4')}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <i className="ri-check-line text-red-500 mt-1"></i>
-                        <span>Wine tasting notes and educational materials</span>
+                        <span>{t('home.wineModal.includes5')}</span>
                       </li>
                     </ul>
                   </div>
@@ -1268,7 +1266,7 @@ export default function HomePage() {
                   <div className="bg-gray-50 rounded-lg p-6 sticky top-6">
                     <div className="text-center mb-4">
                       <span className="text-3xl font-bold text-red-500">₾35</span>
-                      <span className="text-gray-600 ml-2">per person</span>
+                      <span className="text-gray-600 ml-2">{t('home.wineModal.perPerson')}</span>
                     </div>
 
                     <div className="flex items-center justify-center gap-1 mb-4">
@@ -1279,36 +1277,35 @@ export default function HomePage() {
                         <i className="ri-star-fill"></i>
                         <i className="ri-star-fill"></i>
                       </div>
-                      <span className="text-sm text-gray-600 ml-2">4.9 (127 reviews)</span>
+                      <span className="text-sm text-gray-600 ml-2">{t('home.wineModal.rating')}</span>
                     </div>
 
                     <button
                       onClick={handleWineTastingBooking}
                       className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors mb-4"
                     >
-                      Book This Experience
+                      {t('home.wineModal.bookThis')}
                     </button>
 
                     <div className="text-sm text-gray-600 space-y-2">
                       <div className="flex items-center gap-2">
                         <i className="ri-shield-check-line text-green-500"></i>
-                        <span>Free cancellation up to 24 hours</span>
+                        <span>{t('home.wineModal.freeCancellation')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <i className="ri-time-line text-blue-500"></i>
-                        <span>Instant confirmation</span>
+                        <span>{t('home.wineModal.instantConfirmation')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <i className="ri-group-line text-purple-500"></i>
-                        <span>Private or group options</span>
+                        <span>{t('home.wineModal.groupOptions')}</span>
                       </div>
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-gray-200">
-                      <h4 className="font-semibold text-gray-900 mb-2">Cancellation Policy</h4>
+                      <h4 className="font-semibold text-gray-900 mb-2">{t('home.wineModal.cancellationPolicyTitle')}</h4>
                       <p className="text-sm text-gray-600">
-                        Free cancellation up to 24 hours before the experience starts. 50% refund for cancellations
-                        within 24 hours.
+                        {t('home.wineModal.cancellationPolicyText')}
                       </p>
                     </div>
                   </div>
@@ -1325,7 +1322,7 @@ export default function HomePage() {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Book Wine Tasting Experience</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{t('home.bookingForm.wineTitle')}</h2>
                 <button
                   onClick={handleWineTastingBookingClose}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1350,7 +1347,7 @@ export default function HomePage() {
                   const missingFields = requiredFields.filter((field) => !formData.get(field));
 
                   if (missingFields.length > 0) {
-                    alert('Please fill in all required fields');
+                    alert(t('home.bookingForm.validationFillAll'));
                     return;
                   }
 
@@ -1359,7 +1356,7 @@ export default function HomePage() {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   if (selectedDate < today) {
-                    alert('Please select a future date');
+                    alert(t('home.bookingForm.validationFutureDate'));
                     return;
                   }
 
@@ -1369,31 +1366,29 @@ export default function HomePage() {
                     body: new URLSearchParams(formData as any),
                   })
                     .then(() => {
-                      alert(
-                        'Booking request submitted successfully! We will contact you within 24 hours to confirm your wine tasting experience.'
-                      );
+                      alert(t('home.bookingForm.successWine'));
                       handleWineTastingBookingClose();
                     })
                     .catch(() => {
-                      alert('There was an error submitting your booking. Please try again.');
+                      alert(t('home.bookingForm.errorSubmit'));
                     });
                 }}
                 className="space-y-4"
               >
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                  <h3 className="font-semibold text-red-800 mb-2">Traditional Georgian Wine Tasting</h3>
+                  <h3 className="font-semibold text-red-800 mb-2">{t('home.wineModal.title')}</h3>
                   <div className="text-sm text-red-700 space-y-1">
-                    <p>• 2-3 hours experience in Kakheti Region</p>
-                    <p>• 5 premium wines + traditional food pairings</p>
-                    <p>• Expert sommelier and cellar tour included</p>
-                    <p>• Price: ₾35 per person</p>
+                    <p>{t('home.wineModal.summaryLine1')}</p>
+                    <p>{t('home.wineModal.summaryLine2')}</p>
+                    <p>{t('home.wineModal.summaryLine3')}</p>
+                    <p>{t('home.wineModal.summaryLine4')}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Full Name *
+                      {t('home.bookingForm.fullName')}
                     </label>
                     <input
                       type="text"
@@ -1401,13 +1396,13 @@ export default function HomePage() {
                       name="fullName"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                      placeholder="Enter your full name"
+                      placeholder={t('home.bookingForm.fullNamePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address *
+                      {t('home.bookingForm.email')}
                     </label>
                     <input
                       type="email"
@@ -1415,7 +1410,7 @@ export default function HomePage() {
                       name="email"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-5 text-sm"
-                      placeholder="Enter your email"
+                      placeholder={t('home.bookingForm.emailPlaceholder')}
                     />
                   </div>
                 </div>
@@ -1423,7 +1418,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number *
+                      {t('home.bookingForm.phone')}
                     </label>
                     <input
                       type="tel"
@@ -1431,13 +1426,13 @@ export default function HomePage() {
                       name="phone"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                      placeholder="Enter your phone number"
+                      placeholder={t('home.bookingForm.phonePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="numberOfPeople" className="block text-sm font-medium text-gray-700 mb-1">
-                      Number of People *
+                      {t('home.bookingForm.numberOfPeople')}
                     </label>
                     <select
                       id="numberOfPeople"
@@ -1445,18 +1440,18 @@ export default function HomePage() {
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm pr-8"
                     >
-                      <option value="">Select group size</option>
-                      <option value="2">2 people</option>
-                      <option value="3">3 people</option>
-                      <option value="4">4 people</option>
-                      <option value="5">5 people</option>
-                      <option value="6">6 people</option>
-                      <option value="7">7 people</option>
-                      <option value="8">8 people</option>
-                      <option value="9">9 people</option>
-                      <option value="10">10 people</option>
-                      <option value="11">11 people</option>
-                      <option value="12">12 people</option>
+                      <option value="">{t('home.bookingForm.selectGroupSize')}</option>
+                      <option value="2">{t('home.bookingForm.peopleOption', { count: 2 })}</option>
+                      <option value="3">{t('home.bookingForm.peopleOption', { count: 3 })}</option>
+                      <option value="4">{t('home.bookingForm.peopleOption', { count: 4 })}</option>
+                      <option value="5">{t('home.bookingForm.peopleOption', { count: 5 })}</option>
+                      <option value="6">{t('home.bookingForm.peopleOption', { count: 6 })}</option>
+                      <option value="7">{t('home.bookingForm.peopleOption', { count: 7 })}</option>
+                      <option value="8">{t('home.bookingForm.peopleOption', { count: 8 })}</option>
+                      <option value="9">{t('home.bookingForm.peopleOption', { count: 9 })}</option>
+                      <option value="10">{t('home.bookingForm.peopleOption', { count: 10 })}</option>
+                      <option value="11">{t('home.bookingForm.peopleOption', { count: 11 })}</option>
+                      <option value="12">{t('home.bookingForm.peopleOption', { count: 12 })}</option>
                     </select>
                   </div>
                 </div>
@@ -1464,7 +1459,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="preferredDate" className="block text-sm font-medium text-gray-700 mb-1">
-                      Preferred Date *
+                      {t('home.bookingForm.preferredDate')}
                     </label>
                     <input
                       type="date"
@@ -1478,14 +1473,14 @@ export default function HomePage() {
 
                   <div>
                     <label htmlFor="preferredTime" className="block text-sm font-medium text-gray-700 mb-1">
-                      Preferred Time
+                      {t('home.bookingForm.preferredTime')}
                     </label>
                     <select
                       id="preferredTime"
                       name="preferredTime"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm pr-8"
                     >
-                      <option value="">Select time</option>
+                      <option value="">{t('home.bookingForm.selectTime')}</option>
                       <option value="10:00 AM">10:00 AM</option>
                       <option value="11:00 AM">11:00 AM</option>
                       <option value="2:00 PM">2:00 PM</option>
@@ -1497,22 +1492,22 @@ export default function HomePage() {
 
                 <div>
                   <label htmlFor="transportationNeeded" className="block text-sm font-medium text-gray-700 mb-1">
-                    Transportation from Tbilisi
+                    {t('home.bookingForm.transportation')}
                   </label>
                   <select
                     id="transportationNeeded"
                     name="transportationNeeded"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm pr-8"
                   >
-                    <option value="">Select option</option>
-                    <option value="yes">Yes, I need transportation (+₾25 per person)</option>
-                    <option value="no">No, I have my own transportation</option>
+                    <option value="">{t('home.bookingForm.selectOptionShort')}</option>
+                    <option value="yes">{t('home.bookingForm.transportationYes')}</option>
+                    <option value="no">{t('home.bookingForm.transportationNo')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label htmlFor="dietaryRestrictions" className="block text-sm font-medium text-gray-700 mb-1">
-                    Dietary Restrictions or Allergies
+                    {t('home.bookingForm.dietary')}
                   </label>
                   <textarea
                     id="dietaryRestrictions"
@@ -1520,27 +1515,27 @@ export default function HomePage() {
                     rows={3}
                     maxLength={500}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm resize-none"
-                    placeholder="Please let us know about any dietary restrictions, allergies, or special requirements..."
+                    placeholder={t('home.bookingForm.dietaryPlaceholder')}
                   ></textarea>
-                  <p className="text-xs text-gray-500 mt-1">Maximum 500 characters</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('home.bookingForm.maxCharacters')}</p>
                 </div>
 
                 <div>
                   <label htmlFor="howDidYouHear" className="block text-sm font-medium text-gray-700 mb-1">
-                    How did you hear about us?
+                    {t('home.bookingForm.howHeard')}
                   </label>
                   <select
                     id="howDidYouHear"
                     name="howDidYouHear"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm pr-8"
                   >
-                    <option value="">Select option</option>
-                    <option value="google">Google Search</option>
-                    <option value="social-media">Social Media</option>
-                    <option value="friend-referral">Friend Referral</option>
-                    <option value="travel-blog">Travel Blog</option>
-                    <option value="hotel-recommendation">Hotel Recommendation</option>
-                    <option value="other">Other</option>
+                    <option value="">{t('home.bookingForm.selectOptionShort')}</option>
+                    <option value="google">{t('home.bookingForm.optGoogle')}</option>
+                    <option value="social-media">{t('home.bookingForm.optSocial')}</option>
+                    <option value="friend-referral">{t('home.bookingForm.optFriendReferral')}</option>
+                    <option value="travel-blog">{t('home.bookingForm.optTravelBlog')}</option>
+                    <option value="hotel-recommendation">{t('home.bookingForm.optHotelRecommendation')}</option>
+                    <option value="other">{t('home.bookingForm.optOther')}</option>
                   </select>
                 </div>
 
@@ -1553,7 +1548,7 @@ export default function HomePage() {
                     className="rounded border-gray-300 text-red-500 focus:ring-red-500"
                   />
                   <label htmlFor="agreeTermsWine" className="text-sm text-gray-600">
-                    I agree to the cancellation policy and terms of service *
+                    {t('home.bookingForm.agreeTerms')}
                   </label>
                 </div>
 
@@ -1563,13 +1558,13 @@ export default function HomePage() {
                     onClick={handleWineTastingBookingClose}
                     className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                   >
-                    Submit Booking Request
+                    {t('home.bookingForm.submit')}
                   </button>
                 </div>
               </form>

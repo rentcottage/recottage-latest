@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Booking } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabase';
+import { useTranslation } from '@lib/i18n';
 
 const BOOKING_HANDLER_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/booking-handler';
 
@@ -17,6 +18,7 @@ function daysBetween(start: string, end: string): number {
 }
 
 export default function ChangeDatesModal({ booking, onClose, onSuccess }: ChangeDatesModalProps) {
+  const { t } = useTranslation();
   const today = new Date().toISOString().split('T')[0];
   const [checkIn, setCheckIn] = useState(booking.check_in);
   const [checkOut, setCheckOut] = useState(booking.check_out);
@@ -39,9 +41,9 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
 
   const handleSave = async () => {
     setError('');
-    if (!checkIn || !checkOut) { setError('Please select both dates.'); return; }
-    if (checkOut <= checkIn) { setError('Check-out must be after check-in.'); return; }
-    if (checkIn < today) { setError('Check-in date cannot be in the past.'); return; }
+    if (!checkIn || !checkOut) { setError(t('profile.changeDates.errorBothDates')); return; }
+    if (checkOut <= checkIn) { setError(t('profile.changeDates.errorOrder')); return; }
+    if (checkIn < today) { setError(t('profile.changeDates.errorPast')); return; }
 
     setSaving(true);
 
@@ -65,14 +67,14 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? 'Failed to submit request. Please try again.');
+        setError(data.error ?? t('profile.changeDates.errorSubmit'));
         return;
       }
 
       setSubmitted(true);
       onSuccess();
     } catch {
-      setError('Network error. Please try again.');
+      setError(t('common.networkError'));
     } finally {
       setSaving(false);
     }
@@ -89,25 +91,25 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
                 <i className="ri-time-line text-amber-500 text-2xl"></i>
               </div>
             </div>
-            <h3 className="font-semibold text-gray-900 text-base mb-2">Request Submitted!</h3>
+            <h3 className="font-semibold text-gray-900 text-base mb-2">{t('profile.changeDates.submittedTitle')}</h3>
             <p className="text-sm text-gray-500 leading-relaxed mb-1">
-              Your date change request for <strong className="text-gray-700 notranslate" translate="no">{booking.property_title}</strong> is now pending admin approval.
+              {t('profile.changeDates.submittedBodyPrefix')} <strong className="text-gray-700 notranslate" translate="no">{booking.property_title}</strong> {t('profile.changeDates.submittedBodySuffix')}
             </p>
             <p className="text-xs text-gray-400 leading-relaxed mb-6">
-              You'll receive a confirmation email once the host approves or rejects your request. Your original dates remain active in the meantime.
+              {t('profile.changeDates.submittedNote')}
             </p>
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 mb-6 text-left space-y-1">
               <div className="flex justify-between">
-                <span className="text-gray-400">Requested check-in</span>
+                <span className="text-gray-400">{t('profile.changeDates.requestedCheckIn')}</span>
                 <span className="font-medium text-gray-700">{checkIn}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Requested check-out</span>
+                <span className="text-gray-400">{t('profile.changeDates.requestedCheckOut')}</span>
                 <span className="font-medium text-gray-700">{checkOut}</span>
               </div>
               {newTotal !== null && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">New total</span>
+                  <span className="text-gray-400">{t('profile.changeDates.newTotal')}</span>
                   <span className="font-medium text-gray-700">₾{newTotal}</span>
                 </div>
               )}
@@ -116,7 +118,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
               onClick={onClose}
               className="w-full border border-gray-200 text-gray-700 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap"
             >
-              Close
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -129,7 +131,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
       <div className="bg-white rounded-xl w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 text-base">Request Date Change</h3>
+          <h3 className="font-semibold text-gray-900 text-base">{t('profile.changeDates.title')}</h3>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer rounded-full hover:bg-gray-100 transition-colors"
@@ -149,7 +151,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">New Check-in</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('profile.changeDates.newCheckIn')}</label>
               <input
                 type="date"
                 value={checkIn}
@@ -159,7 +161,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">New Check-out</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('profile.changeDates.newCheckOut')}</label>
               <input
                 type="date"
                 value={checkOut}
@@ -172,12 +174,12 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
 
           {nights > 0 && (
             <div className="flex items-center justify-between text-sm bg-red-50 rounded-lg px-4 py-3">
-              <span className="text-gray-600">{nights} night{nights !== 1 ? 's' : ''}</span>
+              <span className="text-gray-600">{t('common.nights', { count: nights })}</span>
               {newTotal !== null ? (
-                <span className="font-semibold text-gray-900">New total: ₾{newTotal}</span>
+                <span className="font-semibold text-gray-900">{t('profile.changeDates.newTotalPrice', { price: newTotal })}</span>
               ) : (
                 booking.total_price && (
-                  <span className="text-gray-500">Original total: ₾{booking.total_price}</span>
+                  <span className="text-gray-500">{t('profile.changeDates.originalTotalPrice', { price: booking.total_price })}</span>
                 )
               )}
             </div>
@@ -187,7 +189,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
             <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 mt-0.5">
               <i className="ri-information-line"></i>
             </div>
-            <span>This will submit a request — your dates won't change until the host approves it. You'll receive an email with the decision.</span>
+            <span>{t('profile.changeDates.info')}</span>
           </div>
 
           {error && (
@@ -203,7 +205,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
             onClick={onClose}
             className="flex-1 border border-gray-200 text-gray-700 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -213,14 +215,14 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
             {saving ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                Submitting...
+                {t('common.submitting')}
               </>
             ) : (
               <>
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-send-plane-line"></i>
                 </div>
-                Request Date Change
+                {t('profile.changeDates.title')}
               </>
             )}
           </button>

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useTranslation } from '@lib/i18n';
+import type { Lang } from '@lib/i18n';
 
 interface LogEntry {
   id: string;
@@ -24,101 +26,103 @@ interface EventConfig {
   bg: string;
 }
 
+// `label` holds an i18n key, resolved with t() at render time.
 const EVENT_CONFIG: Record<string, EventConfig> = {
   created: {
     icon: 'ri-add-circle-line',
-    label: 'Booking Created',
+    label: 'admin.history.eventCreated',
     color: 'text-gray-600',
     dotColor: 'bg-gray-400',
     bg: 'bg-gray-100',
   },
   confirmed: {
     icon: 'ri-checkbox-circle-line',
-    label: 'Confirmed by Admin',
+    label: 'admin.history.eventConfirmed',
     color: 'text-green-600',
     dotColor: 'bg-green-500',
     bg: 'bg-green-50',
   },
   host_approved: {
     icon: 'ri-checkbox-circle-line',
-    label: 'Approved by Host',
+    label: 'admin.history.eventHostApproved',
     color: 'text-green-600',
     dotColor: 'bg-green-500',
     bg: 'bg-green-50',
   },
   rejected: {
     icon: 'ri-close-circle-line',
-    label: 'Rejected',
+    label: 'common.rejected',
     color: 'text-red-500',
     dotColor: 'bg-red-400',
     bg: 'bg-red-50',
   },
   host_rejected: {
     icon: 'ri-close-circle-line',
-    label: 'Rejected by Host',
+    label: 'admin.history.eventHostRejected',
     color: 'text-red-500',
     dotColor: 'bg-red-400',
     bg: 'bg-red-50',
   },
   host_cancelled: {
     icon: 'ri-calendar-close-line',
-    label: 'Cancelled by Host',
+    label: 'admin.history.eventHostCancelled',
     color: 'text-red-600',
     dotColor: 'bg-red-500',
     bg: 'bg-red-50',
   },
   cancelled: {
     icon: 'ri-close-circle-line',
-    label: 'Cancelled',
+    label: 'admin.history.eventCancelled',
     color: 'text-red-500',
     dotColor: 'bg-red-400',
     bg: 'bg-red-50',
   },
   dates_changed: {
     icon: 'ri-calendar-2-line',
-    label: 'Dates Changed',
+    label: 'admin.history.eventDatesChanged',
     color: 'text-amber-600',
     dotColor: 'bg-amber-400',
     bg: 'bg-amber-50',
   },
   dates_approved: {
     icon: 'ri-calendar-check-line',
-    label: 'Date Change Approved',
+    label: 'admin.history.eventDatesApproved',
     color: 'text-green-600',
     dotColor: 'bg-green-400',
     bg: 'bg-green-50',
   },
   dates_rejected: {
     icon: 'ri-calendar-close-line',
-    label: 'Date Change Rejected',
+    label: 'admin.history.eventDatesRejected',
     color: 'text-red-500',
     dotColor: 'bg-red-400',
     bg: 'bg-red-50',
   },
   date_change_requested: {
     icon: 'ri-calendar-2-line',
-    label: 'Date Change Requested',
+    label: 'admin.history.eventDateChangeRequested',
     color: 'text-amber-600',
     dotColor: 'bg-amber-400',
     bg: 'bg-amber-50',
   },
   payment_initiated: {
     icon: 'ri-bank-card-line',
-    label: 'Payment Initiated',
+    label: 'admin.history.eventPaymentInitiated',
     color: 'text-gray-500',
     dotColor: 'bg-gray-400',
     bg: 'bg-gray-50',
   },
 };
 
+// Values are i18n keys, resolved with t() at render time.
 const actorLabel: Record<string, string> = {
-  admin: 'Admin',
-  customer: 'Customer',
-  system: 'System',
+  admin: 'admin.history.actorAdmin',
+  customer: 'admin.history.actorCustomer',
+  system: 'admin.history.actorSystem',
 };
 
-function formatTs(ts: string) {
-  return new Date(ts).toLocaleString('en-GB', {
+function formatTs(ts: string, lang: Lang) {
+  return new Date(ts).toLocaleString(lang, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -128,6 +132,7 @@ function formatTs(ts: string) {
 }
 
 export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
+  const { t, lang } = useTranslation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
@@ -156,7 +161,7 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
           <i className="ri-history-line text-gray-400 text-sm"></i>
         </div>
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          Status History
+          {t('admin.history.title')}
         </span>
       </div>
 
@@ -165,14 +170,14 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
           <div className="w-4 h-4 flex items-center justify-center animate-spin">
             <i className="ri-loader-4-line text-sm"></i>
           </div>
-          <span className="text-xs">Loading history…</span>
+          <span className="text-xs">{t('admin.history.loading')}</span>
         </div>
       ) : logs.length === 0 ? (
         <div className="flex items-center gap-2 text-gray-400 py-3 pl-2">
           <div className="w-4 h-4 flex items-center justify-center">
             <i className="ri-information-line text-sm"></i>
           </div>
-          <span className="text-xs">No history recorded for this booking yet.</span>
+          <span className="text-xs">{t('admin.history.empty')}</span>
         </div>
       ) : (
         <ol className="relative border-l-2 border-line ml-2 space-y-0">
@@ -192,7 +197,7 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
+                      <span className={`text-xs font-semibold ${cfg.color}`}>{t(cfg.label)}</span>
                       {entry.from_status && entry.from_status !== entry.to_status && (
                         <span className="flex items-center gap-1 text-xs text-gray-400">
                           <span className="capitalize">{entry.from_status}</span>
@@ -201,13 +206,15 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
                         </span>
                       )}
                       <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
-                        by {actorLabel[entry.changed_by] ?? entry.changed_by}
+                        {t('admin.history.byActor', {
+                          actor: actorLabel[entry.changed_by] ? t(actorLabel[entry.changed_by]) : entry.changed_by,
+                        })}
                       </span>
                     </div>
                     {entry.note && (
                       <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{entry.note}</p>
                     )}
-                    <p className="text-xs text-gray-400 mt-0.5">{formatTs(entry.created_at)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{formatTs(entry.created_at, lang)}</p>
                   </div>
                 </div>
               </li>

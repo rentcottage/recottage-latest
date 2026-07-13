@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
+import { useTranslation, type TranslateFn } from '@lib/i18n';
 
 interface Review {
   id: string;
@@ -50,27 +51,30 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
-function timeAgo(d: string): string {
+function timeAgo(d: string, t: TranslateFn): string {
   const diff = Date.now() - new Date(d).getTime();
   const days = Math.floor(diff / 86400000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 30) return `${days} days ago`;
+  if (days === 0) return t('reviews.time.today');
+  if (days === 1) return t('reviews.time.yesterday');
+  if (days < 30) return t('reviews.time.daysAgo', { count: days });
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
+  if (months < 12) return t('reviews.time.monthsAgo', { count: months });
   const years = Math.floor(months / 12);
-  return `${years} year${years > 1 ? 's' : ''} ago`;
+  return t('reviews.time.yearsAgo', { count: years });
 }
 
-// Static mock reviews for mock properties
+// Static mock reviews for mock properties — `review_text` holds an i18n key
+// (property_id === 'mock'), resolved via t() at render time so language
+// switches apply instantly. Real DB reviews keep their raw user text.
 const MOCK_REVIEWS: Review[] = [
-  { id: 'm1', booking_id: null, property_id: 'mock', guest_email: 'sarah@example.com', guest_name: 'Sarah M.', rating: 5, review_text: 'Absolutely magical place! The views were breathtaking and the host was incredibly welcoming. Every detail was perfect — from the cozy fireplace to the fresh mountain air.', created_at: new Date(Date.now() - 30 * 86400000).toISOString() },
-  { id: 'm2', booking_id: null, property_id: 'mock', guest_email: 'james@example.com', guest_name: 'James R.', rating: 5, review_text: 'Perfect getaway spot. Very clean, well-equipped, and the location is ideal for exploring the surrounding area. We loved every minute of our stay.', created_at: new Date(Date.now() - 60 * 86400000).toISOString() },
-  { id: 'm3', booking_id: null, property_id: 'mock', guest_email: 'maria@example.com', guest_name: 'Maria L.', rating: 4, review_text: 'Beautiful cottage with authentic Georgian charm. Highly recommend for a peaceful retreat. The local food recommendations from the host were a bonus!', created_at: new Date(Date.now() - 90 * 86400000).toISOString() },
-  { id: 'm4', booking_id: null, property_id: 'mock', guest_email: 'david@example.com', guest_name: 'David K.', rating: 5, review_text: 'Exceeded our expectations in every way. The photos don\'t do it justice — even more beautiful in person. Will definitely be back next summer!', created_at: new Date(Date.now() - 120 * 86400000).toISOString() },
+  { id: 'm1', booking_id: null, property_id: 'mock', guest_email: 'sarah@example.com', guest_name: 'Sarah M.', rating: 5, review_text: 'reviews.mock.text1', created_at: new Date(Date.now() - 30 * 86400000).toISOString() },
+  { id: 'm2', booking_id: null, property_id: 'mock', guest_email: 'james@example.com', guest_name: 'James R.', rating: 5, review_text: 'reviews.mock.text2', created_at: new Date(Date.now() - 60 * 86400000).toISOString() },
+  { id: 'm3', booking_id: null, property_id: 'mock', guest_email: 'maria@example.com', guest_name: 'Maria L.', rating: 4, review_text: 'reviews.mock.text3', created_at: new Date(Date.now() - 90 * 86400000).toISOString() },
+  { id: 'm4', booking_id: null, property_id: 'mock', guest_email: 'david@example.com', guest_name: 'David K.', rating: 5, review_text: 'reviews.mock.text4', created_at: new Date(Date.now() - 120 * 86400000).toISOString() },
 ];
 
 export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
+  const { t } = useTranslation();
   const { user, isLoggedIn } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,7 +198,7 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
             <i className="ri-star-fill text-yellow-400 text-sm md:text-base"></i>
           </div>
           <h3 className="text-sm md:text-xl font-semibold text-gray-900">
-            {reviews.length > 0 ? `${avgRating} · ${reviews.length} review${reviews.length !== 1 ? 's' : ''}` : 'No reviews yet'}
+            {reviews.length > 0 ? `${avgRating} · ${t('common.reviews', { count: reviews.length })}` : t('reviews.noReviewsYet')}
           </h3>
         </div>
         {isDbProperty && isLoggedIn && hasEligibleBooking && !alreadyReviewed && (
@@ -205,14 +209,14 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
             <div className="w-3.5 h-3.5 md:w-4 md:h-4 flex items-center justify-center">
               <i className="ri-edit-line"></i>
             </div>
-            {showForm ? 'Cancel' : 'Write a Review'}
+            {showForm ? t('common.cancel') : t('reviews.writeReview')}
           </button>
         )}
         {isDbProperty && alreadyReviewed && (
           <span className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 md:px-3 py-1 md:py-1.5 rounded-full">
             <i className="ri-checkbox-circle-line"></i>
-            <span className="hidden sm:inline">You reviewed this property</span>
-            <span className="sm:hidden">Reviewed</span>
+            <span className="hidden sm:inline">{t('reviews.youReviewed')}</span>
+            <span className="sm:hidden">{t('reviews.reviewed')}</span>
           </span>
         )}
       </div>
@@ -221,27 +225,27 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
       {submitStatus === 'success' && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 md:px-4 py-2.5 md:py-3 mb-4 text-xs md:text-sm text-green-800">
           <i className="ri-checkbox-circle-line text-green-600"></i>
-          Thank you! Your review has been submitted.
+          {t('reviews.submitSuccess')}
         </div>
       )}
 
       {/* Leave Review Form */}
       {showForm && isLoggedIn && (
         <div className="bg-gray-50 rounded-xl p-4 md:p-5 mb-4 md:mb-6 border border-gray-200">
-          <h4 className="text-xs md:text-sm font-semibold text-gray-900 mb-3 md:mb-4">Your Review</h4>
+          <h4 className="text-xs md:text-sm font-semibold text-gray-900 mb-3 md:mb-4">{t('reviews.yourReview')}</h4>
           <form onSubmit={handleSubmitReview} className="space-y-3 md:space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-2">Rating</label>
+              <label className="block text-xs font-medium text-gray-600 mb-2">{t('reviews.ratingLabel')}</label>
               <StarPicker value={rating} onChange={setRating} />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-2">
-                Your experience <span className="text-red-400">*</span>
+                {t('reviews.experienceLabel')} <span className="text-red-400">*</span>
               </label>
               <textarea
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value.slice(0, 500))}
-                placeholder="Share your experience — what did you love about this place?"
+                placeholder={t('reviews.experiencePlaceholder')}
                 rows={4}
                 maxLength={500}
                 required
@@ -250,7 +254,7 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
               <p className="text-xs text-gray-400 mt-1 text-right">{reviewText.length}/500</p>
             </div>
             {submitStatus === 'error' && (
-              <p className="text-xs text-red-600">Something went wrong. Please try again.</p>
+              <p className="text-xs text-red-600">{t('reviews.submitError')}</p>
             )}
             <div className="flex items-center gap-3">
               <button
@@ -263,16 +267,16 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
                     <div className="w-3 h-3 flex items-center justify-center animate-spin">
                       <i className="ri-loader-4-line"></i>
                     </div>
-                    Submitting…
+                    {t('reviews.submitting')}
                   </>
-                ) : 'Submit Review'}
+                ) : t('reviews.submitReview')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
                 className="text-xs md:text-sm text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </form>
@@ -307,7 +311,7 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
           <div className="flex flex-col items-center justify-center py-2 md:py-4">
             <p className="text-4xl md:text-5xl font-bold text-gray-900 mb-1.5 md:mb-2">{avgRating}</p>
             <StarDisplay rating={Math.round(avgRating)} size="lg" />
-            <p className="text-xs text-gray-400 mt-1.5 md:mt-2">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400 mt-1.5 md:mt-2">{t('common.reviews', { count: reviews.length })}</p>
           </div>
         </div>
       )}
@@ -318,9 +322,9 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
           <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center mb-2">
             <i className="ri-star-line text-2xl md:text-3xl"></i>
           </div>
-          <p className="text-xs md:text-sm text-gray-600 font-medium">No reviews yet</p>
+          <p className="text-xs md:text-sm text-gray-600 font-medium">{t('reviews.noReviewsYet')}</p>
           {isDbProperty && isLoggedIn && hasEligibleBooking && !alreadyReviewed && (
-            <p className="text-xs mt-1">Be the first to leave a review!</p>
+            <p className="text-xs mt-1">{t('reviews.beFirst')}</p>
           )}
         </div>
       )}
@@ -342,12 +346,14 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 text-xs md:text-sm">{review.guest_name || review.guest_email.split('@')[0]}</p>
-                      <p className="text-xs text-gray-400">{timeAgo(review.created_at)}</p>
+                      <p className="text-xs text-gray-400">{timeAgo(review.created_at, t)}</p>
                     </div>
                   </div>
                   <StarDisplay rating={review.rating} />
                   {review.review_text && (
-                    <p className="text-xs md:text-sm text-gray-700 mt-1.5 md:mt-2 leading-relaxed">{review.review_text}</p>
+                    <p className="text-xs md:text-sm text-gray-700 mt-1.5 md:mt-2 leading-relaxed">
+                      {review.property_id === 'mock' ? t(review.review_text) : review.review_text}
+                    </p>
                   )}
                 </div>
               ))}
@@ -362,14 +368,14 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
                     <div className="w-4 h-4 flex items-center justify-center">
                       <i className="ri-arrow-up-s-line"></i>
                     </div>
-                    Show fewer reviews
+                    {t('reviews.showFewer')}
                   </>
                 ) : (
                   <>
                     <div className="w-4 h-4 flex items-center justify-center">
                       <i className="ri-arrow-down-s-line"></i>
                     </div>
-                    Show all {reviews.length} reviews
+                    {t('reviews.showAll', { count: reviews.length })}
                   </>
                 )}
               </button>

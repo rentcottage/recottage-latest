@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@lib/i18n';
+import type { Lang } from '@lib/i18n';
 
 interface DateChangeRequest {
   id: string;
@@ -34,12 +36,12 @@ function statusIcon(s: string) {
   return 'ri-time-line';
 }
 
-function fmt(d: string) {
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+function fmt(d: string, lang: Lang) {
+  return new Date(d).toLocaleDateString(lang, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function fmtTs(d: string) {
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function fmtTs(d: string, lang: Lang) {
+  return new Date(d).toLocaleDateString(lang, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 interface Props {
@@ -47,6 +49,7 @@ interface Props {
 }
 
 export default function DateChangeRequests({ refreshTrigger }: Props) {
+  const { t, lang } = useTranslation();
   const [requests, setRequests] = useState<DateChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<DCFilter>('pending');
@@ -96,15 +99,15 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
         setRequests((prev) => prev.map((r) => r.id === bookingId ? { ...r, date_change_status: newStatus } : r));
         showToast(
           action === 'admin-approve-dates'
-            ? 'Date change approved — customer notified.'
-            : 'Date change rejected — customer notified.',
+            ? t('admin.dateChanges.approvedToast')
+            : t('admin.dateChanges.rejectedToast'),
           'success'
         );
       } else {
-        showToast(data.error ?? 'Something went wrong. Please try again.', 'error');
+        showToast(data.error ?? t('admin.dateChanges.genericError'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.dateChanges.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -119,10 +122,10 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
   };
 
   const tabs: { key: DCFilter; label: string; color: string }[] = [
-    { key: 'pending', label: 'Pending', color: 'text-amber-600' },
-    { key: 'all', label: 'All', color: 'text-gray-600' },
-    { key: 'approved', label: 'Approved', color: 'text-green-600' },
-    { key: 'rejected', label: 'Rejected', color: 'text-red-500' },
+    { key: 'pending', label: t('common.pending'), color: 'text-amber-600' },
+    { key: 'all', label: t('common.all'), color: 'text-gray-600' },
+    { key: 'approved', label: t('common.approved'), color: 'text-green-600' },
+    { key: 'rejected', label: t('common.rejected'), color: 'text-red-500' },
   ];
 
   return (
@@ -134,12 +137,12 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
             <i className="ri-calendar-2-line text-amber-600 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Date Change Requests</h2>
-            <p className="text-xs text-gray-400">Customer-submitted requests to modify booking dates</p>
+            <h2 className="text-sm font-semibold text-gray-900">{t('admin.dateChanges.title')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.dateChanges.subtitle')}</p>
           </div>
           {counts.pending > 0 && (
             <span className="ml-1 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              {counts.pending} pending
+              {t('admin.dateChanges.pendingCount', { count: counts.pending })}
             </span>
           )}
         </div>
@@ -168,7 +171,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
             <div className="w-3 h-3 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -180,7 +183,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
             <div className="w-4 h-4 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line"></i>
             </div>
-            <span className="text-sm">Loading requests…</span>
+            <span className="text-sm">{t('admin.dateChanges.loading')}</span>
           </div>
         </div>
       ) : filtered.length === 0 ? (
@@ -188,16 +191,16 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
           <div className="w-10 h-10 flex items-center justify-center mb-3">
             <i className="ri-calendar-check-line text-3xl"></i>
           </div>
-          <p className="text-sm font-medium">No date change requests</p>
+          <p className="text-sm font-medium">{t('admin.dateChanges.empty')}</p>
           <p className="text-xs mt-1">
-            {filter === 'pending' ? 'No pending requests right now.' : 'Nothing to show for this filter.'}
+            {filter === 'pending' ? t('admin.dateChanges.emptyPending') : t('admin.dateChanges.emptyFilter')}
           </p>
         </div>
       ) : (
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {['Guest', 'Cottage', 'Current Dates', 'Requested Dates', 'Price', 'Requested At', 'Status', 'Actions'].map((h) => (
+              {[t('common.guest'), t('propertyType.Cottage'), t('admin.dateChanges.currentDates'), t('admin.dateChanges.requestedDates'), t('common.price'), t('admin.dateChanges.requestedAt'), t('common.statusLabel'), t('common.actions')].map((h) => (
                 <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
@@ -224,13 +227,13 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                 </td>
                 {/* Current Dates */}
                 <td className="px-5 py-4 whitespace-nowrap">
-                  <p className="text-sm text-gray-500 line-through">{fmt(r.check_in)}</p>
-                  <p className="text-xs text-gray-400 line-through">→ {fmt(r.check_out)}</p>
+                  <p className="text-sm text-gray-500 line-through">{fmt(r.check_in, lang)}</p>
+                  <p className="text-xs text-gray-400 line-through">→ {fmt(r.check_out, lang)}</p>
                 </td>
                 {/* Requested Dates */}
                 <td className="px-5 py-4 whitespace-nowrap">
-                  <p className="text-sm font-medium text-gray-900">{fmt(r.requested_check_in)}</p>
-                  <p className="text-xs text-gray-500">→ {fmt(r.requested_check_out)}</p>
+                  <p className="text-sm font-medium text-gray-900">{fmt(r.requested_check_in, lang)}</p>
+                  <p className="text-xs text-gray-500">→ {fmt(r.requested_check_out, lang)}</p>
                 </td>
                 {/* Price */}
                 <td className="px-5 py-4 whitespace-nowrap">
@@ -248,7 +251,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                 {/* Requested At */}
                 <td className="px-5 py-4 whitespace-nowrap">
                   <span className="text-xs text-gray-400">
-                    {r.date_change_requested_at ? fmtTs(r.date_change_requested_at) : '—'}
+                    {r.date_change_requested_at ? fmtTs(r.date_change_requested_at, lang) : '—'}
                   </span>
                 </td>
                 {/* Status */}
@@ -276,7 +279,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                             <i className="ri-check-line"></i>
                           </div>
                         )}
-                        Approve
+                        {t('common.approve')}
                       </button>
                       <button
                         onClick={() => handleDateAction(r.id, 'admin-reject-dates')}
@@ -292,11 +295,11 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                             <i className="ri-close-line"></i>
                           </div>
                         )}
-                        Reject
+                        {t('common.reject')}
                       </button>
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-400 italic">Processed</span>
+                    <span className="text-xs text-gray-400 italic">{t('admin.dateChanges.processed')}</span>
                   )}
                 </td>
               </tr>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '@lib/i18n';
 import HostGate from './components/HostGate';
 import HostOverview from './components/HostOverview';
 import HostBookingsSection from './components/HostBookingsSection';
@@ -63,20 +64,21 @@ interface HostProperty {
 }
 
 const navItems: { key: NavSection; label: string; icon: string }[] = [
-  { key: 'overview', label: 'Overview', icon: 'ri-dashboard-line' },
-  { key: 'calendar', label: 'Booking Calendar', icon: 'ri-calendar-event-line' },
-  { key: 'bookings', label: 'Bookings', icon: 'ri-calendar-check-line' },
-  { key: 'cancelled', label: 'Cancelled', icon: 'ri-close-circle-line' },
-  { key: 'properties', label: 'My Properties', icon: 'ri-home-smile-line' },
-  { key: 'dates', label: 'Date Requests', icon: 'ri-calendar-2-line' },
-  { key: 'earnings', label: 'Earnings', icon: 'ri-money-cny-circle-line' },
-  { key: 'reviews', label: 'Reviews', icon: 'ri-star-line' },
-  { key: 'blocked', label: 'Blocked Dates', icon: 'ri-calendar-close-line' },
-  { key: 'ical', label: 'Add Calendar', icon: 'ri-calendar-2-line' },
-  { key: 'activity', label: 'Activity', icon: 'ri-notification-3-line' },
+  { key: 'overview', label: 'host.dashboard.nav.overview', icon: 'ri-dashboard-line' },
+  { key: 'calendar', label: 'host.dashboard.nav.bookingCalendar', icon: 'ri-calendar-event-line' },
+  { key: 'bookings', label: 'host.dashboard.nav.bookings', icon: 'ri-calendar-check-line' },
+  { key: 'cancelled', label: 'host.dashboard.nav.cancelled', icon: 'ri-close-circle-line' },
+  { key: 'properties', label: 'host.dashboard.nav.myProperties', icon: 'ri-home-smile-line' },
+  { key: 'dates', label: 'host.dashboard.nav.dateRequests', icon: 'ri-calendar-2-line' },
+  { key: 'earnings', label: 'host.dashboard.nav.earnings', icon: 'ri-money-cny-circle-line' },
+  { key: 'reviews', label: 'host.dashboard.nav.reviews', icon: 'ri-star-line' },
+  { key: 'blocked', label: 'host.dashboard.nav.blockedDates', icon: 'ri-calendar-close-line' },
+  { key: 'ical', label: 'host.dashboard.nav.addCalendar', icon: 'ri-calendar-2-line' },
+  { key: 'activity', label: 'host.dashboard.nav.activity', icon: 'ri-notification-3-line' },
 ];
 
 function HostDashboardContent() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<NavSection>('overview');
   const [bookings, setBookings] = useState<HostBooking[]>([]);
@@ -160,7 +162,7 @@ function HostDashboardContent() {
     user?.user_metadata?.first_name ||
     user?.user_metadata?.full_name?.split(' ')[0] ||
     user?.email?.split('@')[0] ||
-    'Host';
+    t('host.dashboard.hostFallbackName');
 
   const renderSection = () => {
     switch (activeSection) {
@@ -221,15 +223,15 @@ function HostDashboardContent() {
                 <i className="ri-home-smile-line text-white text-base"></i>
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900 leading-tight">Host Dashboard</p>
-                <p className="text-xs text-gray-400">RentCottage.Ge</p>
+                <p className="text-sm font-bold text-gray-900 leading-tight">{t('header.hostDashboard')}</p>
+                <p className="text-xs text-gray-400 notranslate" translate="no">RentCottage.Ge</p>
               </div>
             </div>
             {/* Close button — mobile only */}
             <button
               className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               onClick={() => setMobileSidebarOpen(false)}
-              aria-label="Close menu"
+              aria-label={t('header.closeMenu')}
             >
               <i className="ri-close-line text-gray-500 text-lg"></i>
             </button>
@@ -269,7 +271,7 @@ function HostDashboardContent() {
                 <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                   <i className={`${item.icon} text-base`}></i>
                 </div>
-                <span className="flex-1 text-left">{item.label}</span>
+                <span className="flex-1 text-left">{t(item.label)}</span>
                 {badge > 0 && (
                   <span
                     className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
@@ -295,7 +297,7 @@ function HostDashboardContent() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh Data
+            {t('host.dashboard.refreshData')}
           </button>
           <a
             href="/"
@@ -304,7 +306,7 @@ function HostDashboardContent() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-arrow-left-line"></i>
             </div>
-            Back to Website
+            {t('host.dashboard.backToWebsite')}
           </a>
           <button
             onClick={async () => {
@@ -316,7 +318,7 @@ function HostDashboardContent() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-logout-box-r-line"></i>
             </div>
-            Sign Out
+            {t('host.dashboard.signOut')}
           </button>
         </div>
       </aside>
@@ -331,16 +333,16 @@ function HostDashboardContent() {
               <button
                 className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
                 onClick={() => setMobileSidebarOpen(true)}
-                aria-label="Open menu"
+                aria-label={t('header.openMenu')}
               >
                 <i className="ri-menu-line text-gray-700 text-xl"></i>
               </button>
               <div className="min-w-0">
                 <h1 className="text-base font-bold text-gray-900 truncate">
-                  {navItems.find((n) => n.key === activeSection)?.label}
+                  {t(navItems.find((n) => n.key === activeSection)?.label ?? '')}
                 </h1>
                 <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
-                  {properties.length} {properties.length === 1 ? 'property' : 'properties'} · {bookings.length} total bookings
+                  {t('host.dashboard.propertiesCount', { count: properties.length })} · {t('host.dashboard.totalBookings', { count: bookings.length })}
                 </p>
               </div>
             </div>
@@ -348,7 +350,7 @@ function HostDashboardContent() {
               {!loading && (
                 <div className="hidden sm:flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  Live data
+                  {t('host.dashboard.liveData')}
                 </div>
               )}
               {loading && (
@@ -356,7 +358,7 @@ function HostDashboardContent() {
                   <div className="w-3 h-3 flex items-center justify-center animate-spin">
                     <i className="ri-loader-4-line"></i>
                   </div>
-                  Loading…
+                  {t('common.loading')}
                 </div>
               )}
               <a
@@ -366,8 +368,8 @@ function HostDashboardContent() {
                 <div className="w-3 h-3 flex items-center justify-center">
                   <i className="ri-add-line"></i>
                 </div>
-                <span className="hidden sm:inline">Add Property</span>
-                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">{t('host.dashboard.addProperty')}</span>
+                <span className="sm:hidden">{t('common.add')}</span>
               </a>
             </div>
           </div>

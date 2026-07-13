@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation, translateVocab } from '@lib/i18n';
 import HostPropertyEditModal from './HostPropertyEditModal';
 
 interface GuestPricingTier {
@@ -50,26 +51,33 @@ function statusIcon(s: string) {
   return 'ri-time-line';
 }
 
-function statusMessage(s: string) {
-  if (s === 'approved') return 'Live on site — guests can book this property';
-  if (s === 'rejected') return 'Not approved — contact support for more info';
-  return 'Awaiting admin review — usually takes 24–48 hours';
+function statusMessageKey(s: string) {
+  if (s === 'approved') return 'host.properties.statusLiveOnSite';
+  if (s === 'rejected') return 'host.properties.statusNotApproved';
+  return 'host.properties.statusAwaitingReview';
 }
 
 function approvalModeBadge(mode: string | null | undefined) {
-  if (mode === 'auto_confirm') return { cls: 'bg-emerald-100 text-emerald-700', icon: 'ri-flashlight-line', label: 'Auto Confirm' };
-  return { cls: 'bg-amber-100 text-amber-700', icon: 'ri-time-line', label: 'Manual Approval' };
+  if (mode === 'auto_confirm') return { cls: 'bg-emerald-100 text-emerald-700', icon: 'ri-flashlight-line', labelKey: 'host.properties.autoConfirm' };
+  return { cls: 'bg-amber-100 text-amber-700', icon: 'ri-time-line', labelKey: 'host.properties.manualApproval' };
 }
 
 export default function HostPropertiesSection({ properties, loading, onRefresh }: Props) {
+  const { t, lang } = useTranslation();
   const [selectedPhoto, setSelectedPhoto] = useState<{ urls: string[]; index: number } | null>(null);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+
+  const statusLabel = (s: string) => {
+    const key = `common.status.${s}`;
+    const out = t(key);
+    return out === key ? s : out;
+  };
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">My Properties</h2>
-        <p className="text-sm text-gray-400 mt-0.5">All your submitted property listings and their status</p>
+        <h2 className="text-xl font-bold text-gray-900">{t('host.dashboard.nav.myProperties')}</h2>
+        <p className="text-sm text-gray-400 mt-0.5">{t('host.properties.subtitle')}</p>
       </div>
 
       {loading ? (
@@ -90,8 +98,8 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
           <div className="w-14 h-14 flex items-center justify-center mb-4">
             <i className="ri-home-smile-line text-5xl"></i>
           </div>
-          <p className="text-sm font-medium text-gray-700">No properties yet</p>
-          <p className="text-xs mt-1 mb-6">Submit your first property to get started</p>
+          <p className="text-sm font-medium text-gray-700">{t('host.properties.noPropertiesYet')}</p>
+          <p className="text-xs mt-1 mb-6">{t('host.properties.noPropertiesHint')}</p>
           <a
             href="/become-host"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
@@ -99,7 +107,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-add-line"></i>
             </div>
-            List Your Cottage
+            {t('host.properties.listYourCottage')}
           </a>
         </div>
       ) : (
@@ -117,7 +125,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                   {p.cover_photo_url && (
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-500/90 text-white text-xs font-semibold px-2 py-1 rounded-full">
                       <i className="ri-star-fill text-[10px]"></i>
-                      Cover
+                      {t('host.properties.cover')}
                     </div>
                   )}
                   {p.photo_urls.length > 1 && (
@@ -128,7 +136,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                       <div className="w-3 h-3 flex items-center justify-center">
                         <i className="ri-image-line"></i>
                       </div>
-                      {p.photo_urls.length} photos
+                      {t('host.properties.photosCount', { count: p.photo_urls.length })}
                     </button>
                   )}
                 </div>
@@ -150,9 +158,9 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                   p.status === 'approved' ? 'text-green-600' :
                   p.status === 'rejected' ? 'text-red-500' : 'text-amber-600'
                 }`}></i>
-                <p className="text-xs text-gray-600">{statusMessage(p.status)}</p>
+                <p className="text-xs text-gray-600">{t(statusMessageKey(p.status))}</p>
                 <span className={`ml-auto inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${statusBadge(p.status)}`}>
-                  {p.status}
+                  {statusLabel(p.status)}
                 </span>
               </div>
 
@@ -164,8 +172,8 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                       <h3 className="text-sm md:text-base font-bold text-gray-900 notranslate min-w-0 truncate" translate="no">{p.title}</h3>
                       <button
                         onClick={() => setEditingProperty(p)}
-                        title="Edit name"
-                        aria-label="Edit cottage name"
+                        title={t('host.properties.editName')}
+                        aria-label={t('host.properties.editCottageName')}
                         className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
                       >
                         <i className="ri-edit-line text-sm"></i>
@@ -178,7 +186,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-base md:text-lg font-bold text-gray-900">₾{p.price_per_night}</p>
-                    <p className="text-xs text-gray-400">per night</p>
+                    <p className="text-xs text-gray-400">{t('common.perNight')}</p>
                   </div>
                 </div>
 
@@ -186,19 +194,19 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                 <div className="flex items-center flex-wrap gap-2 md:gap-4 text-xs text-gray-500 mb-2 md:mb-3">
                   <span className="flex items-center gap-1">
                     <i className="ri-hotel-bed-line"></i>
-                    {p.bedrooms} bed{p.bedrooms !== 1 ? 's' : ''}
+                    {t('common.beds', { count: p.bedrooms })}
                   </span>
                   <span className="flex items-center gap-1">
                     <i className="ri-drop-line"></i>
-                    {p.bathrooms} bath{p.bathrooms !== 1 ? 's' : ''}
+                    {t('common.baths', { count: p.bathrooms })}
                   </span>
                   <span className="flex items-center gap-1">
                     <i className="ri-group-line"></i>
-                    {p.max_guests} guests
+                    {t('common.guests', { count: p.max_guests })}
                   </span>
                   <span className="flex items-center gap-1 text-gray-400">
                     <i className="ri-price-tag-3-line"></i>
-                    {p.property_type}
+                    {translateVocab(t, 'propertyType', p.property_type)}
                   </span>
                 </div>
 
@@ -212,12 +220,12 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {p.amenities.slice(0, 5).map((a) => (
                       <span key={a} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
-                        {a}
+                        {translateVocab(t, 'amenities', a)}
                       </span>
                     ))}
                     {p.amenities.length > 5 && (
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs">
-                        +{p.amenities.length - 5} more
+                        {t('host.properties.moreAmenities', { count: p.amenities.length - 5 })}
                       </span>
                     )}
                   </div>
@@ -227,14 +235,14 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                 <div className="flex items-center justify-between border-t border-gray-50 pt-3">
                   <div className="flex flex-col gap-1.5">
                     <p className="text-xs text-gray-400">
-                      Submitted {new Date(p.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      {t('host.properties.submittedOn', { date: new Date(p.created_at).toLocaleDateString(lang, { day: '2-digit', month: 'long', year: 'numeric' }) })}
                     </p>
                     {(() => {
                       const mb = approvalModeBadge(p.booking_approval_mode);
                       return (
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-fit ${mb.cls}`}>
                           <i className={`${mb.icon} text-xs`}></i>
-                          {mb.label}
+                          {t(mb.labelKey)}
                         </span>
                       );
                     })()}
@@ -246,7 +254,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                     <div className="w-3.5 h-3.5 flex items-center justify-center">
                       <i className="ri-edit-line"></i>
                     </div>
-                    Edit Settings
+                    {t('host.properties.editSettings')}
                   </button>
                 </div>
               </div>
@@ -268,7 +276,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
             <div className="relative h-80">
               <img
                 src={selectedPhoto.urls[selectedPhoto.index]}
-                alt="Property photo"
+                alt={t('host.properties.propertyPhotoAlt')}
                 className="w-full h-full object-cover object-top"
               />
               <button

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { translateStatic } from '@lib/i18n';
 
 export interface AuthState {
   user: User | null;
@@ -195,7 +196,7 @@ export async function signUpWithEmail(
     return {
       session: null,
       user: null,
-      error: 'This email address is not allowed to register. Registration with this email is blocked.',
+      error: translateStatic('misc.auth.emailBlocked'),
       confirmationRequired: false,
     };
   }
@@ -250,7 +251,7 @@ export async function signUpWithEmail(
     return { session: null, user: data.user, error: null, confirmationRequired: true };
   }
 
-  return { session: null, user: null, error: 'Something went wrong. Please try again.', confirmationRequired: false };
+  return { session: null, user: null, error: translateStatic('misc.auth.genericError'), confirmationRequired: false };
 }
 
 export async function signInWithEmail(
@@ -266,7 +267,7 @@ export async function signInWithEmail(
   if (error) {
     return {
       error: error.message === 'Invalid login credentials'
-        ? 'Incorrect email or password. Please try again.'
+        ? translateStatic('misc.auth.invalidCredentials')
         : error.message,
     };
   }

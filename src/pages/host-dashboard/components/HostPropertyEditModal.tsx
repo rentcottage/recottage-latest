@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation, translateVocab } from '@lib/i18n';
 import { supabase } from '../../../lib/supabase';
 import { compressImage } from '../../../lib/imageCompression';
 
@@ -54,6 +55,7 @@ function buildDefaultTiers(maxGuests: number): GuestPricingTier[] {
 }
 
 export default function HostPropertyEditModal({ property, onClose, onSaved }: Props) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('settings');
 
   // Settings state
@@ -155,21 +157,21 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     setError('');
     const priceNum = parseFloat(price);
 
-    if (!title.trim()) { setError('Cottage name cannot be empty.'); return; }
-    if (!description.trim()) { setError('Description cannot be empty.'); return; }
+    if (!title.trim()) { setError(t('host.editModal.errorTitleRequired')); return; }
+    if (!description.trim()) { setError(t('host.editModal.errorDescriptionRequired')); return; }
 
     if (pricingType === 'fixed') {
-      if (isNaN(priceNum) || priceNum <= 0) { setError('Please enter a valid price per night.'); return; }
+      if (isNaN(priceNum) || priceNum <= 0) { setError(t('host.editModal.errorInvalidPrice')); return; }
     } else {
-      const hasInvalidTier = guestTiers.some((t) => isNaN(t.price_per_night) || t.price_per_night <= 0);
-      if (hasInvalidTier) { setError('Please enter a valid price for every guest tier.'); return; }
+      const hasInvalidTier = guestTiers.some((tier) => isNaN(tier.price_per_night) || tier.price_per_night <= 0);
+      if (hasInvalidTier) { setError(t('host.editModal.errorInvalidTierPrice')); return; }
     }
 
     const latNum = latitude.trim() ? parseFloat(latitude) : null;
     const lngNum = longitude.trim() ? parseFloat(longitude) : null;
 
     if ((latitude.trim() && isNaN(latNum!)) || (longitude.trim() && isNaN(lngNum!))) {
-      setError('Latitude and longitude must be valid numbers.');
+      setError(t('host.editModal.errorInvalidCoords'));
       return;
     }
 
@@ -198,7 +200,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
       .eq('id', property.id);
 
     if (updateError) {
-      setError('Failed to save changes. Please try again.');
+      setError(t('host.editModal.errorSaveFailed'));
       setSaving(false);
       return;
     }
@@ -217,7 +219,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
 
     const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
-      setPhotoError('File is too large. Maximum size is 15MB.');
+      setPhotoError(t('host.editModal.errorFileTooLarge'));
       return;
     }
 
@@ -235,7 +237,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
         .upload(fileName, uploadFile, { contentType: uploadFile.type, upsert: false });
 
       if (uploadError) {
-        setPhotoError('Upload failed. Please try again.');
+        setPhotoError(t('host.editModal.errorUploadFailed'));
         setUploading(false);
         return;
       }
@@ -253,7 +255,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
         .eq('id', property.id);
 
       if (dbError) {
-        setPhotoError('Photo uploaded but failed to save. Please try again.');
+        setPhotoError(t('host.editModal.errorPhotoSaveFailed'));
         setUploading(false);
         return;
       }
@@ -264,7 +266,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
         setCoverPhotoUrl(newUrl);
       }
     } catch {
-      setPhotoError('Unexpected error during upload.');
+      setPhotoError(t('host.editModal.errorUploadUnexpected'));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -282,7 +284,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
       .eq('id', property.id);
 
     if (dbError) {
-      setPhotoError('Failed to set cover photo. Please try again.');
+      setPhotoError(t('host.editModal.errorSetCoverFailed'));
       setPhotoSaving(false);
       return;
     }
@@ -304,7 +306,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
       .eq('id', property.id);
 
     if (dbError) {
-      setPhotoError('Failed to save framing. Please try again.');
+      setPhotoError(t('host.editModal.errorSaveFramingFailed'));
       setPhotoSaving(false);
       return;
     }
@@ -330,7 +332,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Edit Property Settings</h2>
+            <h2 className="text-base font-bold text-gray-900">{t('host.editModal.title')}</h2>
             <p className="text-sm text-gray-400 mt-0.5 truncate max-w-xs notranslate" translate="no">{property.title}</p>
           </div>
           <button
@@ -353,7 +355,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
           >
             <span className="flex items-center gap-1.5">
               <i className="ri-settings-3-line text-xs"></i>
-              Property Settings
+              {t('host.editModal.tabSettings')}
             </span>
           </button>
           <button
@@ -366,7 +368,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
           >
             <span className="flex items-center gap-1.5">
               <i className="ri-image-line text-xs"></i>
-              Photos &amp; Cover
+              {t('host.editModal.tabPhotos')}
               {photos.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">{photos.length}</span>
               )}
@@ -388,12 +390,12 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     <i className="ri-home-4-line text-emerald-600 text-sm"></i>
                   </div>
                   <label className="text-sm font-semibold text-gray-900">
-                    Cottage Name
+                    {t('host.editModal.cottageName')}
                     <span className="text-red-400 ml-0.5">*</span>
                   </label>
                 </div>
                 <p className="text-xs text-gray-400 mb-2">
-                  This is the listing title guests see on cards and the property page.
+                  {t('host.editModal.cottageNameHint')}
                 </p>
                 <input
                   type="text"
@@ -402,7 +404,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   maxLength={90}
                   className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 notranslate"
                   translate="no"
-                  placeholder="e.g. Cozy Mountain Cottage in Kazbegi"
+                  placeholder={t('host.editModal.cottageNamePlaceholder')}
                 />
                 <p className={`text-xs mt-1 text-right ${title.length > 80 ? 'text-amber-500' : 'text-gray-400'}`}>
                   {title.length}/90
@@ -415,9 +417,9 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-price-tag-3-line text-emerald-600 text-sm"></i>
                   </div>
-                  <label className="text-sm font-semibold text-gray-900">Pricing Model</label>
+                  <label className="text-sm font-semibold text-gray-900">{t('host.editModal.pricingModel')}</label>
                 </div>
-                <p className="text-xs text-gray-400 mb-3">Choose how your nightly price is calculated for guests.</p>
+                <p className="text-xs text-gray-400 mb-3">{t('host.editModal.pricingModelHint')}</p>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   {/* Fixed price */}
@@ -437,16 +439,16 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         {pricingType === 'fixed' && <i className="ri-check-line text-white text-[10px]"></i>}
                       </div>
                       <span className={`text-sm font-semibold ${pricingType === 'fixed' ? 'text-emerald-800' : 'text-gray-700'}`}>
-                        Fixed Price
+                        {t('host.editModal.fixedPrice')}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 leading-relaxed">
-                      One nightly rate for all guests, regardless of how many people stay.
+                      {t('host.editModal.fixedPriceDesc')}
                     </p>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       pricingType === 'fixed' ? 'bg-emerald-200 text-emerald-800' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      Simple &amp; consistent
+                      {t('host.editModal.fixedPriceBadge')}
                     </span>
                   </button>
 
@@ -467,16 +469,16 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         {pricingType === 'per_guest' && <i className="ri-check-line text-white text-[10px]"></i>}
                       </div>
                       <span className={`text-sm font-semibold ${pricingType === 'per_guest' ? 'text-amber-800' : 'text-gray-700'}`}>
-                        By Guest Count
+                        {t('host.editModal.perGuestPrice')}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 leading-relaxed">
-                      Set different nightly prices depending on how many guests are staying.
+                      {t('host.editModal.perGuestPriceDesc')}
                     </p>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       pricingType === 'per_guest' ? 'bg-amber-200 text-amber-800' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      Flexible pricing
+                      {t('host.editModal.perGuestPriceBadge')}
                     </span>
                   </button>
                 </div>
@@ -485,7 +487,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                 {pricingType === 'fixed' && (
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Nightly Rate (₾) <span className="text-red-400">*</span>
+                      {t('host.editModal.nightlyRateLabel')} <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">₾</span>
@@ -496,10 +498,10 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                         className="w-full pl-8 pr-4 py-2.5 text-sm border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        placeholder="e.g. 120"
+                        placeholder={t('host.editModal.nightlyRatePlaceholder')}
                       />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">This price applies to all bookings regardless of guest count.</p>
+                    <p className="text-xs text-gray-400 mt-1">{t('host.editModal.fixedPriceNote')}</p>
                   </div>
                 )}
 
@@ -511,7 +513,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         <i className="ri-information-line text-amber-500 text-sm"></i>
                       </div>
                       <p className="text-xs text-amber-700 font-medium">
-                        Set the nightly price for each guest count. The system will automatically use the correct price when a guest selects their group size.
+                        {t('host.editModal.tierInfo')}
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -523,8 +525,8 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                             </div>
                             <span className="text-sm font-medium text-gray-700">
                               {tier.min_guests === tier.max_guests
-                                ? `${tier.min_guests} guest${tier.min_guests > 1 ? 's' : ''}`
-                                : `${tier.min_guests}–${tier.max_guests} guests`}
+                                ? t('common.guests', { count: tier.min_guests })
+                                : t('host.editModal.guestRange', { min: tier.min_guests, max: tier.max_guests })}
                             </span>
                           </div>
                           <div className="flex-1 relative">
@@ -535,16 +537,16 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                               step="1"
                               value={tier.price_per_night || ''}
                               onChange={(e) => updateTierPrice(idx, e.target.value)}
-                              placeholder="Price per night"
+                              placeholder={t('host.editModal.tierPricePlaceholder')}
                               className="w-full pl-7 pr-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                             />
                           </div>
-                          <span className="text-xs text-gray-400 whitespace-nowrap">/ night</span>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">{t('host.editModal.perNightSuffix')}</span>
                         </div>
                       ))}
                     </div>
                     <p className="text-xs text-gray-400 mt-2">
-                      Tiers are based on your property&apos;s max guest count ({maxGuests} guests).
+                      {t('host.editModal.tiersBasedOnMax', { count: maxGuests })}
                     </p>
                   </div>
                 )}
@@ -553,18 +555,18 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
               {/* Description */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                  Property Description
+                  {t('host.editModal.description')}
                   <span className="text-red-400 ml-0.5">*</span>
                 </label>
                 <p className="text-xs text-gray-400 mb-2">
-                  Describe your cottage — what makes it special, the setting, what guests will love
+                  {t('host.editModal.descriptionHint')}
                 </p>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, descMax))}
                   rows={7}
                   className="w-full text-sm border border-line rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
-                  placeholder="Tell guests what makes your place special…"
+                  placeholder={t('host.editModal.descriptionPlaceholder')}
                 />
                 <p className={`text-xs mt-1 text-right ${descLen > descMax - 100 ? 'text-amber-500' : 'text-gray-400'}`}>
                   {descLen}/{descMax}
@@ -577,26 +579,26 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-map-pin-line text-emerald-600 text-sm"></i>
                   </div>
-                  <label className="text-sm font-semibold text-gray-900">Exact Location</label>
+                  <label className="text-sm font-semibold text-gray-900">{t('host.editModal.exactLocation')}</label>
                 </div>
                 <p className="text-xs text-gray-400 mb-4">
-                  Add your cottage&apos;s exact location so guests can find you easily.
+                  {t('host.editModal.exactLocationHint')}
                 </p>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Address (optional)</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('host.editModal.addressLabel')}</label>
                     <input
                       type="text"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      placeholder="e.g. Kazbegi, Stepantsminda village, Georgia"
+                      placeholder={t('host.editModal.addressPlaceholder')}
                       className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Google Maps Link (optional)</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('host.editModal.googleMapsLabel')}</label>
                     <input
                       type="url"
                       value={googleMapsUrl}
@@ -605,42 +607,42 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
                     <p className="text-xs text-gray-400 mt-1">
-                      In Google Maps, click &quot;Share&quot; → &quot;Copy link&quot; and paste it here.
+                      {t('host.editModal.googleMapsHint')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Latitude (optional)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('host.editModal.latitudeLabel')}</label>
                       <input
                         type="text"
                         value={latitude}
                         onChange={(e) => setLatitude(e.target.value)}
-                        placeholder="e.g. 42.6593"
+                        placeholder={t('host.editModal.latitudePlaceholder')}
                         className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Longitude (optional)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('host.editModal.longitudeLabel')}</label>
                       <input
                         type="text"
                         value={longitude}
                         onChange={(e) => setLongitude(e.target.value)}
-                        placeholder="e.g. 44.6390"
+                        placeholder={t('host.editModal.longitudePlaceholder')}
                         className="w-full text-sm border border-line rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                       />
                     </div>
                   </div>
                   <p className="text-xs text-gray-400">
-                    To get coordinates: open Google Maps, right-click your exact location, and the coordinates will appear at the top of the menu.
+                    {t('host.editModal.coordsHint')}
                   </p>
                 </div>
               </div>
 
               {/* Amenities */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1.5">Amenities</label>
-                <p className="text-xs text-gray-400 mb-3">Select all amenities your property offers.</p>
+                <label className="block text-sm font-semibold text-gray-900 mb-1.5">{t('host.editModal.amenitiesLabel')}</label>
+                <p className="text-xs text-gray-400 mb-3">{t('host.editModal.amenitiesHint')}</p>
 
                 {amenities.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -649,7 +651,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         key={a}
                         className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-full font-medium"
                       >
-                        {a}
+                        {translateVocab(t, 'amenities', a)}
                         <button
                           onClick={() => removeAmenity(a)}
                           className="w-3.5 h-3.5 flex items-center justify-center text-emerald-500 hover:text-red-500 cursor-pointer transition-colors rounded-full"
@@ -668,7 +670,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       onClick={() => toggleAmenity(a)}
                       className="px-2.5 py-1 text-xs border border-line text-gray-600 rounded-full hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-colors whitespace-nowrap"
                     >
-                      + {a}
+                      + {translateVocab(t, 'amenities', a)}
                     </button>
                   ))}
                 </div>
@@ -679,7 +681,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     value={customAmenity}
                     onChange={(e) => setCustomAmenity(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomAmenity(); } }}
-                    placeholder="Add custom amenity…"
+                    placeholder={t('host.editModal.customAmenityPlaceholder')}
                     className="flex-1 text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                   <button
@@ -687,7 +689,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     disabled={!customAmenity.trim()}
                     className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                   >
-                    Add
+                    {t('common.add')}
                   </button>
                 </div>
               </div>
@@ -698,10 +700,10 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-settings-3-line text-emerald-600 text-sm"></i>
                   </div>
-                  <label className="text-sm font-semibold text-gray-900">Booking Approval Mode</label>
+                  <label className="text-sm font-semibold text-gray-900">{t('host.editModal.approvalMode')}</label>
                 </div>
                 <p className="text-xs text-gray-400 mb-3">
-                  Choose how booking requests for this property are handled.
+                  {t('host.editModal.approvalModeHint')}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -722,16 +724,16 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         )}
                       </div>
                       <span className={`text-sm font-semibold ${approvalMode === 'auto_confirm' ? 'text-emerald-800' : 'text-gray-700'}`}>
-                        Auto Confirm
+                        {t('host.editModal.autoConfirm')}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 leading-relaxed">
-                      Booking requests are <strong>automatically confirmed</strong> the moment a guest submits.
+                      {t('host.editModal.autoConfirmDescPrefix')} <strong>{t('host.editModal.autoConfirmDescEmphasis')}</strong> {t('host.editModal.autoConfirmDescSuffix')}
                     </p>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       approvalMode === 'auto_confirm' ? 'bg-emerald-200 text-emerald-800' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      Instant confirmation
+                      {t('host.editModal.autoConfirmBadge')}
                     </span>
                   </button>
 
@@ -753,16 +755,16 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                         )}
                       </div>
                       <span className={`text-sm font-semibold ${approvalMode === 'manual_24h' ? 'text-amber-800' : 'text-gray-700'}`}>
-                        Manual Approval
+                        {t('host.editModal.manualApproval')}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 leading-relaxed">
-                      You review each request and have <strong>24 hours</strong> to approve or reject.
+                      {t('host.editModal.manualDescPrefix')} <strong>{t('host.editModal.manualDescEmphasis')}</strong> {t('host.editModal.manualDescSuffix')}
                     </p>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       approvalMode === 'manual_24h' ? 'bg-amber-200 text-amber-800' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      Host approval required
+                      {t('host.editModal.manualApprovalBadge')}
                     </span>
                   </button>
                 </div>
@@ -774,16 +776,16 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-bank-card-2-line text-blue-600 text-sm"></i>
                   </div>
-                  <label className="text-sm font-semibold text-gray-900">Accepted Payment Methods</label>
+                  <label className="text-sm font-semibold text-gray-900">{t('host.editModal.paymentMethods')}</label>
                 </div>
                 <p className="text-xs text-gray-400 mb-3">
-                  Choose how guests can pay for this property.
+                  {t('host.editModal.paymentMethodsHint')}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {([
-                    { value: 'both', label: 'Both', desc: 'Guests can choose either option.' },
-                    { value: 'online_only', label: 'Online only', desc: 'Card payment only.' },
-                    { value: 'pay_at_property_only', label: 'Pay at property only', desc: 'Cash on arrival only.' },
+                    { value: 'both', label: t('host.editModal.payBoth'), desc: t('host.editModal.payBothDesc') },
+                    { value: 'online_only', label: t('host.editModal.payOnline'), desc: t('host.editModal.payOnlineDesc') },
+                    { value: 'pay_at_property_only', label: t('host.editModal.payAtProperty'), desc: t('host.editModal.payAtPropertyDesc') },
                   ] as const).map((opt) => {
                     const selected = acceptedPaymentMethods === opt.value;
                     return (
@@ -822,7 +824,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
                     <i className="ri-checkbox-circle-line"></i>
                   </div>
-                  Changes saved successfully!
+                  {t('host.editModal.savedSuccess')}
                 </div>
               )}
             </div>
@@ -836,12 +838,12 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <i className="ri-information-line text-emerald-600 text-sm"></i>
                 </div>
                 <p className="text-xs text-emerald-800 leading-relaxed">
-                  The <strong>cover photo</strong> is shown as the main image on listing cards, the homepage, and the property detail page. Click <strong>&quot;Make Cover Photo&quot;</strong> on any photo to set it as the primary image.
+                  {t('host.editModal.coverInfoPrefix')} <strong>{t('host.editModal.coverInfoCoverPhoto')}</strong> {t('host.editModal.coverInfoMiddle')} <strong>{t('host.editModal.coverInfoMakeCover')}</strong> {t('host.editModal.coverInfoSuffix')}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Upload New Photo</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">{t('host.editModal.uploadNewPhoto')}</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -859,14 +861,14 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       <div className="w-4 h-4 flex items-center justify-center animate-spin">
                         <i className="ri-loader-4-line"></i>
                       </div>
-                      Uploading…
+                      {t('common.uploading')}
                     </>
                   ) : (
                     <>
                       <div className="w-4 h-4 flex items-center justify-center">
                         <i className="ri-upload-cloud-line"></i>
                       </div>
-                      Upload Photo (max 15MB)
+                      {t('host.editModal.uploadPhotoMax')}
                     </>
                   )}
                 </button>
@@ -877,13 +879,13 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-12 h-12 flex items-center justify-center mb-3">
                     <i className="ri-image-line text-4xl"></i>
                   </div>
-                  <p className="text-sm font-medium text-gray-500">No photos uploaded yet</p>
-                  <p className="text-xs mt-1">Upload your first photo above</p>
+                  <p className="text-sm font-medium text-gray-500">{t('host.editModal.noPhotos')}</p>
+                  <p className="text-xs mt-1">{t('host.editModal.noPhotosHint')}</p>
                 </div>
               ) : (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    All Photos ({photos.length})
+                    {t('host.editModal.allPhotos', { count: photos.length })}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {photos.map((url, idx) => {
@@ -898,7 +900,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                           <div className="w-full h-32">
                             <img
                               src={url}
-                              alt={`Property photo ${idx + 1}`}
+                              alt={t('host.editModal.photoAlt', { num: idx + 1 })}
                               className="w-full h-full object-cover object-top"
                             />
                           </div>
@@ -909,7 +911,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                               <div className="w-3 h-3 flex items-center justify-center">
                                 <i className="ri-star-fill text-[10px]"></i>
                               </div>
-                              Cover
+                              {t('host.editModal.coverBadge')}
                             </div>
                           )}
 
@@ -924,7 +926,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                                 <div className="w-3 h-3 flex items-center justify-center">
                                   <i className="ri-star-line text-[10px]"></i>
                                 </div>
-                                Make Cover Photo
+                                {t('host.editModal.makeCover')}
                               </button>
                             </div>
                           )}
@@ -947,12 +949,12 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     <div className="w-4 h-4 flex items-center justify-center">
                       <i className="ri-star-fill text-emerald-500 text-sm"></i>
                     </div>
-                    Current Cover Photo
+                    {t('host.editModal.currentCover')}
                   </p>
                   <div className="w-full h-40 rounded-lg overflow-hidden">
                     <img
                       src={coverPhotoUrl}
-                      alt="Current cover"
+                      alt={t('host.editModal.currentCoverAlt')}
                       className={`w-full h-full object-cover ${
                         coverPhotoPosition === 'top' ? 'object-top' :
                         coverPhotoPosition === 'bottom' ? 'object-bottom' :
@@ -960,7 +962,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       }`}
                     />
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">This photo appears first on all listing cards and the property detail page.</p>
+                  <p className="text-xs text-gray-400 mt-2">{t('host.editModal.currentCoverHint')}</p>
 
                   {/* Position / framing picker */}
                   <div className="mt-4">
@@ -968,14 +970,14 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       <div className="w-4 h-4 flex items-center justify-center">
                         <i className="ri-crop-line text-emerald-500 text-sm"></i>
                       </div>
-                      Card Framing — adjust which part of the photo is visible in listing cards
+                      {t('host.editModal.cardFraming')}
                     </p>
                     <p className="text-xs text-gray-400 mb-3">
-                      If the cottage is cut off in the preview card, shift the focus up or down here.
+                      {t('host.editModal.cardFramingHint')}
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {(['top', 'center', 'bottom'] as const).map((pos) => {
-                        const labels: Record<string, string> = { top: 'Show Top', center: 'Centered', bottom: 'Show Bottom' };
+                        const labels: Record<string, string> = { top: t('host.editModal.framingTop'), center: t('host.editModal.framingCenter'), bottom: t('host.editModal.framingBottom') };
                         const icons: Record<string, string> = { top: 'ri-arrow-up-line', center: 'ri-align-vertically', bottom: 'ri-arrow-down-line' };
                         const isActive = coverPhotoPosition === pos;
                         return (
@@ -994,7 +996,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                             </div>
                             {labels[pos]}
                             {isActive && (
-                              <span className="text-[10px] font-medium text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Active</span>
+                              <span className="text-[10px] font-medium text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">{t('common.active')}</span>
                             )}
                           </button>
                         );
@@ -1002,7 +1004,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     </div>
                     <p className="text-xs text-gray-400 mt-2">
                       <i className="ri-information-line mr-1"></i>
-                      The preview above updates instantly so you can see how it looks in cards.
+                      {t('host.editModal.framingPreviewNote')}
                     </p>
                   </div>
                 </div>
@@ -1022,7 +1024,7 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                   <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
                     <i className="ri-checkbox-circle-line"></i>
                   </div>
-                  Cover photo updated! It will now appear as the main image across the site.
+                  {t('host.editModal.coverUpdated')}
                 </div>
               )}
             </div>
@@ -1035,14 +1037,14 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
             <>
               <p className="text-xs text-gray-400">
                 <i className="ri-information-line mr-1"></i>
-                Changes go live once admin reviews any listing updates
+                {t('host.editModal.settingsFooterNote')}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={onClose}
                   className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
@@ -1054,21 +1056,21 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       <div className="w-3 h-3 flex items-center justify-center animate-spin">
                         <i className="ri-loader-4-line"></i>
                       </div>
-                      Saving…
+                      {t('common.saving')}
                     </>
                   ) : success ? (
                     <>
                       <div className="w-4 h-4 flex items-center justify-center">
                         <i className="ri-check-line"></i>
                       </div>
-                      Saved!
+                      {t('host.editModal.savedShort')}
                     </>
                   ) : (
                     <>
                       <div className="w-4 h-4 flex items-center justify-center">
                         <i className="ri-save-line"></i>
                       </div>
-                      Save Changes
+                      {t('host.editModal.saveChanges')}
                     </>
                   )}
                 </button>
@@ -1078,13 +1080,13 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
             <>
               <p className="text-xs text-gray-400">
                 <i className="ri-image-line mr-1"></i>
-                Cover photo changes take effect immediately
+                {t('host.editModal.photosFooterNote')}
               </p>
               <button
                 onClick={onClose}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
               >
-                Done
+                {t('common.done')}
               </button>
             </>
           )}

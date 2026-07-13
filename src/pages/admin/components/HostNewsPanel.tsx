@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@lib/i18n';
 
 const BROADCAST_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/host-broadcast`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -21,8 +22,8 @@ interface Broadcast {
   sent_by_admin: string | null;
 }
 
-function formatDateTime(str: string) {
-  return new Date(str).toLocaleString('en-GB', {
+function formatDateTime(str: string, lang: string) {
+  return new Date(str).toLocaleString(lang, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -38,6 +39,7 @@ interface ComposeModalProps {
 }
 
 function ComposeModal({ onClose, onSent }: ComposeModalProps) {
+  const { t } = useTranslation();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [step, setStep] = useState<'compose' | 'confirm' | 'sending' | 'done'>('compose');
@@ -46,7 +48,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
 
   const handleConfirm = () => {
     if (!subject.trim() || !body.trim()) {
-      setError('Please fill in both subject and message.');
+      setError(t('admin.news.fillBoth'));
       return;
     }
     setError('');
@@ -73,11 +75,11 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
         setStep('done');
         onSent(data.recipientCount);
       } else {
-        setError(data.error ?? 'Failed to send. Please try again.');
+        setError(data.error ?? t('admin.news.sendFailed'));
         setStep('confirm');
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError(t('admin.news.networkError'));
       setStep('confirm');
     }
   };
@@ -92,12 +94,12 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
               <i className="ri-mail-send-line text-red-500 text-lg"></i>
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">Send Announcement to Hosts</h3>
+              <h3 className="text-base font-bold text-gray-900">{t('admin.news.composeTitle')}</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                {step === 'compose' && 'Write your message below'}
-                {step === 'confirm' && 'Review before sending'}
-                {step === 'sending' && 'Sending emails…'}
-                {step === 'done' && 'Announcement sent!'}
+                {step === 'compose' && t('admin.news.stepCompose')}
+                {step === 'confirm' && t('admin.news.stepConfirm')}
+                {step === 'sending' && t('admin.news.sendingEmails')}
+                {step === 'done' && t('admin.news.sentShort')}
               </p>
             </div>
           </div>
@@ -121,19 +123,21 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   <i className="ri-information-line text-amber-500 text-sm"></i>
                 </div>
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  This email will be sent to <strong>all hosts with approved and listed cottages</strong> on the website. Hosts with hidden, rejected, or pending properties will not receive it.
+                  {t('admin.news.audienceNotePrefix')}{' '}
+                  <strong>{t('admin.news.audienceNoteStrong')}</strong>{' '}
+                  {t('admin.news.audienceNoteSuffix')}
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Subject <span className="text-red-400">*</span>
+                  {t('admin.news.subject')} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="e.g. Important update for all hosts"
+                  placeholder={t('admin.news.subjectPlaceholder')}
                   maxLength={200}
                   className="w-full text-sm border border-line rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
                 />
@@ -142,12 +146,12 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Message <span className="text-red-400">*</span>
+                  {t('admin.news.message')} <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="Write your announcement or news here…"
+                  placeholder={t('admin.news.messagePlaceholder')}
                   rows={8}
                   maxLength={5000}
                   className="w-full text-sm border border-line rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400 leading-relaxed"
@@ -174,24 +178,26 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   <i className="ri-alert-line text-red-500"></i>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-red-700 mb-1">Ready to send?</p>
+                  <p className="text-sm font-semibold text-red-700 mb-1">{t('admin.news.readyToSend')}</p>
                   <p className="text-xs text-red-600 leading-relaxed">
-                    This will send an email to <strong>all approved hosts</strong>. This action cannot be undone.
+                    {t('admin.news.confirmNotePrefix')}{' '}
+                    <strong>{t('admin.news.confirmNoteStrong')}</strong>
+                    {t('admin.news.confirmNoteSuffix')}
                   </p>
                 </div>
               </div>
 
               <div className="border border-line rounded-xl overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preview</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('admin.news.preview')}</p>
                 </div>
                 <div className="px-4 py-4 space-y-3">
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">Subject</p>
+                    <p className="text-xs text-gray-400 mb-1">{t('admin.news.subject')}</p>
                     <p className="text-sm font-semibold text-gray-900">{subject}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">Message</p>
+                    <p className="text-xs text-gray-400 mb-1">{t('admin.news.message')}</p>
                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">{body}</p>
                   </div>
                 </div>
@@ -215,8 +221,8 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                 <i className="ri-mail-send-line text-red-500 text-2xl"></i>
               </div>
               <div className="text-center">
-                <p className="text-base font-semibold text-gray-900">Sending emails…</p>
-                <p className="text-sm text-gray-400 mt-1">Please wait, this may take a moment.</p>
+                <p className="text-base font-semibold text-gray-900">{t('admin.news.sendingEmails')}</p>
+                <p className="text-sm text-gray-400 mt-1">{t('admin.news.pleaseWait')}</p>
               </div>
             </div>
           )}
@@ -228,12 +234,12 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                 <i className="ri-checkbox-circle-line text-green-500 text-3xl"></i>
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">Announcement Sent!</p>
+                <p className="text-lg font-bold text-gray-900">{t('admin.news.sentTitle')}</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Successfully delivered to{' '}
+                  {t('admin.news.deliveredTo')}{' '}
                   <strong className="text-gray-900">{result.count}</strong>{' '}
-                  {result.count === 1 ? 'host' : 'hosts'}
-                  {result.total !== result.count && ` (out of ${result.total})`}.
+                  {t('admin.news.hostsWord', { count: result.count })}
+                  {result.total !== result.count && ` ${t('admin.news.outOf', { total: result.total })}`}.
                 </p>
               </div>
             </div>
@@ -247,7 +253,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
               onClick={step === 'confirm' ? () => setStep('compose') : onClose}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 cursor-pointer whitespace-nowrap transition-colors"
             >
-              {step === 'confirm' ? 'Back' : 'Cancel'}
+              {step === 'confirm' ? t('common.back') : t('common.cancel')}
             </button>
             {step === 'compose' && (
               <button
@@ -257,7 +263,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-arrow-right-line"></i>
                 </div>
-                Review & Send
+                {t('admin.news.reviewAndSend')}
               </button>
             )}
             {step === 'confirm' && (
@@ -268,7 +274,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-mail-send-line"></i>
                 </div>
-                Confirm & Send
+                {t('admin.news.confirmAndSend')}
               </button>
             )}
           </div>
@@ -279,7 +285,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
               onClick={onClose}
               className="px-6 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap transition-colors"
             >
-              Close
+              {t('common.close')}
             </button>
           </div>
         )}
@@ -290,6 +296,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 export default function HostNewsPanel() {
+  const { t, lang } = useTranslation();
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCompose, setShowCompose] = useState(false);
@@ -308,12 +315,13 @@ export default function HostNewsPanel() {
       if (res.ok && data.success) {
         setBroadcasts(data.broadcasts ?? []);
       } else {
-        setFetchError(data.error ?? 'Failed to load history.');
+        setFetchError(data.error ?? t('admin.news.loadHistoryFailed'));
       }
     } catch {
-      setFetchError('Network error. Could not load broadcast history.');
+      setFetchError(t('admin.news.networkErrorHistory'));
     }
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -336,8 +344,8 @@ export default function HostNewsPanel() {
             <i className="ri-megaphone-line text-red-500 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Host News &amp; Announcements</h2>
-            <p className="text-xs text-gray-400">Send bulk emails to all approved and listed hosts</p>
+            <h2 className="text-base font-bold text-gray-900">{t('admin.news.title')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.news.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -348,7 +356,7 @@ export default function HostNewsPanel() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh
+            {t('common.refresh')}
           </button>
           <button
             onClick={() => setShowCompose(true)}
@@ -357,7 +365,7 @@ export default function HostNewsPanel() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-mail-send-line"></i>
             </div>
-            Send Announcement
+            {t('admin.news.sendAnnouncement')}
           </button>
         </div>
       </div>
@@ -375,11 +383,11 @@ export default function HostNewsPanel() {
       <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-gray-900">Sent Announcements</p>
-            <p className="text-xs text-gray-400 mt-0.5">History of all emails sent to hosts</p>
+            <p className="text-sm font-semibold text-gray-900">{t('admin.news.sentAnnouncements')}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t('admin.news.historySubtitle')}</p>
           </div>
           <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
-            {broadcasts.length} total
+            {t('admin.news.totalCount', { count: broadcasts.length })}
           </span>
         </div>
 
@@ -389,7 +397,7 @@ export default function HostNewsPanel() {
               <div className="w-5 h-5 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line text-xl"></i>
               </div>
-              <span className="text-sm">Loading history…</span>
+              <span className="text-sm">{t('admin.news.loadingHistory')}</span>
             </div>
           </div>
         ) : broadcasts.length === 0 ? (
@@ -397,19 +405,19 @@ export default function HostNewsPanel() {
             <div className="w-12 h-12 flex items-center justify-center mb-3">
               <i className="ri-mail-line text-4xl"></i>
             </div>
-            <p className="text-sm font-medium">No announcements sent yet</p>
-            <p className="text-xs mt-1">Click &ldquo;Send Announcement&rdquo; to send your first host email.</p>
+            <p className="text-sm font-medium">{t('admin.news.emptyTitle')}</p>
+            <p className="text-xs mt-1">{t('admin.news.emptyHint')}</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['Subject', 'Sent At', 'Recipients', 'Sent By'].map((h) => (
+                {['admin.news.subject', 'admin.news.sentAt', 'admin.news.recipients', 'admin.news.sentBy'].map((h) => (
                   <th
                     key={h}
                     className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                   >
-                    {h}
+                    {t(h)}
                   </th>
                 ))}
               </tr>
@@ -432,7 +440,7 @@ export default function HostNewsPanel() {
                       <div className="w-3 h-3 flex items-center justify-center">
                         <i className="ri-time-line text-gray-400 text-xs"></i>
                       </div>
-                      {formatDateTime(b.sent_at)}
+                      {formatDateTime(b.sent_at, lang)}
                     </div>
                   </td>
                   {/* Recipients */}
@@ -441,7 +449,7 @@ export default function HostNewsPanel() {
                       <div className="w-3 h-3 flex items-center justify-center">
                         <i className="ri-group-line"></i>
                       </div>
-                      {b.recipient_count} {b.recipient_count === 1 ? 'host' : 'hosts'}
+                      {t('admin.news.recipientsCount', { count: b.recipient_count })}
                     </span>
                   </td>
                   {/* Sent By */}

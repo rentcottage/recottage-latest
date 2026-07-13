@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation, translateVocab } from '@lib/i18n';
 import PropertyImageSlider from './PropertyImageSlider';
 
 interface PropertyCardProps {
@@ -30,6 +31,7 @@ export default function PropertyCard({
   isRealListing,
   coverPosition,
 }: PropertyCardProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -71,7 +73,7 @@ export default function PropertyCard({
         {isRealListing && (
           <span className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 bg-[#222] text-white text-[11px] md:text-xs font-bold px-2.5 py-1 rounded-full pointer-events-none">
             <i className="ri-verified-badge-fill text-[12px] leading-none"></i>
-            Verified
+            {t('propertyCard.verified')}
           </span>
         )}
       </div>
@@ -99,7 +101,7 @@ export default function PropertyCard({
         <p className="text-xs md:text-[13.5px] text-soft mb-1.5 truncate leading-tight">{location}</p>
 
         {/* Host — desktop only */}
-        <p className="hidden md:block text-xs text-gray-400 mb-2.5 truncate">Hosted by {host}</p>
+        <p className="hidden md:block text-xs text-gray-400 mb-2.5 truncate">{t('propertyCard.hostedBy', { host })}</p>
 
         {/* Amenities — desktop */}
         <div className="hidden md:flex items-center gap-1.5 mb-3 flex-nowrap overflow-hidden">
@@ -108,7 +110,7 @@ export default function PropertyCard({
               key={index}
               className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0 max-w-[120px] truncate"
             >
-              {amenity}
+              {translateVocab(t, 'amenities', amenity)}
             </span>
           ))}
           {desktopExtra > 0 && (
@@ -125,7 +127,7 @@ export default function PropertyCard({
               key={index}
               className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 max-w-[100px] truncate"
             >
-              {amenity}
+              {translateVocab(t, 'amenities', amenity)}
             </span>
           ))}
           {mobileExtra > 0 && (
@@ -141,7 +143,7 @@ export default function PropertyCard({
         {/* Price row */}
         <div className="flex items-baseline gap-1 pt-2.5 border-t border-line">
           <span className="text-base md:text-[18px] font-extrabold text-red-500 whitespace-nowrap" translate="no">₾{price}</span>
-          <span className="text-xs text-soft whitespace-nowrap">/ night</span>
+          <span className="text-xs text-soft whitespace-nowrap">{t('propertyCard.perNight')}</span>
         </div>
       </div>
     </div>

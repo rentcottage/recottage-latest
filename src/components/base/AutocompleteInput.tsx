@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { filterCitiesBilingual } from '../../lib/locationNormalizer';
+import { useTranslation } from '@lib/i18n';
 
 interface AutocompleteOption {
   name: string;
@@ -26,6 +27,7 @@ export default function AutocompleteInput({
   required = false,
   className = ''
 }: AutocompleteInputProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState<AutocompleteOption[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -205,9 +207,9 @@ export default function AutocompleteInput({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-gray-800 truncate">
-                  Use &ldquo;<span className="text-red-600">{value.trim()}</span>&rdquo;
+                  {t('misc.autocomplete.use')} &ldquo;<span className="text-red-600">{value.trim()}</span>&rdquo;
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">Enter as custom location</div>
+                <div className="text-xs text-gray-400 mt-0.5">{t('misc.autocomplete.enterCustomLocation')}</div>
               </div>
               <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                 <i className="ri-check-line text-gray-300 text-xs"></i>

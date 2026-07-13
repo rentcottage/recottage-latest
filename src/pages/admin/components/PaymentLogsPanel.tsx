@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@lib/i18n';
+import type { TranslateFn, Lang } from '@lib/i18n';
 
 interface StatusLog {
   id: string;
@@ -23,28 +25,28 @@ interface StatusLog {
 
 type EventFilter = 'all' | 'bog_callback' | 'payment' | 'status_change' | 'admin';
 
-function eventBadge(eventType: string): { label: string; cls: string; icon: string } {
-  const t = eventType?.toLowerCase() ?? '';
-  if (t.includes('bog') || t.includes('callback')) {
-    return { label: 'BOG Callback', cls: 'bg-violet-100 text-violet-700', icon: 'ri-bank-card-line' };
+function eventBadge(t: TranslateFn, eventType: string): { label: string; cls: string; icon: string } {
+  const s = eventType?.toLowerCase() ?? '';
+  if (s.includes('bog') || s.includes('callback')) {
+    return { label: t('admin.payments.badgeBogCallback'), cls: 'bg-violet-100 text-violet-700', icon: 'ri-bank-card-line' };
   }
-  if (t.includes('payment_verified') || t === 'payment_success') {
-    return { label: 'Payment Verified', cls: 'bg-green-100 text-green-700', icon: 'ri-shield-check-line' };
+  if (s.includes('payment_verified') || s === 'payment_success') {
+    return { label: t('admin.payments.badgePaymentVerified'), cls: 'bg-green-100 text-green-700', icon: 'ri-shield-check-line' };
   }
-  if (t.includes('payment_failed') || t === 'payment_failure') {
-    return { label: 'Payment Failed', cls: 'bg-red-100 text-red-600', icon: 'ri-shield-cross-line' };
+  if (s.includes('payment_failed') || s === 'payment_failure') {
+    return { label: t('admin.payments.badgePaymentFailed'), cls: 'bg-red-100 text-red-600', icon: 'ri-shield-cross-line' };
   }
-  if (t.includes('payment')) {
-    return { label: 'Payment Event', cls: 'bg-emerald-100 text-emerald-700', icon: 'ri-secure-payment-line' };
+  if (s.includes('payment')) {
+    return { label: t('admin.payments.badgePaymentEvent'), cls: 'bg-emerald-100 text-emerald-700', icon: 'ri-secure-payment-line' };
   }
-  if (t.includes('confirm')) {
-    return { label: 'Confirmed', cls: 'bg-green-100 text-green-700', icon: 'ri-checkbox-circle-line' };
+  if (s.includes('confirm')) {
+    return { label: t('admin.payments.badgeConfirmed'), cls: 'bg-green-100 text-green-700', icon: 'ri-checkbox-circle-line' };
   }
-  if (t.includes('reject') || t.includes('cancel')) {
-    return { label: 'Cancelled/Rejected', cls: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' };
+  if (s.includes('reject') || s.includes('cancel')) {
+    return { label: t('admin.payments.badgeCancelledRejected'), cls: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' };
   }
-  if (t.includes('admin')) {
-    return { label: 'Admin Action', cls: 'bg-orange-100 text-orange-700', icon: 'ri-admin-line' };
+  if (s.includes('admin')) {
+    return { label: t('admin.payments.badgeAdminAction'), cls: 'bg-orange-100 text-orange-700', icon: 'ri-admin-line' };
   }
   return { label: eventType, cls: 'bg-gray-100 text-gray-600', icon: 'ri-file-list-line' };
 }
@@ -58,29 +60,29 @@ function statusPill(status: string | null) {
   return 'bg-gray-100 text-gray-600';
 }
 
-function formatTs(str: string) {
-  return new Date(str).toLocaleString('en-GB', {
+function formatTs(str: string, lang: Lang) {
+  return new Date(str).toLocaleString(lang, {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
 }
 
-function formatTsShort(str: string) {
-  return new Date(str).toLocaleString('en-GB', {
+function formatTsShort(str: string, lang: Lang) {
+  return new Date(str).toLocaleString(lang, {
     day: '2-digit', month: 'short',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
 }
 
-function timeAgo(str: string) {
+function timeAgo(t: TranslateFn, str: string) {
   const diff = Date.now() - new Date(str).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return t('admin.payments.secondsAgo', { count: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t('admin.payments.minutesAgo', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return t('admin.payments.hoursAgo', { count: h });
+  return t('admin.payments.daysAgo', { count: Math.floor(h / 24) });
 }
 
 function matchesFilter(log: StatusLog, filter: EventFilter): boolean {
@@ -100,7 +102,8 @@ interface LogDrawerProps {
 }
 
 function LogDrawer({ log, onClose }: LogDrawerProps) {
-  const badge = eventBadge(log.event_type);
+  const { t, lang } = useTranslation();
+  const badge = eventBadge(t, log.event_type);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end">
@@ -113,7 +116,7 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
               <i className={`${badge.icon} text-violet-600 text-sm`}></i>
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900">Log Entry Detail</h2>
+              <h2 className="text-sm font-bold text-gray-900">{t('admin.payments.logDetail')}</h2>
               <p className="text-xs text-gray-400 font-mono mt-0.5">{log.id.slice(0, 16)}…</p>
             </div>
           </div>
@@ -132,14 +135,14 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
               <i className="ri-time-line text-gray-400 text-sm"></i>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Timestamp</p>
-              <p className="text-sm font-semibold text-gray-900">{formatTs(log.created_at)}</p>
+              <p className="text-xs text-gray-400">{t('admin.payments.timestamp')}</p>
+              <p className="text-sm font-semibold text-gray-900">{formatTs(log.created_at, lang)}</p>
             </div>
           </div>
 
           {/* Event Type */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Event Type</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.payments.eventType')}</p>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${badge.cls}`}>
               <div className="w-3 h-3 flex items-center justify-center">
                 <i className={badge.icon}></i>
@@ -151,7 +154,7 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
 
           {/* Status Transition */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Status Transition</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.payments.statusTransition')}</p>
             <div className="flex items-center gap-3">
               {log.from_status ? (
                 <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${statusPill(log.from_status) ?? 'bg-gray-100 text-gray-600'}`}>
@@ -176,7 +179,7 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
           {/* Changed By */}
           {log.changed_by && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Triggered By</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.payments.triggeredBy')}</p>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-user-line text-gray-400 text-sm"></i>
@@ -189,7 +192,7 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
           {/* Note / Raw Payload */}
           {log.note && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Note / Payload</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.payments.notePayload')}</p>
               <div className="bg-gray-900 rounded-xl px-4 py-4 overflow-x-auto">
                 <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-all leading-relaxed">
                   {(() => {
@@ -207,14 +210,14 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
           {/* Booking Info */}
           {log.booking && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Linked Booking</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('admin.payments.linkedBooking')}</p>
               <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
                     <i className="ri-user-line text-gray-400 text-sm"></i>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Guest</p>
+                    <p className="text-xs text-gray-400">{t('common.guest')}</p>
                     <p className="text-sm font-medium text-gray-900">{log.booking.user_name || log.booking.user_email}</p>
                     {log.booking.user_name && <p className="text-xs text-gray-400">{log.booking.user_email}</p>}
                   </div>
@@ -224,24 +227,24 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
                     <i className="ri-home-4-line text-gray-400 text-sm"></i>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Property</p>
+                    <p className="text-xs text-gray-400">{t('common.property')}</p>
                     <p className="text-sm font-medium text-gray-900">{log.booking.property_title}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div>
-                    <p className="text-xs text-gray-400">Total</p>
+                    <p className="text-xs text-gray-400">{t('common.total')}</p>
                     <p className="text-sm font-semibold text-gray-900">₾{log.booking.total_price}</p>
                   </div>
                   {log.booking.payment_method && (
                     <div>
-                      <p className="text-xs text-gray-400">Method</p>
+                      <p className="text-xs text-gray-400">{t('admin.payments.method')}</p>
                       <p className="text-sm font-medium text-gray-700">{log.booking.payment_method}</p>
                     </div>
                   )}
                   {log.booking.payment_status && (
                     <div>
-                      <p className="text-xs text-gray-400">Payment Status</p>
+                      <p className="text-xs text-gray-400">{t('common.paymentStatus')}</p>
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${statusPill(log.booking.payment_status) ?? 'bg-gray-100 text-gray-600'}`}>
                         {log.booking.payment_status}
                       </span>
@@ -254,13 +257,13 @@ function LogDrawer({ log, onClose }: LogDrawerProps) {
 
           {/* Booking ID */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Booking ID</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('common.bookingId')}</p>
             <p className="text-xs font-mono text-gray-500 bg-gray-50 rounded-lg px-3 py-2 break-all">{log.booking_id}</p>
           </div>
 
           {/* Log ID */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Log ID</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.payments.logId')}</p>
             <p className="text-xs font-mono text-gray-400 bg-gray-50 rounded-lg px-3 py-2 break-all">{log.id}</p>
           </div>
         </div>
@@ -277,6 +280,7 @@ interface FailureAlertBannerProps {
 }
 
 function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBannerProps) {
+  const { t, lang } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? failedLogs : failedLogs.slice(0, 3);
 
@@ -290,10 +294,10 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
           </div>
           <div>
             <p className="text-sm font-bold text-white leading-tight">
-              {failedLogs.length} BOG Payment Failure{failedLogs.length !== 1 ? 's' : ''} Detected
+              {t('admin.payments.failuresDetected', { count: failedLogs.length })}
             </p>
             <p className="text-xs text-red-100 mt-0.5">
-              Immediate attention required — review failed callbacks below
+              {t('admin.payments.failuresSubtitle')}
             </p>
           </div>
         </div>
@@ -304,7 +308,7 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
           <button
             onClick={onDismiss}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer"
-            title="Dismiss alert"
+            title={t('admin.payments.dismissAlert')}
           >
             <i className="ri-close-line text-base"></i>
           </button>
@@ -338,7 +342,7 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
                 </div>
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <span className="text-xs text-gray-500 font-mono">
-                    Booking: {log.booking_id.slice(0, 8)}…
+                    {t('admin.payments.bookingShort', { id: log.booking_id.slice(0, 8) })}
                   </span>
                   {log.booking?.property_title && (
                     <span className="text-xs text-gray-500 truncate max-w-[160px]">
@@ -356,8 +360,8 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
 
             <div className="flex items-center gap-3 flex-shrink-0 ml-4">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-medium text-gray-600">{formatTsShort(log.created_at)}</p>
-                <p className="text-xs text-gray-400">{timeAgo(log.created_at)}</p>
+                <p className="text-xs font-medium text-gray-600">{formatTsShort(log.created_at, lang)}</p>
+                <p className="text-xs text-gray-400">{timeAgo(t, log.created_at)}</p>
               </div>
               <button
                 onClick={() => onViewLog(log)}
@@ -366,7 +370,7 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
                 <div className="w-3 h-3 flex items-center justify-center">
                   <i className="ri-eye-line"></i>
                 </div>
-                Inspect
+                {t('admin.payments.inspect')}
               </button>
             </div>
           </div>
@@ -383,7 +387,7 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
             <div className="w-3 h-3 flex items-center justify-center">
               <i className={expanded ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'}></i>
             </div>
-            {expanded ? 'Show less' : `Show ${failedLogs.length - 3} more failure${failedLogs.length - 3 !== 1 ? 's' : ''}`}
+            {expanded ? t('common.showLess') : t('admin.payments.showMoreFailures', { count: failedLogs.length - 3 })}
           </button>
         </div>
       )}
@@ -393,6 +397,7 @@ function FailureAlertBanner({ failedLogs, onViewLog, onDismiss }: FailureAlertBa
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 export default function PaymentLogsPanel() {
+  const { t, lang } = useTranslation();
   const [logs, setLogs] = useState<StatusLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<EventFilter>('all');
@@ -480,11 +485,11 @@ export default function PaymentLogsPanel() {
   const failedLogs = logs.filter((l) => l.event_type?.toLowerCase().includes('failed'));
 
   const filterTabs: { key: EventFilter; label: string; icon: string; color: string }[] = [
-    { key: 'all', label: 'All Events', icon: 'ri-list-check', color: 'text-gray-600' },
-    { key: 'bog_callback', label: 'BOG Callbacks', icon: 'ri-bank-card-line', color: 'text-violet-600' },
-    { key: 'payment', label: 'Payments', icon: 'ri-secure-payment-line', color: 'text-emerald-600' },
-    { key: 'status_change', label: 'Status Changes', icon: 'ri-exchange-line', color: 'text-amber-600' },
-    { key: 'admin', label: 'Admin Actions', icon: 'ri-admin-line', color: 'text-orange-600' },
+    { key: 'all', label: t('admin.payments.allEvents'), icon: 'ri-list-check', color: 'text-gray-600' },
+    { key: 'bog_callback', label: t('admin.payments.bogCallbacks'), icon: 'ri-bank-card-line', color: 'text-violet-600' },
+    { key: 'payment', label: t('admin.payments.payments'), icon: 'ri-secure-payment-line', color: 'text-emerald-600' },
+    { key: 'status_change', label: t('admin.payments.statusChanges'), icon: 'ri-exchange-line', color: 'text-amber-600' },
+    { key: 'admin', label: t('admin.payments.adminActions'), icon: 'ri-admin-line', color: 'text-orange-600' },
   ];
 
   return (
@@ -496,8 +501,8 @@ export default function PaymentLogsPanel() {
             <i className="ri-shield-keyhole-line text-violet-600 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Payment Verification Logs</h2>
-            <p className="text-xs text-gray-400">Real-time audit trail — BOG callbacks &amp; booking status events</p>
+            <h2 className="text-base font-bold text-gray-900">{t('admin.payments.title')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.payments.subtitle')}</p>
           </div>
         </div>
 
@@ -512,12 +517,12 @@ export default function PaymentLogsPanel() {
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${liveMode ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
-            {liveMode ? 'Live' : 'Live Off'}
+            {liveMode ? t('admin.payments.live') : t('admin.payments.liveOff')}
           </button>
 
           {newCount > 0 && (
             <span className="px-2.5 py-1 bg-green-500 text-white text-xs font-bold rounded-full animate-pulse">
-              +{newCount} new
+              {t('admin.payments.newEvents', { count: newCount })}
             </span>
           )}
 
@@ -528,7 +533,7 @@ export default function PaymentLogsPanel() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -545,11 +550,11 @@ export default function PaymentLogsPanel() {
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
         {[
-          { label: 'Total Events', count: counts.all, icon: 'ri-list-check', color: 'text-gray-600', bg: 'bg-gray-100' },
-          { label: 'BOG Callbacks', count: counts.bog_callback, icon: 'ri-bank-card-line', color: 'text-violet-600', bg: 'bg-violet-50' },
-          { label: 'Payment Events', count: counts.payment, icon: 'ri-secure-payment-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Status Changes', count: counts.status_change, icon: 'ri-exchange-line', color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Admin Actions', count: counts.admin, icon: 'ri-admin-line', color: 'text-orange-600', bg: 'bg-orange-50' },
+          { label: t('admin.payments.totalEvents'), count: counts.all, icon: 'ri-list-check', color: 'text-gray-600', bg: 'bg-gray-100' },
+          { label: t('admin.payments.bogCallbacks'), count: counts.bog_callback, icon: 'ri-bank-card-line', color: 'text-violet-600', bg: 'bg-violet-50' },
+          { label: t('admin.payments.paymentEvents'), count: counts.payment, icon: 'ri-secure-payment-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: t('admin.payments.statusChanges'), count: counts.status_change, icon: 'ri-exchange-line', color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: t('admin.payments.adminActions'), count: counts.admin, icon: 'ri-admin-line', color: 'text-orange-600', bg: 'bg-orange-50' },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-card border border-line shadow-card px-4 py-3">
             <div className="flex items-center justify-between mb-2">
@@ -568,11 +573,11 @@ export default function PaymentLogsPanel() {
         <div className="w-3 h-3 flex items-center justify-center">
           <i className="ri-time-line"></i>
         </div>
-        Last refreshed: {formatTs(lastRefreshed.toISOString())}
+        {t('admin.payments.lastRefreshed', { time: formatTs(lastRefreshed.toISOString(), lang) })}
         {liveMode && (
           <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Polling every 5s
+            {t('admin.payments.polling')}
           </span>
         )}
       </div>
@@ -609,7 +614,7 @@ export default function PaymentLogsPanel() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search event, booking ID, guest…"
+              placeholder={t('admin.payments.searchPlaceholder')}
               className="pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 w-72"
             />
           </div>
@@ -622,7 +627,7 @@ export default function PaymentLogsPanel() {
               <div className="w-5 h-5 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line text-xl"></i>
               </div>
-              <span className="text-sm">Loading logs…</span>
+              <span className="text-sm">{t('admin.payments.loadingLogs')}</span>
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -630,15 +635,15 @@ export default function PaymentLogsPanel() {
             <div className="w-12 h-12 flex items-center justify-center mb-3">
               <i className="ri-file-list-3-line text-4xl"></i>
             </div>
-            <p className="text-sm font-medium">No log entries found</p>
-            <p className="text-xs mt-1">Try adjusting your filters or search query.</p>
+            <p className="text-sm font-medium">{t('admin.payments.noLogs')}</p>
+            <p className="text-xs mt-1">{t('admin.payments.noLogsHint')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Time', 'Event Type', 'Booking', 'Guest', 'Status Change', 'Triggered By', 'Note', ''].map((h) => (
+                  {[t('admin.payments.time'), t('admin.payments.eventType'), t('admin.payments.booking'), t('common.guest'), t('admin.payments.statusChange'), t('admin.payments.triggeredBy'), t('admin.payments.note'), ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
@@ -647,7 +652,7 @@ export default function PaymentLogsPanel() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.map((log) => {
-                  const badge = eventBadge(log.event_type);
+                  const badge = eventBadge(t, log.event_type);
                   return (
                     <tr
                       key={log.id}
@@ -656,8 +661,8 @@ export default function PaymentLogsPanel() {
                     >
                       {/* Time */}
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="text-xs font-medium text-gray-800">{formatTsShort(log.created_at)}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{timeAgo(log.created_at)}</p>
+                        <p className="text-xs font-medium text-gray-800">{formatTsShort(log.created_at, lang)}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{timeAgo(t, log.created_at)}</p>
                       </td>
 
                       {/* Event Type */}
@@ -764,9 +769,9 @@ export default function PaymentLogsPanel() {
         {!loading && filtered.length > 0 && (
           <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
             <p className="text-xs text-gray-400">
-              Showing <strong>{filtered.length}</strong> of <strong>{logs.length}</strong> log entries (latest 200)
+              {t('admin.payments.showingLogs', { shown: filtered.length, total: logs.length })}
             </p>
-            <p className="text-xs text-gray-400">Click any row to inspect full payload</p>
+            <p className="text-xs text-gray-400">{t('admin.payments.clickToInspect')}</p>
           </div>
         )}
       </div>
