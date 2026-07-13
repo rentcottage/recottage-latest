@@ -142,7 +142,7 @@ export default function HowItWorks() {
           <h1 className="text-[26px] md:text-[38px] font-extrabold tracking-tight text-ink">
             How RentCottage.Ge works
           </h1>
-          <p className="text-muted-foreground text-[15px] md:text-base max-w-xl mx-auto mt-3 mb-7 text-soft">
+          <p className="text-soft text-[15px] md:text-base max-w-xl mx-auto mt-3 mb-7">
             See how easy it is to find the perfect cottage — or to earn from yours
           </p>
           <div className="inline-flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 relative z-[2] -mb-6">
