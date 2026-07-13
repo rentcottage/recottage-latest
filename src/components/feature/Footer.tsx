@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from '../../lib/i18n';
 import ContactModal from './ContactModal';
 import CancellationModal from './CancellationModal';
 
@@ -10,6 +11,7 @@ import CancellationModal from './CancellationModal';
  * (real <a href> for crawlers + client-side navigation).
  */
 export default function Footer() {
+  const { t } = useTranslation();
   const [showContact, setShowContact] = useState(false);
   const [showCancellation, setShowCancellation] = useState(false);
   const year = new Date().getFullYear();
@@ -32,16 +34,21 @@ export default function Footer() {
                 Rent<span className="text-red-500">Cottage</span>.Ge
               </h2>
               <p className="text-gray-400 max-w-[280px] leading-relaxed mb-4">
-                Georgia&apos;s #1 platform for booking cottages — directly from hosts,
-                with no hidden fees.
+                {t('footer.tagline')}
               </p>
               <div className="flex flex-wrap gap-2">
-                {['VISA', 'Mastercard', 'TBC', 'BOG', 'Installment'].map((p) => (
+                {[
+                  { key: 'VISA', label: 'VISA' },
+                  { key: 'Mastercard', label: 'Mastercard' },
+                  { key: 'TBC', label: 'TBC' },
+                  { key: 'BOG', label: 'BOG' },
+                  { key: 'Installment', label: t('footer.installment') },
+                ].map((p) => (
                   <span
-                    key={p}
+                    key={p.key}
                     className="bg-white/10 rounded-md px-2.5 py-1 text-xs font-semibold text-gray-200"
                   >
-                    {p}
+                    {p.label}
                   </span>
                 ))}
               </div>
@@ -49,33 +56,33 @@ export default function Footer() {
 
             {/* Explore */}
             <div>
-              <h4 className="text-white text-[14.5px] font-bold mb-3">Explore</h4>
+              <h4 className="text-white text-[14.5px] font-bold mb-3">{t('footer.explore')}</h4>
               <nav className="flex flex-col gap-2">
-                <Link to="/search" className={linkClass}>Search</Link>
-                <Link to="/how-it-works" className={linkClass}>How It Works</Link>
-                <Link to="/about-georgia" className={linkClass}>About Georgia</Link>
-                <Link to="/sitemap" className={linkClass}>Site Map</Link>
+                <Link to="/search" className={linkClass}>{t('header.nav.search')}</Link>
+                <Link to="/how-it-works" className={linkClass}>{t('header.nav.howItWorks')}</Link>
+                <Link to="/about-georgia" className={linkClass}>{t('header.nav.aboutGeorgia')}</Link>
+                <Link to="/sitemap" className={linkClass}>{t('footer.siteMap')}</Link>
               </nav>
             </div>
 
             {/* For hosts */}
             <div>
-              <h4 className="text-white text-[14.5px] font-bold mb-3">For Hosts</h4>
+              <h4 className="text-white text-[14.5px] font-bold mb-3">{t('footer.forHosts')}</h4>
               <nav className="flex flex-col gap-2">
-                <Link to="/become-host" className={linkClass}>Become a Host</Link>
-                <Link to="/host-resources" className={linkClass}>Host Resources</Link>
+                <Link to="/become-host" className={linkClass}>{t('header.nav.becomeHost')}</Link>
+                <Link to="/host-resources" className={linkClass}>{t('footer.hostResources')}</Link>
               </nav>
             </div>
 
             {/* Support & contact */}
             <div>
-              <h4 className="text-white text-[14.5px] font-bold mb-3">Support</h4>
+              <h4 className="text-white text-[14.5px] font-bold mb-3">{t('footer.support')}</h4>
               <nav className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowContact(true)} className={linkClass}>
-                  Contact Us
+                  {t('footer.contactUs')}
                 </button>
                 <button type="button" onClick={() => setShowCancellation(true)} className={linkClass}>
-                  Cancellation Options
+                  {t('footer.cancellationOptions')}
                 </button>
                 <a href="mailto:info.rentcottage@gmail.com" className={linkClass}>
                   info.rentcottage@gmail.com
@@ -106,11 +113,11 @@ export default function Footer() {
 
           {/* Bottom bar */}
           <div className="border-t border-white/15 pt-5 flex flex-col sm:flex-row justify-between items-center gap-2.5 text-xs text-gray-400">
-            <span>© {year} RentCottage.Ge · All rights reserved</span>
+            <span>© {year} <span translate="no" className="notranslate">RentCottage.Ge</span> · {t('footer.rightsReserved')}</span>
             <span className="flex items-center gap-2">
-              <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+              <Link to="/privacy" className="hover:text-white transition-colors">{t('footer.privacy')}</Link>
               <span className="opacity-40">·</span>
-              <Link to="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
+              <Link to="/terms" className="hover:text-white transition-colors">{t('footer.terms')}</Link>
             </span>
           </div>
         </div>

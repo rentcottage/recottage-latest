@@ -3,16 +3,19 @@ import { Analytics } from '@vercel/analytics/react'
 import { AppRoutes } from './router'
 import ProfileCompletionGate from './components/feature/ProfileCompletionGate'
 import ErrorBoundary from './components/feature/ErrorBoundary'
+import { I18nProvider } from './lib/i18n'
 
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter basename={__BASE_PATH__}>
-        <ProfileCompletionGate>
-          <AppRoutes />
-        </ProfileCompletionGate>
-        <Analytics />
-      </BrowserRouter>
+      <I18nProvider>
+        <BrowserRouter basename={__BASE_PATH__}>
+          <ProfileCompletionGate>
+            <AppRoutes />
+          </ProfileCompletionGate>
+          <Analytics />
+        </BrowserRouter>
+      </I18nProvider>
     </ErrorBoundary>
   )
 }

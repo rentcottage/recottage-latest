@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, signOutUser } from '../../hooks/useAuth';
+import { useTranslation } from '../../lib/i18n';
 import AuthModals from './AuthModals';
 import LanguageSelector from './LanguageSelector';
 import CancellationModal from './CancellationModal';
@@ -21,6 +22,7 @@ export default function Header({}: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, loading } = useAuth();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     // Close menus and navigate immediately — no waiting on network
@@ -80,25 +82,25 @@ export default function Header({}: HeaderProps) {
                 onClick={() => navigate('/search')}
                 className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
               >
-                Search
+                {t('header.nav.search')}
               </button>
               <button
                 onClick={() => navigate('/how-it-works')}
                 className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
               >
-                How It Works
+                {t('header.nav.howItWorks')}
               </button>
               <button
                 onClick={() => navigate('/about-georgia')}
                 className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
               >
-                About Georgia
+                {t('header.nav.aboutGeorgia')}
               </button>
               <button
                 onClick={() => navigate('/become-host')}
                 className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
               >
-                Become a Host
+                {t('header.nav.becomeHost')}
               </button>
             </nav>
 
@@ -115,7 +117,7 @@ export default function Header({}: HeaderProps) {
                   onClick={() => setShowLogin(true)}
                   className="border-[1.5px] border-red-500 text-red-500 hover:bg-red-50 font-semibold rounded-xl px-4 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap"
                 >
-                  Log in
+                  {t('header.login')}
                 </button>
               )}
 
@@ -137,22 +139,22 @@ export default function Header({}: HeaderProps) {
                   <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                     {isLoggedIn ? (
                       <>
-                        <MenuItem icon="ri-user-line" label="My Profile" onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); }} />
-                        <MenuItem icon="ri-layout-line" label="Host Dashboard" onClick={() => { navigate('/host-dashboard'); setIsUserMenuOpen(false); }} />
-                        <MenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-user-line" label={t('header.myProfile')} onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-layout-line" label={t('header.hostDashboard')} onClick={() => { navigate('/host-dashboard'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-home-heart-line" label={t('header.nav.becomeHost')} onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-logout-box-line" label="Log out" onClick={handleLogout} />
+                        <MenuItem icon="ri-logout-box-line" label={t('header.logout')} onClick={handleLogout} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-question-line" label="Help Center" onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-question-line" label={t('header.helpCenter')} onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
                       </>
                     ) : (
                       <>
-                        <MenuItem icon="ri-user-add-line" label="Sign up" onClick={() => { setShowSignup(true); setIsUserMenuOpen(false); }} bold />
-                        <MenuItem icon="ri-login-box-line" label="Log in" onClick={() => { setShowLogin(true); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-user-add-line" label={t('header.signup')} onClick={() => { setShowSignup(true); setIsUserMenuOpen(false); }} bold />
+                        <MenuItem icon="ri-login-box-line" label={t('header.login')} onClick={() => { setShowLogin(true); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-home-heart-line" label={t('header.nav.becomeHost')} onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-question-line" label="Help Center" onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-question-line" label={t('header.helpCenter')} onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
                       </>
                     )}
                   </div>
@@ -168,7 +170,7 @@ export default function Header({}: HeaderProps) {
                   onClick={() => setShowLogin(true)}
                   className="text-xs font-semibold text-red-500 border border-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors"
                 >
-                  Log in
+                  {t('header.login')}
                 </button>
               )}
               {/* User avatar dot — when logged in */}
@@ -181,7 +183,7 @@ export default function Header({}: HeaderProps) {
               <button
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
                 onClick={() => setIsMenuOpen(true)}
-                aria-label="Open menu"
+                aria-label={t('header.openMenu')}
               >
                 <i className="ri-menu-3-line text-gray-700 text-xl"></i>
               </button>
@@ -207,7 +209,7 @@ export default function Header({}: HeaderProps) {
             <button
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
               onClick={() => setIsMenuOpen(false)}
-              aria-label="Close menu"
+              aria-label={t('header.closeMenu')}
             >
               <i className="ri-close-line text-gray-700 text-xl"></i>
             </button>
@@ -221,8 +223,8 @@ export default function Header({}: HeaderProps) {
                   <i className="ri-user-line text-white"></i>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">My Account</p>
-                  <p className="text-xs text-gray-500">Logged in</p>
+                  <p className="text-sm font-semibold text-gray-900">{t('header.myAccount')}</p>
+                  <p className="text-xs text-gray-500">{t('header.loggedIn')}</p>
                 </div>
               </div>
             ) : (
@@ -231,13 +233,13 @@ export default function Header({}: HeaderProps) {
                   onClick={() => { setIsMenuOpen(false); setShowSignup(true); }}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg cursor-pointer transition-colors whitespace-nowrap"
                 >
-                  Sign up
+                  {t('header.signup')}
                 </button>
                 <button
                   onClick={() => { setIsMenuOpen(false); setShowLogin(true); }}
                   className="flex-1 border border-gray-300 text-gray-700 text-sm font-semibold py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors whitespace-nowrap"
                 >
-                  Log in
+                  {t('header.login')}
                 </button>
               </div>
             )}
@@ -247,20 +249,20 @@ export default function Header({}: HeaderProps) {
           <div className="flex-1 overflow-y-auto px-3 py-3">
             {isLoggedIn && (
               <>
-                <MobileMenuItem icon="ri-user-line" label="My Profile" onClick={() => mobileNavTo('/profile')} />
-                <MobileMenuItem icon="ri-layout-line" label="Host Dashboard" onClick={() => mobileNavTo('/host-dashboard')} />
+                <MobileMenuItem icon="ri-user-line" label={t('header.myProfile')} onClick={() => mobileNavTo('/profile')} />
+                <MobileMenuItem icon="ri-layout-line" label={t('header.hostDashboard')} onClick={() => mobileNavTo('/host-dashboard')} />
                 <div className="border-t border-gray-100 my-2" />
               </>
             )}
 
-            <MobileMenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => mobileNavTo('/become-host')} />
-            <MobileMenuItem icon="ri-search-line" label="Search Cottages" onClick={() => mobileNavTo('/search')} />
-            <MobileMenuItem icon="ri-map-pin-line" label="About Georgia" onClick={() => mobileNavTo('/about-georgia')} />
-            <MobileMenuItem icon="ri-information-line" label="How It Works" onClick={() => mobileNavTo('/how-it-works')} />
+            <MobileMenuItem icon="ri-home-heart-line" label={t('header.nav.becomeHost')} onClick={() => mobileNavTo('/become-host')} />
+            <MobileMenuItem icon="ri-search-line" label={t('header.searchCottages')} onClick={() => mobileNavTo('/search')} />
+            <MobileMenuItem icon="ri-map-pin-line" label={t('header.nav.aboutGeorgia')} onClick={() => mobileNavTo('/about-georgia')} />
+            <MobileMenuItem icon="ri-information-line" label={t('header.nav.howItWorks')} onClick={() => mobileNavTo('/how-it-works')} />
 
             <div className="border-t border-gray-100 my-2" />
 
-            <MobileMenuItem icon="ri-question-line" label="Help Center" onClick={() => { setIsMenuOpen(false); setShowMobileHelpModal(true); }} />
+            <MobileMenuItem icon="ri-question-line" label={t('header.helpCenter')} onClick={() => { setIsMenuOpen(false); setShowMobileHelpModal(true); }} />
 
             <div className="border-t border-gray-100 my-2" />
             <LanguageSelector variant="mobile" onClose={() => setIsMenuOpen(false)} />
@@ -268,7 +270,7 @@ export default function Header({}: HeaderProps) {
             {isLoggedIn && (
               <>
                 <div className="border-t border-gray-100 my-2" />
-                <MobileMenuItem icon="ri-logout-box-line" label="Log out" onClick={handleLogout} danger />
+                <MobileMenuItem icon="ri-logout-box-line" label={t('header.logout')} onClick={handleLogout} danger />
               </>
             )}
           </div>
@@ -291,7 +293,7 @@ export default function Header({}: HeaderProps) {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Help Center</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900">{t('header.helpCenter')}</h2>
                 <button onClick={() => setShowHelpModal(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer">
                   <i className="ri-close-line text-xl"></i>
                 </button>
@@ -300,18 +302,18 @@ export default function Header({}: HeaderProps) {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <i className="ri-search-line text-gray-400"></i>
                 </div>
-                <input type="text" placeholder="Search for help..." className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm" />
+                <input type="text" placeholder={t('header.help.searchPlaceholder')} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm" />
               </div>
               <div className="mb-6">
-                <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Popular Topics</h3>
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">{t('header.help.popularTopics')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[
-                    { icon: 'ri-home-line', title: 'Booking a Cottage', desc: 'How to search and book your perfect stay' },
-                    { icon: 'ri-calendar-line', title: 'Cancellation Policy', desc: 'Understanding our cancellation terms' },
-                    { icon: 'ri-shield-check-line', title: 'Safety & Security', desc: 'Your safety is our top priority' },
-                    { icon: 'ri-money-dollar-circle-line', title: 'Payment & Pricing', desc: 'Payment methods and pricing info' },
-                    { icon: 'ri-customer-service-line', title: 'Host Communication', desc: 'How to contact your host' },
-                    { icon: 'ri-map-pin-line', title: 'Travel Guidelines', desc: 'Tips for traveling in Georgia' },
+                    { icon: 'ri-home-line', title: t('header.help.bookingTitle'), desc: t('header.help.bookingDesc') },
+                    { icon: 'ri-calendar-line', title: t('header.help.cancellationTitle'), desc: t('header.help.cancellationDesc') },
+                    { icon: 'ri-shield-check-line', title: t('header.help.safetyTitle'), desc: t('header.help.safetyDesc') },
+                    { icon: 'ri-money-dollar-circle-line', title: t('header.help.paymentTitle'), desc: t('header.help.paymentDesc') },
+                    { icon: 'ri-customer-service-line', title: t('header.help.hostCommTitle'), desc: t('header.help.hostCommDesc') },
+                    { icon: 'ri-map-pin-line', title: t('header.help.travelTitle'), desc: t('header.help.travelDesc') },
                   ].map((topic, index) => (
                     <div key={index} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                       <div className="flex items-start">
@@ -328,14 +330,14 @@ export default function Header({}: HeaderProps) {
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Still need help?</h3>
+                <h3 className="text-base font-semibold text-gray-900 mb-3">{t('header.help.stillNeedHelp')}</h3>
                 <div className="grid grid-cols-1 gap-3">
                   <button onClick={() => { setShowHelpModal(false); navigate('/'); }} className="flex items-center p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer whitespace-nowrap">
                     <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
                       <i className="ri-mail-line text-red-500 text-sm"></i>
                     </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900 text-sm">Email Support</p>
+                      <p className="font-medium text-gray-900 text-sm">{t('header.help.emailSupport')}</p>
                       <p className="text-xs text-gray-600">info.rentcottage@gmail.com</p>
                     </div>
                   </button>
@@ -351,7 +353,7 @@ export default function Header({}: HeaderProps) {
           <div className="bg-white rounded-t-2xl w-full max-h-[85vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-bold text-gray-900">Help Center</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('header.helpCenter')}</h2>
               <button
                 onClick={() => setShowMobileHelpModal(false)}
                 className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
@@ -361,7 +363,7 @@ export default function Header({}: HeaderProps) {
             </div>
 
             <div className="px-5 py-5">
-              <p className="text-sm text-gray-500 mb-5">What do you need help with?</p>
+              <p className="text-sm text-gray-500 mb-5">{t('header.help.prompt')}</p>
 
               {/* 4 help topics */}
               <div className="space-y-3">
@@ -374,8 +376,8 @@ export default function Header({}: HeaderProps) {
                     <i className="ri-home-line text-red-500 text-lg"></i>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">Booking a Cottage</p>
-                    <p className="text-xs text-gray-500 mt-0.5">How to search and book your perfect stay</p>
+                    <p className="text-sm font-semibold text-gray-900">{t('header.help.bookingTitle')}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('header.help.bookingDesc')}</p>
                   </div>
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <i className="ri-arrow-right-s-line text-gray-300 text-base"></i>
@@ -391,8 +393,8 @@ export default function Header({}: HeaderProps) {
                     <i className="ri-calendar-line text-red-500 text-lg"></i>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">Cancellation Policy</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Understanding our cancellation terms</p>
+                    <p className="text-sm font-semibold text-gray-900">{t('header.help.cancellationTitle')}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('header.help.cancellationDesc')}</p>
                   </div>
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <i className="ri-arrow-right-s-line text-gray-300 text-base"></i>
@@ -408,8 +410,8 @@ export default function Header({}: HeaderProps) {
                     <i className="ri-shield-check-line text-red-500 text-lg"></i>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">Safety &amp; Security</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Your safety is our top priority</p>
+                    <p className="text-sm font-semibold text-gray-900">{t('header.help.safetyTitle')}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('header.help.safetyDesc')}</p>
                   </div>
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <i className="ri-arrow-right-s-line text-gray-300 text-base"></i>
@@ -425,8 +427,8 @@ export default function Header({}: HeaderProps) {
                     <i className="ri-money-dollar-circle-line text-red-500 text-lg"></i>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">Payment &amp; Pricing</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Payment methods and pricing info</p>
+                    <p className="text-sm font-semibold text-gray-900">{t('header.help.paymentTitle')}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('header.help.paymentDesc')}</p>
                   </div>
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <i className="ri-arrow-right-s-line text-gray-300 text-base"></i>
@@ -436,7 +438,7 @@ export default function Header({}: HeaderProps) {
 
               {/* Email support only (no phone) */}
               <div className="mt-6 pt-5 border-t border-gray-100">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Still need help?</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('header.help.stillNeedHelp')}</p>
                 <a
                   href="mailto:info.rentcottage@gmail.com"
                   className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
@@ -445,7 +447,7 @@ export default function Header({}: HeaderProps) {
                     <i className="ri-mail-line text-red-500 text-lg"></i>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Email Support</p>
+                    <p className="text-sm font-semibold text-gray-900">{t('header.help.emailSupport')}</p>
                     <p className="text-xs text-gray-500 mt-0.5">info.rentcottage@gmail.com</p>
                   </div>
                 </a>

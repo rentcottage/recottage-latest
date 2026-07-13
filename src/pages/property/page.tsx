@@ -667,51 +667,6 @@ export default function PropertyDetail() {
               </div>
             )}
 
-            {/* Per-guest pricing breakdown — fully interactive selector */}
-            {pricingType === 'per_guest' && guestPricingTiers.length > 0 && (
-              <div className="border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
-                <div className="flex items-center justify-between mb-3 md:mb-4">
-                  <h3 className="text-xl font-extrabold text-ink">Pricing by Guest Count</h3>
-                  <span className="text-xs text-gray-400">Tap to select</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {guestPricingTiers.map((tier, idx) => {
-                    const guestCount = parseInt(guests) || 1;
-                    const isActive = guestCount >= tier.min_guests && guestCount <= tier.max_guests;
-                    const selectValue = tier.min_guests === tier.max_guests
-                      ? tier.min_guests
-                      : tier.min_guests;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setGuests(String(selectValue))}
-                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-all cursor-pointer whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-red-400 ${
-                          isActive
-                            ? 'border-red-400 bg-red-50 font-semibold ring-1 ring-red-300'
-                            : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
-                        }`}
-                        aria-pressed={isActive}
-                        aria-label={`Select ${tier.min_guests === tier.max_guests ? `${tier.min_guests} guest${tier.min_guests > 1 ? 's' : ''}` : `${tier.min_guests} to ${tier.max_guests} guests`} at ₾${tier.price_per_night} per night`}
-                      >
-                        <span className={`flex items-center gap-1 ${isActive ? 'text-red-700' : ''}`}>
-                          <i className="ri-user-line text-xs"></i>
-                          {tier.min_guests === tier.max_guests
-                            ? `${tier.min_guests} guest${tier.min_guests > 1 ? 's' : ''}`
-                            : `${tier.min_guests}–${tier.max_guests}`}
-                        </span>
-                        <span className={`font-semibold ${isActive ? 'text-red-700' : 'text-gray-700'}`}>₾{tier.price_per_night}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                  <i className="ri-information-line"></i>
-                  Selecting a tier updates guest count and price in the booking form below.
-                </p>
-              </div>
-            )}
-
             {/* Reviews */}
             <div className="mb-4 md:mb-6">
               <PropertyReviews propertyId={property.id} isDbProperty={isDbProperty} />

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { translateStatic } from '../../lib/i18n';
 
 interface Props {
   children: ReactNode;
@@ -9,13 +10,14 @@ interface State {
 }
 
 /**
- * App-wide error boundary. Without this, any render-time throw — most notably the
- * Google Translate ⇄ React DOM conflict (see lib/googleTranslateGuard.ts) —
- * unmounts the whole tree to a blank white screen. This catches the throw and
- * shows a recoverable, on-brand fallback with a reload action instead.
+ * App-wide error boundary. Without this, any render-time throw unmounts the whole
+ * tree to a blank white screen. This catches the throw and shows a recoverable,
+ * on-brand fallback with a reload action instead.
  *
  * Uses inline styles so the fallback renders even if the crash left the stylesheet
- * or surrounding layout in a bad state.
+ * or surrounding layout in a bad state. It sits *outside* the I18nProvider (so it
+ * can catch crashes from within it), so it can't use the `useTranslation` hook —
+ * it reads the persisted language directly via `translateStatic`.
  */
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
@@ -65,14 +67,10 @@ export default class ErrorBoundary extends Component<Props, State> {
             ⚠️
           </div>
           <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>
-            Something went wrong
+            {translateStatic('errorBoundary.title')}
           </h1>
           <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.5, margin: '0 0 20px' }}>
-            The page hit an unexpected error. Reloading usually fixes it.
-            <br />
-            <span translate="no" style={{ color: '#9ca3af' }}>
-              გვერდის განახლება დაგეხმარებათ
-            </span>
+            {translateStatic('errorBoundary.description')}
           </p>
           <button
             type="button"
@@ -88,7 +86,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Reload page
+            {translateStatic('errorBoundary.reload')}
           </button>
         </div>
       </div>

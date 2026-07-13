@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, type Promo } from '../../lib/promos';
 import { optimizedImageUrl, IMG_CARD } from '../../lib/imageUrl';
+import { useTranslation, translateVocab } from '../../lib/i18n';
 
 interface HomeExperience {
   id: string;
@@ -74,6 +75,7 @@ function seasonByMonth(m: number): SeasonKey {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [selectedHelpTopic, setSelectedHelpTopic] = useState<string>('');
 
@@ -163,92 +165,77 @@ export default function HomePage() {
   const getHelpContent = (topic: string) => {
     const content = {
       booking: {
-        title: 'How to Search and Book Your Perfect Stay',
+        title: t('home.helpModal.bookingTitle'),
         content: [
           {
-            step: '1. Search',
-            description:
-              'Enter your destination, check-in and check-out dates, and number of guests in the search bar.',
+            step: t('home.helpModal.bookingStep1'),
+            description: t('home.helpModal.bookingStep1Desc'),
           },
           {
-            step: '2. Browse',
-            description:
-              'Browse through available cottages and use filters to narrow down your options by price, amenities, and property type.',
+            step: t('home.helpModal.bookingStep2'),
+            description: t('home.helpModal.bookingStep2Desc'),
           },
           {
-            step: '3. Select',
-            description:
-              'Click on a cottage that interests you to view detailed information, photos, and reviews.',
+            step: t('home.helpModal.bookingStep3'),
+            description: t('home.helpModal.bookingStep3Desc'),
           },
           {
-            step: '4. Book',
-            description:
-              'Choose your dates, select number of guests, and click "Request to Book". The host will respond within 24 hours.',
+            step: t('home.helpModal.bookingStep4'),
+            description: t('home.helpModal.bookingStep4Desc'),
           },
           {
-            step: '5. Confirm',
-            description:
-              'Once approved by the host, complete your payment to confirm your reservation.',
+            step: t('home.helpModal.bookingStep5'),
+            description: t('home.helpModal.bookingStep5Desc'),
           },
         ],
       },
       cancellation: {
-        title: 'Understanding Our Cancellation Terms',
+        title: t('home.helpModal.cancellationTitle'),
         content: [
           {
-            step: 'Flexible Policy',
-            description:
-              'Guests can cancel 2 or more days before check-in and receive a full refund for online payments.',
+            step: t('home.helpModal.cancellationStep1'),
+            description: t('home.helpModal.cancellationStep1Desc'),
           },
           {
-            step: 'Moderate Policy',
-            description:
-              'Guests can cancel up to 2 days before check-in and receive a 90% refund for online payments.',
+            step: t('home.helpModal.cancellationStep2'),
+            description: t('home.helpModal.cancellationStep2Desc'),
           },
           {
-            step: 'Strict Policy',
-            description:
-              'If the booking is canceled within 24 hours before check-in, the guest will receive an 80% refund for online payments.',
+            step: t('home.helpModal.cancellationStep3'),
+            description: t('home.helpModal.cancellationStep3Desc'),
           },
           {
-            step: 'Emergency Situations',
-            description:
-              'Special considerations apply for documented emergencies or extenuating circumstances.',
+            step: t('home.helpModal.cancellationStep4'),
+            description: t('home.helpModal.cancellationStep4Desc'),
           },
           {
-            step: 'Host Cancellation',
-            description:
-              'If a host cancels, you receive a full refund (applies on online payments).',
+            step: t('home.helpModal.cancellationStep5'),
+            description: t('home.helpModal.cancellationStep5Desc'),
           },
         ],
       },
       safety: {
-        title: 'Your Safety is Our Top Priority',
+        title: t('home.helpModal.safetyTitle'),
         content: [
           {
-            step: 'Verified Hosts',
-            description:
-              'All hosts undergo identity verification and property inspection before listing.',
+            step: t('home.helpModal.safetyStep1'),
+            description: t('home.helpModal.safetyStep1Desc'),
           },
           {
-            step: 'Support Team',
-            description:
-              'Our support team is available during business hours for any safety concerns or emergencies.',
+            step: t('home.helpModal.safetyStep2'),
+            description: t('home.helpModal.safetyStep2Desc'),
           },
           {
-            step: 'Secure Payments',
-            description:
-              'All payments are processed securely through our platform with fraud protection.',
+            step: t('home.helpModal.safetyStep3'),
+            description: t('home.helpModal.safetyStep3Desc'),
           },
           {
-            step: 'Guest Protection',
-            description:
-              'Comprehensive insurance coverage protects you during your stay.',
+            step: t('home.helpModal.safetyStep4'),
+            description: t('home.helpModal.safetyStep4Desc'),
           },
           {
-            step: 'Emergency Contacts',
-            description:
-              'Local emergency contacts and procedures are provided with every booking confirmation.',
+            step: t('home.helpModal.safetyStep5'),
+            description: t('home.helpModal.safetyStep5Desc'),
           },
         ],
       },
@@ -346,7 +333,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="RentCottage.Ge — Find & Book Georgian Cottage"
+        title={t('home.seo.title')}
         description="Find and book unique Georgian cottage rentals across Tbilisi, Batumi, Kakheti and Gudauri. Verified cottages, mountain retreats and traditional Georgian homes. Book your perfect Georgian getaway today."
         keywords="Georgian cottage rental, Georgia vacation rental, rent cottage Georgia, Tbilisi accommodation, Kakheti cottage"
         canonical="/"
@@ -371,13 +358,13 @@ export default function HomePage() {
             <button
               key={key}
               type="button"
-              aria-label={`${key} season`}
+              aria-label={t('home.seasons.seasonAria', { season: t(`home.seasons.${key}`) })}
               onClick={() => selectSeason(key)}
               className={`text-xs md:text-[13px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-opacity ${
                 season === key ? 'bg-red-500 text-white opacity-100' : 'text-white opacity-75 hover:opacity-100'
               }`}
             >
-              {SEASONS[key].label}
+              {t(`home.seasons.${key}`)}
             </button>
           ))}
         </div>
@@ -389,26 +376,26 @@ export default function HomePage() {
               heroFading ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            {SEASONS[season].title}
+            {t(`home.seasons.${season}Title`)}
           </h1>
           <p
             className={`text-base md:text-lg text-white/95 mb-5 md:mb-7 max-w-xl leading-relaxed transition-opacity duration-300 ${
               heroFading ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            {SEASONS[season].sub}
+            {t(`home.seasons.${season}Sub`)}
           </p>
           <div
             className={`flex flex-wrap justify-center gap-2.5 md:gap-3 mb-8 md:mb-10 transition-opacity duration-300 ${
               heroFading ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            {SEASONS[season].badges.map((badge, i) => (
+            {[1, 2, 3].map((i) => (
               <span
                 key={i}
                 className="bg-white/15 border border-white/30 text-white text-xs md:text-[13.5px] font-semibold px-3.5 py-1.5 rounded-full"
               >
-                {badge}
+                {t(`home.seasons.${season}Badge${i}`)}
               </span>
             ))}
           </div>
@@ -422,22 +409,22 @@ export default function HomePage() {
       <section className="py-12 md:py-16 px-4 md:px-6 max-w-6xl mx-auto">
         <div className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">Popular destinations</h2>
-            <p className="text-soft mt-1">Pick a region and discover its best cottages</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.destinations.title')}</h2>
+            <p className="text-soft mt-1">{t('home.destinations.subtitle')}</p>
           </div>
           <button
             onClick={() => navigate('/search')}
             className="text-red-500 font-bold text-sm hover:text-red-600 transition-colors cursor-pointer whitespace-nowrap"
           >
-            All regions →
+            {t('home.destinations.allRegions')}
           </button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
-            { name: 'Gudauri', tag: 'Winter ski hub', img: '/redesign/region-gudauri.jpg' },
-            { name: 'Bakuriani', tag: 'Family favorite', img: '/redesign/region-bakuriani.jpg' },
-            { name: 'Kakheti', tag: 'Wine country', img: '/redesign/region-kakheti.jpg' },
-            { name: 'Kazbegi', tag: 'Mountain views', img: '/redesign/region-kazbegi.jpg' },
+            { name: 'Gudauri', tag: t('home.destinations.gudauriTag'), img: '/redesign/region-gudauri.jpg' },
+            { name: 'Bakuriani', tag: t('home.destinations.bakurianiTag'), img: '/redesign/region-bakuriani.jpg' },
+            { name: 'Kakheti', tag: t('home.destinations.kakhetiTag'), img: '/redesign/region-kakheti.jpg' },
+            { name: 'Kazbegi', tag: t('home.destinations.kazbegiTag'), img: '/redesign/region-kazbegi.jpg' },
           ].map((region) => (
             <button
               key={region.name}
@@ -474,7 +461,7 @@ export default function HomePage() {
               <div className="w-8 h-8 md:w-12 md:h-12 flex items-center justify-center mb-1 md:mb-2">
                 <i className={`${category.icon} text-xl md:text-3xl text-gray-700`}></i>
               </div>
-              <span className="text-xs md:text-sm font-medium text-gray-900 text-center leading-tight">{category.label}</span>
+              <span className="text-xs md:text-sm font-medium text-gray-900 text-center leading-tight">{translateVocab(t, 'categories', category.label)}</span>
             </div>
           ))}
         </div>
@@ -483,8 +470,8 @@ export default function HomePage() {
         {FEATURE_FLAGS.ENABLE_PROMOS && promos.length > 0 && (
           <div className="mb-8 md:mb-16">
             <div className="mb-4 md:mb-6">
-              <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">Offers &amp; Promos</h2>
-              <p className="text-gray-600 text-sm md:text-base">Limited-time discounts — applied automatically at checkout</p>
+              <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">{t('home.promos.title')}</h2>
+              <p className="text-gray-600 text-sm md:text-base">{t('home.promos.subtitle')}</p>
             </div>
             <div className="space-y-3 md:space-y-4">
               {promos.map((promo) => (
@@ -496,7 +483,7 @@ export default function HomePage() {
                 >
                   <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center border border-white/30">
                     <span className="text-white font-extrabold text-lg md:text-2xl leading-none">−{promo.discount_percent}%</span>
-                    <span className="text-white/80 text-[10px] md:text-xs font-semibold uppercase tracking-wide mt-0.5">off</span>
+                    <span className="text-white/80 text-[10px] md:text-xs font-semibold uppercase tracking-wide mt-0.5">{t('home.promos.off')}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-white font-bold text-sm md:text-lg leading-snug mb-1 truncate">{promo.title}</h3>
@@ -510,7 +497,7 @@ export default function HomePage() {
                       {promo.ends_at && (
                         <span className="inline-flex items-center gap-1 text-white/80 text-[11px] md:text-xs font-medium">
                           <i className="ri-time-line text-xs"></i>
-                          until {new Date(promo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}
+                          {t('home.promos.until', { date: new Date(promo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) })}
                         </span>
                       )}
                     </div>
@@ -527,20 +514,20 @@ export default function HomePage() {
         {/* Featured Properties */}
         <div id="property-listings" className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">Featured cottages</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.featured.title')}</h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <p className="text-soft">Top-rated cottages this week</p>
+              <p className="text-soft">{t('home.featured.subtitle')}</p>
               {dbLoading ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
                   <span className="w-3 h-3 flex items-center justify-center animate-spin">
                     <i className="ri-loader-4-line"></i>
                   </span>
-                  Loading live listings…
+                  {t('home.featured.loadingLive')}
                 </span>
               ) : (totalCount ?? dbProperties.length) > 0 ? (
                 <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
-                  {totalCount ?? dbProperties.length} live listing{(totalCount ?? dbProperties.length) !== 1 ? 's' : ''} from real hosts
+                  {t('home.featured.liveListings', { count: totalCount ?? dbProperties.length })}
                 </span>
               ) : null}
             </div>
@@ -549,7 +536,7 @@ export default function HomePage() {
             onClick={() => navigate('/search')}
             className="text-red-500 font-bold text-sm hover:text-red-600 transition-colors cursor-pointer whitespace-nowrap"
           >
-            View all →
+            {t('home.featured.viewAll')}
           </button>
         </div>
 
@@ -559,7 +546,7 @@ export default function HomePage() {
               <span className="w-5 h-5 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line text-xl"></i>
               </span>
-              <span className="text-sm">Loading listings…</span>
+              <span className="text-sm">{t('home.featured.loading')}</span>
             </div>
           </div>
         ) : featuredProperties.length > 0 ? (
@@ -573,8 +560,8 @@ export default function HomePage() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <i className="ri-home-2-line text-2xl text-gray-400"></i>
             </div>
-            <h3 className="text-base font-semibold text-gray-700 mb-1">No cottages available yet</h3>
-            <p className="text-sm text-gray-400">Listings coming soon — check back shortly.</p>
+            <h3 className="text-base font-semibold text-gray-700 mb-1">{t('home.featured.emptyTitle')}</h3>
+            <p className="text-sm text-gray-400">{t('home.featured.emptySubtitle')}</p>
           </div>
         )}
 
@@ -584,16 +571,16 @@ export default function HomePage() {
             onClick={() => navigate('/search')}
             className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-lg font-medium transition-colors whitespace-nowrap"
           >
-            Show More
+            {t('home.featured.showMore')}
           </button>
         </div>
 
         {/* Unique Experiences Section */}
         <section className="mb-8 md:mb-16">
           <div className="text-center mb-6 md:mb-12">
-            <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Unique Georgian Experiences</h2>
+            <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">{t('home.experiences.title')}</h2>
             <p className="text-sm md:text-lg text-gray-600 max-w-2xl mx-auto">
-              Immerse yourself in authentic Georgian culture with these unforgettable experiences
+              {t('home.experiences.subtitle')}
             </p>
           </div>
 
@@ -612,7 +599,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : experiences.length === 0 ? (
-            <div className="text-center text-gray-400 py-8 text-sm">No experiences yet. Check back soon.</div>
+            <div className="text-center text-gray-400 py-8 text-sm">{t('home.experiences.empty')}</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-8 items-stretch">
               {experiences.map((exp) => {
@@ -650,7 +637,7 @@ export default function HomePage() {
                         {isComingSoon && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                             <span className="bg-white/95 text-gray-900 text-xs font-semibold px-2.5 py-1 rounded-full">
-                              Coming Soon
+                              {t('home.experiences.comingSoon')}
                             </span>
                           </div>
                         )}
@@ -670,16 +657,16 @@ export default function HomePage() {
                         </p>
                         <div className="mt-auto">
                           <div className="flex items-baseline gap-1 mb-2 sm:mb-3">
-                            <span className={`text-xs ${priceLabelColor}`}>From</span>
+                            <span className={`text-xs ${priceLabelColor}`}>{t('home.experiences.from')}</span>
                             <span className={`text-base sm:text-xl font-bold ${priceColor}`}>
                               {exp.currency_symbol || '₾'}
                               {Number(exp.price_per_person).toFixed(0)}
                             </span>
-                            <span className={`text-xs ${priceLabelColor}`}>/ person</span>
+                            <span className={`text-xs ${priceLabelColor}`}>{t('home.experiences.perPerson')}</span>
                           </div>
                           {isComingSoon ? (
                             <div className="w-full bg-gray-100 text-gray-400 text-xs sm:text-sm font-medium py-1.5 sm:py-2.5 rounded-lg text-center whitespace-nowrap cursor-default select-none">
-                              Coming Soon
+                              {t('home.experiences.comingSoon')}
                             </div>
                           ) : (
                             <button
@@ -689,7 +676,7 @@ export default function HomePage() {
                               }}
                               className="w-full bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-medium py-1.5 sm:py-2.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                             >
-                              Book Now
+                              {t('home.experiences.bookNow')}
                             </button>
                           )}
                         </div>
@@ -708,17 +695,16 @@ export default function HomePage() {
                 <i className="ri-time-line text-base md:text-2xl text-blue-600"></i>
               </div>
               <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-2 md:mb-3">
-                More Experiences Coming Soon!
+                {t('home.experiences.moreTitle')}
               </h3>
               <p className="text-xs md:text-base text-gray-600 mb-3 md:mb-4">
-                We&apos;re constantly adding new authentic Georgian experiences to help you discover the rich
-                culture, traditions, and natural beauty of our beautiful country.
+                {t('home.experiences.moreDesc')}
               </p>
               <div className="flex flex-wrap justify-center gap-2 text-xs md:text-sm text-gray-500">
-                <span className="bg-white px-2 md:px-3 py-1 rounded-full">Traditional Dance Classes</span>
-                <span className="bg-white px-2 md:px-3 py-1 rounded-full">Pottery Workshops</span>
-                <span className="bg-white px-2 md:px-3 py-1 rounded-full">Horseback Riding</span>
-                <span className="bg-white px-2 md:px-3 py-1 rounded-full">Cultural Tours</span>
+                <span className="bg-white px-2 md:px-3 py-1 rounded-full">{t('home.experiences.tagDance')}</span>
+                <span className="bg-white px-2 md:px-3 py-1 rounded-full">{t('home.experiences.tagPottery')}</span>
+                <span className="bg-white px-2 md:px-3 py-1 rounded-full">{t('home.experiences.tagRiding')}</span>
+                <span className="bg-white px-2 md:px-3 py-1 rounded-full">{t('home.experiences.tagTours')}</span>
               </div>
             </div>
           </div>
@@ -728,12 +714,12 @@ export default function HomePage() {
       {/* Trust band — why choose us (cards open the help modals) */}
       <section className="bg-[#181818] text-white py-14 md:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-9 md:mb-11 tracking-tight">Why RentCottage.Ge?</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-9 md:mb-11 tracking-tight">{t('home.trust.title')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
             {[
-              { icon: 'ri-shield-check-line', title: 'Verified cottages', desc: 'We personally check every listing — photos match reality', topic: 'safety' },
-              { icon: 'ri-calendar-line', title: 'Flexible cancellation', desc: 'Free cancellation up to 48 hours before check-in', topic: 'cancellation' },
-              { icon: 'ri-home-line', title: 'Easy booking', desc: 'Search, book and relax — secure payment, real hosts', topic: 'booking' },
+              { icon: 'ri-shield-check-line', title: t('home.trust.verifiedTitle'), desc: t('home.trust.verifiedDesc'), topic: 'safety' },
+              { icon: 'ri-calendar-line', title: t('home.trust.flexibleTitle'), desc: t('home.trust.flexibleDesc'), topic: 'cancellation' },
+              { icon: 'ri-home-line', title: t('home.trust.easyTitle'), desc: t('home.trust.easyDesc'), topic: 'booking' },
             ].map((item) => (
               <button
                 key={item.topic}
@@ -755,14 +741,14 @@ export default function HomePage() {
       {/* How it works */}
       <section className="py-14 md:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="mb-8 md:mb-10">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">How it works</h2>
-          <p className="text-soft mt-1">Book in just 3 steps</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.howItWorks.title')}</h2>
+          <p className="text-soft mt-1">{t('home.howItWorks.subtitle')}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
           {[
-            { n: 1, title: 'Search', desc: 'Pick a region, dates and guests — filter by jacuzzi, fireplace or pool' },
-            { n: 2, title: 'Book', desc: 'Request to book or message the host. Payment is safe and secure' },
-            { n: 3, title: 'Relax', desc: 'Get check-in details and enjoy your stay. We\u2019re here if you need us' },
+            { n: 1, title: t('home.howItWorks.step1Title'), desc: t('home.howItWorks.step1Desc') },
+            { n: 2, title: t('home.howItWorks.step2Title'), desc: t('home.howItWorks.step2Desc') },
+            { n: 3, title: t('home.howItWorks.step3Title'), desc: t('home.howItWorks.step3Desc') },
           ].map((step) => (
             <div key={step.n} className="bg-white border border-line rounded-card p-6 md:p-7">
               <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 font-extrabold text-lg flex items-center justify-center mb-3.5">
@@ -778,13 +764,13 @@ export default function HomePage() {
       {/* Guest reviews */}
       <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="mb-8 md:mb-10">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">What guests say</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.reviews.title')}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
           {[
-            { text: 'The cottage was exactly like the photos. The host was very attentive and booking took just minutes.', who: 'Nino K. · Gudauri, January 2026' },
-            { text: 'We stayed in Bakuriani with the family. No surprises on price — you pay exactly what\u2019s listed. We\u2019ll be back.', who: 'Giorgi M. · Bakuriani, February 2026' },
-            { text: 'Rented a winery cottage in Kakheti with friends. Tastings, views, calm — a perfect ten!', who: 'Tamar B. · Sighnaghi, October 2025' },
+            { text: t('home.reviews.review1'), who: 'Nino K. · Gudauri, January 2026' },
+            { text: t('home.reviews.review2'), who: 'Giorgi M. · Bakuriani, February 2026' },
+            { text: t('home.reviews.review3'), who: 'Tamar B. · Sighnaghi, October 2025' },
           ].map((review, i) => (
             <div key={i} className="bg-white rounded-card shadow-card p-6">
               <div className="text-red-500 tracking-[2px] mb-2.5" translate="no" aria-hidden="true">★★★★★</div>
@@ -806,15 +792,15 @@ export default function HomePage() {
             backgroundPosition: 'center',
           }}
         >
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">Have a cottage? Earn more</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">{t('home.hostCta.title')}</h2>
           <p className="max-w-xl mx-auto opacity-95 mb-6">
-            List your cottage for free, get bookings directly, and pay a commission only on successful stays
+            {t('home.hostCta.subtitle')}
           </p>
           <button
             onClick={() => navigate('/become-host')}
             className="bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl px-6 py-3 cursor-pointer transition-colors whitespace-nowrap"
           >
-            List your cottage for free
+            {t('home.hostCta.button')}
           </button>
         </div>
       </section>
@@ -855,8 +841,7 @@ export default function HomePage() {
                   <div className="flex items-center">
                     <i className="ri-information-line text-blue-500 mr-3"></i>
                     <p className="text-sm text-blue-800">
-                      <strong>Need more help?</strong> Our support team is available during business hours to
-                      assist you.
+                      <strong>{t('home.helpModal.needMoreHelpLabel')}</strong> {t('home.helpModal.needMoreHelpText')}
                     </p>
                   </div>
                 </div>
@@ -875,7 +860,7 @@ export default function HomePage() {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Book Georgian Cooking Class</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{t('home.bookingForm.cookingTitle')}</h2>
                 <button
                   onClick={() => setShowBookingForm(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -902,7 +887,7 @@ export default function HomePage() {
                   let isValid = true;
                   for (const field of requiredFields) {
                     if (!formData.get(field)) {
-                      alert(`Please fill in ${field.replace('_', ' ')}`);
+                      alert(t('home.bookingForm.validationFillField', { field: field.replace('_', ' ') }));
                       isValid = false;
                       break;
                     }
@@ -913,13 +898,11 @@ export default function HomePage() {
                       body: new URLSearchParams(formData as any),
                     })
                       .then(() => {
-                        alert(
-                          'Booking request submitted successfully! We will contact you soon to confirm your reservation.'
-                        );
+                        alert(t('home.bookingForm.successCooking'));
                         setShowBookingForm(false);
                       })
                       .catch(() => {
-                        alert('There was an error submitting your booking. Please try again.');
+                        alert(t('home.bookingForm.errorSubmit'));
                       });
                   }
                 }}
@@ -928,27 +911,27 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Full Name *
+                      {t('home.bookingForm.fullName')}
                     </label>
                     <input
                       type="text"
                       name="full_name"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-                      placeholder="Enter your full name"
+                      placeholder={t('home.bookingForm.fullNamePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address *
+                      {t('home.bookingForm.email')}
                     </label>
                     <input
                       type="email"
                       name="email"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-                      placeholder="Enter your email"
+                      placeholder={t('home.bookingForm.emailPlaceholder')}
                     />
                   </div>
                 </div>
@@ -956,20 +939,20 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number *
+                      {t('home.bookingForm.phone')}
                     </label>
                     <input
                       type="tel"
                       name="phone"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-                      placeholder="Enter your phone number"
+                      placeholder={t('home.bookingForm.phonePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Number of People *
+                      {t('home.bookingForm.numberOfPeople')}
                     </label>
                     <div className="relative">
                       <select
@@ -977,14 +960,14 @@ export default function HomePage() {
                         required
                         className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm appearance-none"
                       >
-                        <option value="">Select number of people</option>
-                        <option value="2">2 people</option>
-                        <option value="3">3 people</option>
-                        <option value="4">4 people</option>
-                        <option value="5">5 people</option>
-                        <option value="6">6 people</option>
-                        <option value="7">7 people</option>
-                        <option value="8">8 people</option>
+                        <option value="">{t('home.bookingForm.selectNumberOfPeople')}</option>
+                        <option value="2">{t('home.bookingForm.peopleOption', { count: 2 })}</option>
+                        <option value="3">{t('home.bookingForm.peopleOption', { count: 3 })}</option>
+                        <option value="4">{t('home.bookingForm.peopleOption', { count: 4 })}</option>
+                        <option value="5">{t('home.bookingForm.peopleOption', { count: 5 })}</option>
+                        <option value="6">{t('home.bookingForm.peopleOption', { count: 6 })}</option>
+                        <option value="7">{t('home.bookingForm.peopleOption', { count: 7 })}</option>
+                        <option value="8">{t('home.bookingForm.peopleOption', { count: 8 })}</option>
                       </select>
                       <i className="ri-arrow-down-s-line absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     </div>
@@ -994,7 +977,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Preferred Date *
+                      {t('home.bookingForm.preferredDate')}
                     </label>
                     <input
                       type="date"
@@ -1007,14 +990,14 @@ export default function HomePage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Preferred Time
+                      {t('home.bookingForm.preferredTime')}
                     </label>
                     <div className="relative">
                       <select
                         name="preferred_time"
                         className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm appearance-none"
                       >
-                        <option value="">Select time</option>
+                        <option value="">{t('home.bookingForm.selectTime')}</option>
                         <option value="10:00 AM">10:00 AM</option>
                         <option value="2:00 PM">2:00 PM</option>
                         <option value="6:00 PM">6:00 PM</option>
@@ -1026,20 +1009,20 @@ export default function HomePage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    How did you hear about us?
+                    {t('home.bookingForm.howHeard')}
                   </label>
                   <div className="relative">
                     <select
                       name="how_heard"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm pr-8"
                     >
-                      <option value="">Select an option</option>
-                      <option value="google">Google Search</option>
-                      <option value="social-media">Social Media</option>
-                      <option value="friend-recommendation">Friend Recommendation</option>
-                      <option value="travel-blog">Travel Blog</option>
-                      <option value="hotel-concierge">Hotel Concierge</option>
-                      <option value="other">Other</option>
+                      <option value="">{t('home.bookingForm.selectOption')}</option>
+                      <option value="google">{t('home.bookingForm.optGoogle')}</option>
+                      <option value="social-media">{t('home.bookingForm.optSocial')}</option>
+                      <option value="friend-recommendation">{t('home.bookingForm.optFriendRecommendation')}</option>
+                      <option value="travel-blog">{t('home.bookingForm.optTravelBlog')}</option>
+                      <option value="hotel-concierge">{t('home.bookingForm.optHotelConcierge')}</option>
+                      <option value="other">{t('home.bookingForm.optOther')}</option>
                     </select>
                     <i className="ri-arrow-down-s-line absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                   </div>
@@ -1054,7 +1037,7 @@ export default function HomePage() {
                     className="rounded border-gray-300 text-red-500 focus:ring-red-500"
                   />
                   <label htmlFor="agreeTerms" className="text-sm text-gray-600">
-                    I agree to the cancellation policy and terms of service *
+                    {t('home.bookingForm.agreeTerms')}
                   </label>
                 </div>
 
@@ -1064,13 +1047,13 @@ export default function HomePage() {
                     onClick={() => setShowBookingForm(false)}
                     className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                   >
-                    Submit Booking Request
+                    {t('home.bookingForm.submit')}
                   </button>
                 </div>
               </form>
@@ -1086,7 +1069,7 @@ export default function HomePage() {
             <div className="relative">
               <img
                 src="https://readdy.ai/api/search-image?query=Georgian%20grandmother%20teaching%20traditional%20cooking%20in%20rustic%20kitchen%2C%20making%20khachapuri%20and%20khinkali%2C%20authentic%20clay%20oven%2C%20wooden%20utensils%2C%20warm%20family%20atmosphere%2C%20traditional%20Georgian%20cuisine%20preparation&width=800&height=300&seq=cooking-header&orientation=landscape"
-                alt="Georgian Cooking Class"
+                alt={t('home.cookingModal.imageAlt')}
                 className="w-full h-64 object-cover object-top"
               />
               <button
@@ -1099,46 +1082,46 @@ export default function HomePage() {
 
             <div className="p-6">
               <div className="mb-6">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Traditional Georgian Cooking Class</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('home.cookingModal.title')}</h2>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <i className="ri-time-line text-red-500"></i>
-                    <span>3-4 hours</span>
+                    <span>{t('home.cookingModal.duration')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <i className="ri-group-line text-red-500"></i>
-                    <span>2-8 people</span>
+                    <span>{t('home.cookingModal.groupSize')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <i className="ri-map-pin-line text-red-500"></i>
-                    <span>Tbilisi</span>
+                    <span>{t('home.cookingModal.location')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <i className="ri-star-fill text-yellow-400"></i>
-                    <span>4.9 (127 reviews)</span>
+                    <span>{t('home.cookingModal.rating')}</span>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">What You'll Learn</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">{t('home.cookingModal.whatYoullLearn')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex items-center gap-3">
                       <i className="ri-restaurant-line text-red-500 text-lg"></i>
-                      <span>Traditional Khachapuri making</span>
+                      <span>{t('home.cookingModal.learn1')}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <i className="ri-restaurant-line text-red-500 text-lg"></i>
-                      <span>Hand-rolled Khinkali dumplings</span>
+                      <span>{t('home.cookingModal.learn2')}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <i className="ri-leaf-line text-red-500 text-lg"></i>
-                      <span>Georgian spice blending</span>
+                      <span>{t('home.cookingModal.learn3')}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <i className="ri-book-line text-red-500 text-lg"></i>
-                      <span>Family recipe secrets</span>
+                      <span>{t('home.cookingModal.learn4')}</span>
                     </div>
                   </div>
                 </div>
@@ -1147,7 +1130,7 @@ export default function HomePage() {
                   <div className="bg-gray-50 p-6 rounded-lg sticky top-6">
                     <div className="text-center mb-4">
                       <div className="text-3xl font-bold text-gray-900">₾45</div>
-                      <div className="text-sm text-gray-600">per person</div>
+                      <div className="text-sm text-gray-600">{t('home.cookingModal.perPerson')}</div>
                     </div>
 
                     <div className="flex items-center justify-center gap-1 mb-4">
@@ -1158,7 +1141,7 @@ export default function HomePage() {
                         <i className="ri-star-fill"></i>
                         <i className="ri-star-fill"></i>
                       </div>
-                      <span className="text-sm text-gray-600 ml-2">4.9 (127 reviews)</span>
+                      <span className="text-sm text-gray-600 ml-2">{t('home.cookingModal.rating')}</span>
                     </div>
 
                     <button
@@ -1168,11 +1151,11 @@ export default function HomePage() {
                       }}
                       className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
                     >
-                      Book This Experience
+                      {t('home.cookingModal.bookThis')}
                     </button>
 
                     <div className="mt-4 text-xs text-gray-500 text-center">
-                      <p>You won&apos;t be charged yet</p>
+                      <p>{t('home.cookingModal.noCharge')}</p>
                     </div>
                   </div>
                 </div>

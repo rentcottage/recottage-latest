@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom';
 import Header from '../components/feature/Header';
 import Footer from '../components/feature/Footer';
 import SEO from '../components/feature/SEO';
+import { useTranslation } from '../lib/i18n';
 
 export default function NotFound() {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEO
@@ -17,24 +19,24 @@ export default function NotFound() {
         <p className="font-extrabold text-red-500 leading-none tracking-tight" style={{ fontSize: 'clamp(80px,14vw,130px)' }}>
           4<span className="inline-block rotate-12" translate="no">🏚</span>4
         </p>
-        <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-ink">We couldn&apos;t find that cottage</h1>
+        <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-ink">{t('notFound.title')}</h1>
         <p className="mt-3 max-w-md text-base md:text-lg text-soft">
-          The page you&apos;re looking for doesn&apos;t exist or has moved — but 500+ real cottages are waiting for you!
+          {t('notFound.description')}
         </p>
         <Link
           to="/"
           className="mt-8 inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-3.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
         >
           <i className="ri-home-5-line"></i>
-          Back to home
+          {t('notFound.backHome')}
         </Link>
 
         {/* Alternative destinations */}
         <div className="flex flex-wrap justify-center gap-3 mt-7">
           {[
-            { to: '/search', label: 'Search cottages' },
-            { to: '/about-georgia', label: 'Where to stay' },
-            { to: '/book-experience', label: 'Experiences' },
+            { to: '/search', label: t('notFound.searchCottages') },
+            { to: '/about-georgia', label: t('notFound.whereToStay') },
+            { to: '/book-experience', label: t('notFound.experiences') },
           ].map((alt) => (
             <Link
               key={alt.to}
