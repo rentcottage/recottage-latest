@@ -4,9 +4,101 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
 
+interface Step {
+  num: number;
+  title: string;
+  description: string;
+  bullets: string[];
+}
+
+const GUEST_STEPS: Step[] = [
+  {
+    num: 1,
+    title: 'Search',
+    description: 'Pick a place, dates and guests',
+    bullets: ['500+ verified cottages', 'Filters: jacuzzi, fireplace, pool', 'Real photos and reviews'],
+  },
+  {
+    num: 2,
+    title: 'Connect with the host',
+    description: 'Ask your questions directly',
+    bullets: ['Response in ~1 hour on average', 'Local tips from the host', 'Or book instantly ⚡'],
+  },
+  {
+    num: 3,
+    title: 'Book securely',
+    description: 'Pay online or on arrival',
+    bullets: ['Secure online payment', 'Instant SMS confirmation', 'Free cancellation up to 48h'],
+  },
+  {
+    num: 4,
+    title: 'Relax',
+    description: 'Enjoy Georgian hospitality',
+    bullets: ['Easy check-in with instructions', 'Support throughout your visit', 'Leave a review for others'],
+  },
+];
+
+const HOST_STEPS: Step[] = [
+  {
+    num: 1,
+    title: 'List your cottage',
+    description: 'Create a listing that shows its charm',
+    bullets: ['Upload high-quality photos', 'Write an engaging description', 'Set competitive pricing'],
+  },
+  {
+    num: 2,
+    title: 'Get verified',
+    description: 'Our team reviews and approves your listing',
+    bullets: ['Identity verification', 'Property quality check', 'Approved and live on the platform'],
+  },
+  {
+    num: 3,
+    title: 'Welcome guests',
+    description: 'Start receiving bookings',
+    bullets: ['Respond to inquiries quickly', 'Share local recommendations', 'Keep your cottage to high standards'],
+  },
+  {
+    num: 4,
+    title: 'Earn & grow',
+    description: 'Build your reputation and income',
+    bullets: ['Secure payouts through the platform', 'Collect guest reviews', 'Commission only on successful bookings'],
+  },
+];
+
+const GUARANTEES = [
+  { icon: '🛡️', title: 'Verified cottages', desc: 'Every cottage is personally checked by our team for quality and safety' },
+  { icon: '💬', title: 'Local support', desc: 'A Georgian team that knows every corner — we help in Georgian, every day' },
+  { icon: '💰', title: 'Best price guarantee', desc: 'Found the same cottage cheaper elsewhere? We\u2019ll match the price' },
+];
+
+const FAQS = [
+  {
+    q: 'When do I pay for the booking?',
+    a: 'It\u2019s your choice: pay online by card, or choose \u201cpay on arrival\u201d and pay at check-in by cash or card. Placing a booking is free.',
+  },
+  {
+    q: 'Can I cancel my booking?',
+    a: 'Yes — most cottages offer free cancellation up to 48 hours before check-in. The cancellation terms are always shown on the booking page.',
+  },
+  {
+    q: 'How do I know the cottage matches the photos?',
+    a: 'Cottages marked \u201cVerified\u201d are checked by our team. On top of that, real guest reviews help you choose with confidence.',
+  },
+  {
+    q: 'Do I need an account to book?',
+    a: 'Booking requires a simple registration — just your name and phone number, so you can receive the confirmation by SMS.',
+  },
+  {
+    q: 'How do I add my cottage?',
+    a: 'Click \u201cBecome a Host\u201d and upload photos and a description — listing is free. You pay a commission only on successful bookings.',
+  },
+];
+
 export default function HowItWorks() {
-  const [activeTab, setActiveTab] = useState('guests');
+  const [activeTab, setActiveTab] = useState<'guests' | 'hosts'>('guests');
   const navigate = useNavigate();
+
+  const steps = activeTab === 'guests' ? GUEST_STEPS : HOST_STEPS;
 
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
@@ -43,318 +135,130 @@ export default function HowItWorks() {
         jsonLd={jsonLd}
       />
       <Header />
-      
-      {/* Hero Section */}
-      <section className="relative w-full h-[260px] md:h-[400px] overflow-hidden">
-        <img
-          src="https://readdy.ai/api/search-image?query=charming%20traditional%20Georgian%20wooden%20cottage%20with%20carved%20balcony%20nestled%20in%20lush%20green%20Caucasus%20mountain%20valley%20Svaneti%20style%20architecture%20stone%20walls%20surrounded%20by%20wildflowers%20alpine%20meadow%20warm%20afternoon%20light%20no%20people%20premium%20travel%20photography%20wide%20angle%20landscape&width=1600&height=560&seq=how-it-works-hero-2025&orientation=landscape"
-          alt="Georgian cottage in mountain valley"
-          className="w-full h-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4">
-          <h1 className="text-2xl md:text-5xl font-bold text-white mb-3 md:mb-4">
-            How It Works
-          </h1>
-          <p className="text-sm md:text-xl text-white/90 mb-4 md:mb-8 max-w-2xl">
-            Discover how easy it is to find your perfect Georgian cottage or become a successful host
-          </p>
-        </div>
-      </section>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 md:py-16">
-        {/* Tab Navigation */}
-        <div className="flex justify-center mb-8 md:mb-16">
-          <div className="bg-gray-100 rounded-full p-1 flex">
+      {/* Hero — white, centered, with the guests/hosts pill toggle overlapping the next section */}
+      <section className="bg-white border-b border-line pt-14 pb-0">
+        <div className="max-w-5xl mx-auto px-5 text-center">
+          <h1 className="text-[26px] md:text-[38px] font-extrabold tracking-tight text-ink">
+            How RentCottage.Ge works
+          </h1>
+          <p className="text-muted-foreground text-[15px] md:text-base max-w-xl mx-auto mt-3 mb-7 text-soft">
+            See how easy it is to find the perfect cottage — or to earn from yours
+          </p>
+          <div className="inline-flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 relative z-[2] -mb-6">
             <button
               onClick={() => setActiveTab('guests')}
-              className={`px-5 md:px-8 py-2 md:py-3 rounded-full font-medium text-sm transition-colors cursor-pointer whitespace-nowrap ${
-                activeTab === 'guests'
-                  ? 'bg-red-500 text-white'
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`text-[14.5px] font-bold px-6 py-2.5 rounded-full cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'guests' ? 'bg-red-500 text-white' : 'text-soft hover:text-ink'
               }`}
             >
-              For Guests
+              🧳 For guests
             </button>
             <button
               onClick={() => setActiveTab('hosts')}
-              className={`px-5 md:px-8 py-2 md:py-3 rounded-full font-medium text-sm transition-colors cursor-pointer whitespace-nowrap ${
-                activeTab === 'hosts'
-                  ? 'bg-red-500 text-white'
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`text-[14.5px] font-bold px-6 py-2.5 rounded-full cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'hosts' ? 'bg-red-500 text-white' : 'text-soft hover:text-ink'
               }`}
             >
-              For Hosts
+              🏡 For hosts
             </button>
           </div>
         </div>
+      </section>
 
-        {/* Guest Journey */}
-        {activeTab === 'guests' && (
-          <div>
-            <div className="text-center mb-6 md:mb-12">
-              <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Your Journey to the Perfect Georgian Getaway</h2>
-              <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
-                From search to checkout, we&apos;ve made finding and booking your ideal cottage simple and secure
-              </p>
-            </div>
-
-            {/* Guest Steps */}
-            <div className="space-y-8 md:space-y-16 mb-8 md:mb-16">
-              {[
-                {
-                  step: '1',
-                  title: 'Search & Discover',
-                  description: 'Enter your destination, dates, and number of guests to find available cottages',
-                  details: [
-                    'Browse through hundreds of verified Georgian cottages',
-                    'Use filters to find exactly what you\'re looking for',
-                    'View detailed photos, amenities, and guest reviews',
-                    'Compare prices and locations easily'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Person%20using%20laptop%20to%20search%20for%20Georgian%20cottages%20online%2C%20beautiful%20cottage%20listings%20on%20screen%2C%20modern%20search%20interface%2C%20comfortable%20home%20setting%2C%20travel%20planning%20experience&width=600&height=400&seq=guestStep1&orientation=landscape',
-                  color: 'red'
-                },
-                {
-                  step: '2',
-                  title: 'Connect with Hosts',
-                  description: 'Message hosts directly to ask questions and request bookings',
-                  details: [
-                    'Send booking requests with your travel details',
-                    'Ask hosts about local recommendations and amenities',
-                    'Get responses within 24 hours',
-                    'Build confidence through direct communication'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Friendly%20Georgian%20host%20welcoming%20guests%20via%20video%20call%2C%20warm%20smile%2C%20traditional%20Georgian%20cottage%20in%20background%2C%20personal%20connection%2C%20hospitality%20culture%2C%20authentic%20communication&width=600&height=400&seq=guestStep2&orientation=landscape',
-                  color: 'blue'
-                },
-                {
-                  step: '3',
-                  title: 'Secure Booking',
-                  description: 'Complete your reservation with our secure payment system',
-                  details: [
-                    'Pay securely through our encrypted platform',
-                    'Receive instant booking confirmation',
-                    'Get detailed check-in instructions',
-                    'Access 24/7 customer support during business hours'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Secure%20online%20payment%20interface%20for%20cottage%20booking%2C%20credit%20card%20and%20mobile%20payment%20options%2C%20security%20icons%2C%20confirmation%20screen%2C%20trust%20and%20safety%20elements&width=600&height=400&seq=guestStep3&orientation=landscape',
-                  color: 'green'
-                },
-                {
-                  step: '4',
-                  title: 'Enjoy Your Stay',
-                  description: 'Arrive at your cottage and experience authentic Georgian hospitality',
-                  details: [
-                    'Easy check-in with clear instructions',
-                    'Enjoy all listed amenities and local experiences',
-                    'Get support from your host throughout your stay',
-                    'Leave reviews to help future guests'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Happy%20family%20enjoying%20stay%20at%20Georgian%20cottage%2C%20beautiful%20mountain%20views%2C%20traditional%20architecture%2C%20outdoor%20activities%2C%20authentic%20cultural%20experience%2C%20memorable%20vacation%20moments&width=600&height=400&seq=guestStep4&orientation=landscape',
-                  color: 'purple'
-                }
-              ].map((item, index) => (
-                <div key={index} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-4 md:gap-12`}>
-                  <div className="flex-1 w-full">
-                    <div className="flex items-center mb-3 md:mb-6">
-                      <div className={`w-10 h-10 md:w-16 md:h-16 bg-${item.color}-100 rounded-full flex items-center justify-center mr-3 md:mr-6 flex-shrink-0`}>
-                        <span className={`text-base md:text-2xl font-bold text-${item.color}-600`}>{item.step}</span>
-                      </div>
-                      <div>
-                        <h3 className="text-base md:text-2xl font-bold text-gray-900">{item.title}</h3>
-                        <p className="text-xs md:text-base text-gray-600 mt-0.5 md:mt-2">{item.description}</p>
-                      </div>
-                    </div>
-                    <ul className="space-y-1.5 md:space-y-3">
-                      {item.details.map((detail, detailIndex) => (
-                        <li key={detailIndex} className="flex items-start">
-                          <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center mt-0.5 mr-2 md:mr-3 flex-shrink-0">
-                            <i className={`ri-check-line text-${item.color}-500 text-xs md:text-sm`}></i>
-                          </div>
-                          <span className="text-xs md:text-sm text-gray-700">{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="flex-1 w-full">
-                    <img 
-                      src={item.image} 
-                      alt={item.title}
-                      className="w-full h-40 md:h-80 object-cover object-top rounded-xl"
-                    />
-                  </div>
+      {/* Steps timeline */}
+      <section className="py-16 px-5">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-[20px] md:text-[28px] font-extrabold tracking-tight text-center text-ink">
+            {activeTab === 'guests' ? 'From search to relaxation — 4 steps' : 'From listing to earning — 4 steps'}
+          </h2>
+          <p className="text-center text-soft max-w-lg mx-auto mt-2 mb-10">
+            {activeTab === 'guests'
+              ? 'Booking is simple and secure — we\u2019re with you at every step'
+              : 'Getting started is simple — and you only pay when you get booked'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {steps.map((step) => (
+              <div key={step.num} className="bg-white border border-line rounded-card p-6">
+                <div className="w-10 h-10 rounded-full bg-red-500 text-white font-extrabold text-[17px] flex items-center justify-center mb-3.5">
+                  {step.num}
                 </div>
-              ))}
-            </div>
-
-            {/* Guest Benefits */}
-            <div className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-8 md:mb-16">
-              <h3 className="text-base md:text-2xl font-bold text-gray-900 text-center mb-5 md:mb-8">Why Choose RentCottage.Ge?</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8">
-                {[
-                  { icon: 'ri-shield-check-line', color: 'red', title: 'Verified Properties', desc: 'All cottages are inspected and verified by our team for quality and safety' },
-                  { icon: 'ri-customer-service-line', color: 'blue', title: 'Local Support', desc: 'Get help from our Georgian team who knows the country inside and out' },
-                  { icon: 'ri-money-dollar-circle-line', color: 'green', title: 'Best Price Guarantee', desc: 'Find the same cottage cheaper elsewhere? We\'ll match the price' },
-                ].map(({ icon, color, title, desc }) => (
-                  <div key={title} className="text-center">
-                    <div className={`w-12 h-12 md:w-16 md:h-16 bg-${color}-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4`}>
-                      <div className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center">
-                        <i className={`${icon} text-xl md:text-2xl text-${color}-500`}></i>
-                      </div>
-                    </div>
-                    <h4 className="text-xs md:text-lg font-semibold text-gray-900 mb-1 md:mb-2">{title}</h4>
-                    <p className="text-gray-600 text-xs md:text-sm">{desc}</p>
-                  </div>
-                ))}
+                <h3 className="text-[16.5px] font-bold text-ink mb-2">{step.title}</h3>
+                <p className="text-sm text-soft">{step.description}</p>
+                <ul className="mt-2 space-y-1.5">
+                  {step.bullets.map((b, i) => (
+                    <li key={i} className="relative pl-5 text-[13.5px] text-muted-foreground">
+                      <span className="absolute left-0 text-red-500 font-extrabold" aria-hidden="true">✓</span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-
-            {/* CTA for Guests */}
-            <div className="text-center">
-              <button
-                onClick={() => navigate('/search')}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 md:px-8 py-2.5 md:py-4 rounded-lg font-medium text-sm md:text-lg transition-colors cursor-pointer whitespace-nowrap"
-              >
-                Start Your Search
-              </button>
-            </div>
+            ))}
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Host Journey */}
-        {activeTab === 'hosts' && (
-          <div>
-            <div className="text-center mb-6 md:mb-12">
-              <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Your Path to Successful Hosting</h2>
-              <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
-                Turn your Georgian cottage into a profitable business while sharing your culture with travelers
-              </p>
-            </div>
-
-            {/* Host Steps */}
-            <div className="space-y-8 md:space-y-16 mb-8 md:mb-16">
-              {[
-                {
-                  step: '1',
-                  title: 'List Your Property',
-                  description: 'Create a compelling listing that showcases your cottage\'s unique charm',
-                  details: [
-                    'Upload high-quality photos of your cottage',
-                    'Write an engaging description highlighting unique features',
-                    'Set competitive pricing for your area',
-                    'List all amenities and nearby attractions'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Georgian%20cottage%20owner%20taking%20professional%20photos%20of%20beautiful%20traditional%20cottage%2C%20camera%20equipment%2C%20staging%20interior%20spaces%2C%20creating%20attractive%20listing%2C%20mountain%20backdrop&width=600&height=400&seq=hostStep1&orientation=landscape',
-                  color: 'red'
-                },
-                {
-                  step: '2',
-                  title: 'Get Verified',
-                  description: 'Our team reviews and approves your listing to ensure quality standards',
-                  details: [
-                    'Complete identity verification process',
-                    'Schedule property inspection with our team',
-                    'Receive feedback and recommendations',
-                    'Get approved and go live on the platform'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Professional%20property%20inspector%20reviewing%20Georgian%20cottage%2C%20checklist%20in%20hand%2C%20quality%20assessment%2C%20safety%20verification%2C%20approval%20process%2C%20official%20documentation&width=600&height=400&seq=hostStep2&orientation=landscape',
-                  color: 'blue'
-                },
-                {
-                  step: '3',
-                  title: 'Welcome Guests',
-                  description: 'Start receiving bookings and providing exceptional hospitality',
-                  details: [
-                    'Respond to booking inquiries within 24 hours',
-                    'Communicate with guests before and during their stay',
-                    'Provide local recommendations and support',
-                    'Maintain your property to high standards'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Georgian%20host%20warmly%20welcoming%20international%20guests%20at%20cottage%20entrance%2C%20traditional%20Georgian%20hospitality%2C%20cultural%20exchange%2C%20friendly%20greeting%2C%20authentic%20experience&width=600&height=400&seq=hostStep3&orientation=landscape',
-                  color: 'green'
-                },
-                {
-                  step: '4',
-                  title: 'Earn & Grow',
-                  description: 'Build your reputation and increase your income through great reviews',
-                  details: [
-                    'Receive payments securely through our platform',
-                    'Get reviews from satisfied guests',
-                    'Access host resources and support',
-                    'Expand your hosting business over time'
-                  ],
-                  image: 'https://readdy.ai/api/search-image?query=Successful%20Georgian%20cottage%20host%20reviewing%20positive%20guest%20feedback%20on%20tablet%2C%20earnings%20dashboard%2C%20five-star%20reviews%2C%20business%20growth%2C%20financial%20success&width=600&height=400&seq=hostStep4&orientation=landscape',
-                  color: 'purple'
-                }
-              ].map((item, index) => (
-                <div key={index} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-4 md:gap-12`}>
-                  <div className="flex-1 w-full">
-                    <div className="flex items-center mb-3 md:mb-6">
-                      <div className={`w-10 h-10 md:w-16 md:h-16 bg-${item.color}-100 rounded-full flex items-center justify-center mr-3 md:mr-6 flex-shrink-0`}>
-                        <span className={`text-base md:text-2xl font-bold text-${item.color}-600`}>{item.step}</span>
-                      </div>
-                      <div>
-                        <h3 className="text-base md:text-2xl font-bold text-gray-900">{item.title}</h3>
-                        <p className="text-xs md:text-base text-gray-600 mt-0.5 md:mt-2">{item.description}</p>
-                      </div>
-                    </div>
-                    <ul className="space-y-1.5 md:space-y-3">
-                      {item.details.map((detail, detailIndex) => (
-                        <li key={detailIndex} className="flex items-start">
-                          <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center mt-0.5 mr-2 md:mr-3 flex-shrink-0">
-                            <i className={`ri-check-line text-${item.color}-500 text-xs md:text-sm`}></i>
-                          </div>
-                          <span className="text-xs md:text-sm text-gray-700">{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="flex-1 w-full">
-                    <img 
-                      src={item.image} 
-                      alt={item.title}
-                      className="w-full h-40 md:h-80 object-cover object-top rounded-xl"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Host Benefits */}
-            <div className="bg-gray-50 rounded-2xl p-4 md:p-8 mb-8 md:mb-16">
-              <h3 className="text-base md:text-2xl font-bold text-gray-900 text-center mb-5 md:mb-8">Why Host with Us?</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8">
-                {[
-                  { icon: 'ri-money-dollar-circle-line', color: 'green', title: 'Competitive Earnings', desc: 'Keep the majority of your booking revenue with our low commission rates' },
-                  { icon: 'ri-shield-check-line', color: 'blue', title: 'Host Protection', desc: 'Comprehensive insurance coverage and verified guest screening' },
-                  { icon: 'ri-customer-service-line', color: 'purple', title: 'Dedicated Support', desc: 'Get help from our host specialists during business hours' },
-                ].map(({ icon, color, title, desc }) => (
-                  <div key={title} className="text-center">
-                    <div className={`w-12 h-12 md:w-16 md:h-16 bg-${color}-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4`}>
-                      <div className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center">
-                        <i className={`${icon} text-xl md:text-2xl text-${color}-500`}></i>
-                      </div>
-                    </div>
-                    <h4 className="text-xs md:text-lg font-semibold text-gray-900 mb-1 md:mb-2">{title}</h4>
-                    <p className="text-gray-600 text-xs md:text-sm">{desc}</p>
-                  </div>
-                ))}
+      {/* Guarantees — dark band */}
+      <section className="bg-[#222222] text-white py-16 px-5">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-[20px] md:text-[28px] font-extrabold tracking-tight text-center">Why RentCottage.Ge?</h2>
+          <p className="text-center text-gray-300 max-w-lg mx-auto mt-2 mb-10">{'Guarantees you won\u2019t find elsewhere'}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {GUARANTEES.map((g) => (
+              <div key={g.title} className="bg-white/[0.06] border border-white/[0.14] rounded-card p-6 text-center">
+                <div className="text-[32px] leading-none" aria-hidden="true">{g.icon}</div>
+                <h3 className="text-[17px] font-bold mt-3 mb-2">{g.title}</h3>
+                <p className="text-sm text-gray-300 leading-relaxed">{g.desc}</p>
               </div>
-            </div>
-
-            {/* CTA for Hosts */}
-            <div className="text-center">
-              <button
-                onClick={() => navigate('/become-host')}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 md:px-8 py-2.5 md:py-4 rounded-lg font-medium text-sm md:text-lg transition-colors cursor-pointer whitespace-nowrap"
-              >
-                Start Hosting Today
-              </button>
-            </div>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-16 px-5">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-[20px] md:text-[28px] font-extrabold tracking-tight text-center text-ink">
+            Frequently asked questions
+          </h2>
+          <p className="text-center text-soft max-w-lg mx-auto mt-2 mb-10">
+            {'Didn\u2019t find your answer? Message us in chat or on WhatsApp'}
+          </p>
+          <div className="max-w-2xl mx-auto">
+            {FAQS.map((f, i) => (
+              <details
+                key={i}
+                open={i === 0}
+                className="group bg-white border border-line rounded-xl px-5 py-4 mb-3 [&_summary::-webkit-details-marker]:hidden"
+              >
+                <summary className="flex items-center justify-between gap-4 cursor-pointer list-none text-[15px] font-bold text-ink">
+                  {f.q}
+                  <span className="text-red-500 text-xl font-extrabold shrink-0 group-open:hidden" aria-hidden="true">+</span>
+                  <span className="text-red-500 text-xl font-extrabold shrink-0 hidden group-open:inline" aria-hidden="true">–</span>
+                </summary>
+                <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="bg-white border-t border-line py-16 px-5 text-center">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-[20px] md:text-[28px] font-extrabold tracking-tight text-ink">Ready to relax?</h2>
+          <p className="text-soft max-w-md mx-auto mt-2.5 mb-6">
+            Find your perfect cottage now — 500+ options across Georgia
+          </p>
+          <button
+            onClick={() => navigate(activeTab === 'guests' ? '/search' : '/become-host')}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl px-6 py-3.5 text-[15.5px] cursor-pointer transition-colors whitespace-nowrap"
+          >
+            {activeTab === 'guests' ? '🔍 Start searching' : '🏡 Become a host'}
+          </button>
+        </div>
+      </section>
 
       {/* Footer — shared component (owns Contact + Cancellation modals) */}
       <Footer />
