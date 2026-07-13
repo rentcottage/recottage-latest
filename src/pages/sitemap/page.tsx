@@ -16,50 +16,40 @@ export default function SiteMap() {
     isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
   };
 
-  const siteStructure = [
+  // Real, public-appropriate routes grouped into the mockup's three columns.
+  // (Gated surfaces like the admin panel are intentionally not exposed here.)
+  const columns = [
     {
-      category: 'Main Pages',
+      title: '🏠 For guests',
       links: [
-        { title: 'Home', path: '/', description: 'Discover Georgian cottages and experiences' },
-        { title: 'Search Results', path: '/search', description: 'Browse and filter available cottages' },
-        { title: 'Property Details', path: '/property/1', description: 'View detailed cottage information and book' }
-      ]
+        { label: 'Home', path: '/' },
+        { label: 'Search cottages', path: '/search' },
+        { label: 'Cottage page (sample)', path: '/property/1' },
+        { label: 'Experiences', path: '/book-experience' },
+        { label: 'Where to stay in Georgia', path: '/about-georgia' },
+        { label: 'How it works', path: '/how-it-works' },
+      ],
     },
     {
-      category: 'User Account',
+      title: '🏡 For hosts',
       links: [
-        { title: 'Profile', path: '/profile', description: 'Manage your account and bookings' }
-      ]
+        { label: 'Become a host', path: '/become-host' },
+        { label: 'Host guide', path: '/host-resources' },
+        { label: 'Host dashboard', path: '/host-dashboard' },
+      ],
     },
     {
-      category: 'Host Information',
+      title: '👤 Account & more',
       links: [
-        { title: 'Become a Host', path: '/become-host', description: 'Start hosting your property' },
-        { title: 'Host Resources', path: '/host-resources', description: 'Guides and tools for hosts' }
-      ]
+        { label: 'My profile', path: '/profile' },
+        { label: 'Terms & Conditions', path: '/terms' },
+        { label: 'Privacy Policy', path: '/privacy' },
+      ],
     },
-    {
-      category: 'About & Information',
-      links: [
-        { title: 'How It Works', path: '/how-it-works', description: 'Learn how our platform works' },
-        { title: 'About Georgia', path: '/about-georgia', description: 'Discover Georgian culture and destinations' }
-      ]
-    },
-    {
-      category: 'Legal & Support',
-      links: [
-        { title: 'Privacy Policy', path: '/privacy', description: 'Our privacy and data protection policy' },
-        { title: 'Terms & Conditions', path: '/terms', description: 'Terms and conditions for using the platform' }
-      ]
-    }
   ];
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#fafafa]">
       <SEO
         title="Site Map — RentCottage.Ge"
         description="Navigate through all pages and sections of RentCottage.Ge, the Georgian cottage rental platform."
@@ -69,111 +59,34 @@ export default function SiteMap() {
       />
       <Header />
 
-      {/* Hero Section */}
-      <section className="relative w-full h-[180px] sm:h-[260px] md:h-[340px] overflow-hidden">
-        <img
-          src="https://readdy.ai/api/search-image?query=panoramic%20Georgian%20mountain%20landscape%20Kazbegi%20Greater%20Caucasus%20range%20wide%20open%20valley%20soft%20morning%20light%20misty%20peaks%20green%20meadows%20no%20people%20calm%20serene%20minimal%20clean%20aerial%20view%20pastel%20tones%20golden%20hour%20glow%20vast%20sky%20peaceful%20nature&width=1600&height=500&seq=sitemap-hero-01&orientation=landscape"
-          alt="Georgian mountain landscape"
-          className="w-full h-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-black/25" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
-          <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-2 sm:mb-3">Site Map</h1>
-          <p className="text-xs sm:text-base md:text-lg text-white/85 max-w-2xl">
-            Navigate through all pages and sections of RentCottage.Ge
-          </p>
+      {/* Hero — white band, centered */}
+      <section className="bg-white border-b border-line py-10 text-center">
+        <div className="max-w-4xl mx-auto px-5">
+          <h1 className="text-[22px] md:text-[30px] font-extrabold text-ink tracking-tight">Site Map</h1>
+          <p className="text-soft text-sm mt-1.5">All pages in one place</p>
         </div>
       </section>
 
-      {/* Site Map Content */}
-      <section className="py-8 sm:py-12 md:py-16">
-        <div className="max-w-6xl mx-auto px-4">
-
-          {/* Site structure grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-            {siteStructure.map((section, index) => (
-              <div key={index} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
-                <h2 className="text-sm sm:text-base md:text-xl font-semibold text-gray-900 mb-3 sm:mb-5 md:mb-6 pb-2 sm:pb-3 border-b border-gray-100">
-                  {section.category}
-                </h2>
-                <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                  {section.links.map((link, linkIndex) => (
-                    <div key={linkIndex} className="group">
-                      <button
-                        onClick={() => handleNavigation(link.path)}
-                        className="block w-full text-left hover:bg-gray-50 rounded-lg p-2 sm:p-3 transition-colors cursor-pointer"
-                      >
-                        <h3 className="font-medium text-red-600 group-hover:text-red-700 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">
-                          {link.title}
-                        </h3>
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {link.description}
-                        </p>
-                        <span className="text-xs text-gray-400 mt-0.5 sm:mt-1 block">
-                          {link.path}
-                        </span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick Navigation */}
-          <div className="mt-8 sm:mt-12 md:mt-16 bg-red-50 rounded-2xl p-4 sm:p-6 md:p-8">
-            <div className="text-center mb-4 sm:mb-6 md:mb-8">
-              <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">Quick Navigation</h2>
-              <p className="text-gray-600 text-xs sm:text-sm md:text-base">
-                Jump directly to the most popular sections of our website
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              {[
-                { icon: 'ri-search-line', label: 'Search Cottages', path: '/search' },
-                { icon: 'ri-home-heart-line', label: 'Become Host', path: '/become-host' },
-                { icon: 'ri-question-line', label: 'How It Works', path: '/how-it-works' },
-                { icon: 'ri-map-pin-line', label: 'About Georgia', path: '/about-georgia' }
-              ].map((item, index) => (
+      {/* Three-column link grid */}
+      <div className="max-w-4xl mx-auto px-5 grid grid-cols-1 md:grid-cols-3 gap-5 py-10 md:py-14">
+        {columns.map((col) => (
+          <div key={col.title} className="bg-white border border-line rounded-card p-6">
+            <h2 className="text-[15px] font-extrabold text-ink mb-3.5 flex items-center gap-2">{col.title}</h2>
+            <div className="flex flex-col">
+              {col.links.map((link) => (
                 <button
-                  key={index}
-                  onClick={() => handleNavigation(item.path)}
-                  className="flex flex-col items-center p-3 sm:p-4 bg-white rounded-xl hover:shadow-md transition-shadow cursor-pointer"
+                  key={link.label}
+                  onClick={() => navigate(link.path)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground py-1.5 border-b border-[#fafafa] last:border-b-0 hover:text-red-500 transition-colors cursor-pointer text-left"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center mb-2 sm:mb-3">
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center">
-                      <i className={`${item.icon} text-lg sm:text-xl text-red-600`}></i>
-                    </div>
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">
-                    {item.label}
-                  </span>
+                  <span className="text-red-500 font-bold" aria-hidden="true">→</span>
+                  {link.label}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Contact Information */}
-          <div className="mt-8 sm:mt-12 md:mt-16 text-center">
-            <div className="bg-gray-50 rounded-2xl p-4 sm:p-6 md:p-8">
-              <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">Need Help Finding Something?</h2>
-              <p className="text-gray-600 text-xs sm:text-sm md:text-base mb-4 sm:mb-5 md:mb-6 max-w-2xl mx-auto">
-                If you can't find what you're looking for, our support team is here to help during business hours.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                <div className="flex items-center justify-center">
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center mr-1.5 sm:mr-2">
-                    <i className="ri-mail-line text-red-600 text-sm sm:text-base"></i>
-                  </div>
-                  <span className="text-gray-700 text-xs sm:text-sm md:text-base">info.rentcottage@gmail.com</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
+        ))}
+      </div>
 
       {/* Footer — shared component (owns Contact + Cancellation modals) */}
       <Footer />
