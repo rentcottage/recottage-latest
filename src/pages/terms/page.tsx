@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
@@ -322,6 +324,8 @@ const sections = [
 ];
 
 export default function TermsPage() {
+  const navigate = useNavigate();
+  const [activeId, setActiveId] = useState(sections[0].id);
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
   const jsonLd = {
@@ -333,8 +337,26 @@ export default function TermsPage() {
     isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
   };
 
+  // Scroll-spy: highlight the TOC entry for the section currently in view.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) setActiveId(visible[0].target.id);
+      },
+      { rootMargin: '-90px 0px -70% 0px', threshold: 0 },
+    );
+    sections.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  const updated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#fafafa]">
       <SEO
         title="Terms & Conditions — RentCottage.Ge"
         description="Read the Terms & Conditions for using RentCottage.Ge, the Georgian cottage rental platform. Learn about bookings, payments, cancellations, and user responsibilities."
@@ -343,96 +365,69 @@ export default function TermsPage() {
       />
       <Header />
 
-      {/* Hero bar */}
-      <div className="relative w-full h-[180px] sm:h-[240px] md:h-[320px] overflow-hidden">
-        <img
-          src="https://readdy.ai/api/search-image?query=cozy%20traditional%20Georgian%20stone%20mountain%20cabin%20cottage%20wooden%20balcony%20Svaneti%20style%20surrounded%20by%20pine%20forest%20autumn%20foliage%20warm%20golden%20light%20no%20people%20rustic%20premium%20natural%20landscape%20peaceful%20alpine%20setting%20soft%20warm%20tones&width=1600&height=460&seq=terms-hero-01&orientation=landscape"
-          alt="Georgian mountain cottage"
-          className="w-full h-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div className="absolute inset-0 flex flex-col justify-end px-4 pb-5 sm:pb-8 md:pb-12">
-          <div className="max-w-4xl mx-auto w-full">
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-white/70 mb-2 sm:mb-3">
-              <a href="/" className="hover:text-white transition-colors cursor-pointer">Home</a>
-              <div className="w-4 h-4 flex items-center justify-center">
-                <i className="ri-arrow-right-s-line text-white/50"></i>
-              </div>
-              <span className="text-white/90">Terms &amp; Conditions</span>
-            </div>
-            <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 sm:mb-2">Terms &amp; Conditions</h1>
-            <p className="text-white/70 text-xs sm:text-sm">
-              Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+      {/* Hero — white band, centered, with doc tabs */}
+      <section className="bg-white border-b border-line py-11 px-5 text-center">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-[22px] md:text-[32px] font-extrabold tracking-tight text-ink">Legal information</h1>
+          <p className="text-soft text-sm mt-2">Transparent terms — in plain language</p>
+          <div className="inline-flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 mt-5">
+            <button
+              className="text-sm font-bold px-5.5 py-2.5 rounded-full cursor-pointer bg-red-500 text-white whitespace-nowrap"
+              aria-current="page"
+            >
+              📄 Terms &amp; Conditions
+            </button>
+            <button
+              onClick={() => navigate('/privacy')}
+              className="text-sm font-bold px-5.5 py-2.5 rounded-full cursor-pointer transition-colors text-muted-foreground hover:text-ink whitespace-nowrap"
+            >
+              🔒 Privacy
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* TOC + content */}
+      <div className="max-w-5xl mx-auto px-5 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-9 py-9">
+        {/* Table of contents */}
+        <aside className="hidden md:block sticky top-[90px] h-fit bg-white border border-line rounded-card p-4.5">
+          <h3 className="text-[13px] font-extrabold uppercase tracking-wide text-soft mb-2.5">Contents</h3>
+          <nav>
+            {sections.map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className={`block text-[13.5px] px-2.5 py-1.5 rounded-lg border-l-[2.5px] transition-colors ${
+                  activeId === s.id
+                    ? 'text-red-500 font-bold border-red-500 bg-red-50'
+                    : 'text-muted-foreground border-transparent hover:text-red-500'
+                }`}
+              >
+                {s.number}. {s.title}
+              </a>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Content card */}
+        <main className="bg-white border border-line rounded-card p-6 md:px-9 md:py-8">
+          <p className="text-[12.5px] text-soft mb-5">Last updated: {updated}</p>
+
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-extrabold text-red-500 mb-1.5">💡 In short</h3>
+            <p className="text-[13.5px] text-muted-foreground m-0">
+              RentCottage.ge connects guests and hosts. You pay online or on arrival; free cancellation up to 48 hours
+              before check-in (unless the cottage page states otherwise). The full terms are below.
             </p>
           </div>
-        </div>
-      </div>
 
-      {/* Main content */}
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 md:py-16">
-        <div className="flex flex-col lg:flex-row gap-8 sm:gap-10">
-
-          {/* Table of Contents — sticky sidebar on desktop */}
-          <aside className="hidden lg:block w-56 flex-shrink-0">
-            <div className="sticky top-24">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Contents</p>
-              <nav className="space-y-1.5">
-                {sections.map((s) => (
-                  <a
-                    key={s.id}
-                    href={`#${s.id}`}
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-500 transition-colors cursor-pointer group"
-                  >
-                    <span className="text-xs font-mono text-gray-300 group-hover:text-red-300 w-5 flex-shrink-0">{s.number}.</span>
-                    <span className="leading-snug">{s.title}</span>
-                  </a>
-                ))}
-              </nav>
-            </div>
-          </aside>
-
-          {/* Sections */}
-          <div className="flex-1 min-w-0">
-            <div className="space-y-6 sm:space-y-8 md:space-y-12">
-              {sections.map((s) => (
-                <section key={s.id} id={s.id} className="scroll-mt-24">
-                  <div className="flex items-baseline gap-2 sm:gap-3 mb-3 sm:mb-4">
-                    <span className="text-xs font-mono font-bold text-red-400 bg-red-50 px-1.5 sm:px-2 py-0.5 rounded flex-shrink-0">
-                      {s.number}
-                    </span>
-                    <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">{s.title}</h2>
-                  </div>
-                  <div className="pl-0 md:pl-9 text-xs sm:text-sm">
-                    {s.content}
-                  </div>
-                  <div className="mt-6 sm:mt-8 md:mt-12 border-t border-gray-100" />
-                </section>
-              ))}
-            </div>
-
-            {/* Footer note */}
-            <div className="mt-6 sm:mt-10 bg-gray-50 rounded-xl p-4 sm:p-6 flex items-start gap-3 sm:gap-4">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <i className="ri-shield-check-line text-red-500 text-sm sm:text-base"></i>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base mb-1">Questions about these Terms?</h3>
-                <p className="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3">
-                  If you have any questions or concerns about these Terms &amp; Conditions, don&apos;t hesitate to reach out — we&apos;re happy to help.
-                </p>
-                <a
-                  href="mailto:info@rentcottage.ge"
-                  className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-red-500 hover:text-red-600 transition-colors cursor-pointer"
-                >
-                  <div className="w-4 h-4 flex items-center justify-center">
-                    <i className="ri-mail-line text-xs sm:text-sm"></i>
-                  </div>
-                  info@rentcottage.ge
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+          {sections.map((s) => (
+            <section key={s.id} id={s.id} className="scroll-mt-[90px] mb-7 last:mb-0 text-[14.5px] leading-relaxed">
+              <h2 className="text-[19px] font-extrabold text-ink mb-3">{s.number}. {s.title}</h2>
+              {s.content}
+            </section>
+          ))}
+        </main>
       </div>
 
       {/* Footer — shared component (owns Contact + Cancellation modals) */}
