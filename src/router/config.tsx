@@ -44,6 +44,8 @@ const HowItWorks = lazyPage(() => import('../pages/how-it-works/page'));
 const AboutGeorgia = lazyPage(() => import('../pages/about-georgia/page'));
 const SiteMap = lazyPage(() => import('../pages/sitemap/page'));
 const BookExperience = lazyPage(() => import('../pages/book-experience/page'));
+const Login = lazyPage(() => import('../pages/login/page'));
+const Register = lazyPage(() => import('../pages/register/page'));
 const AuthCallback = lazyPage(() => import('../pages/auth-callback/page'));
 const ResetPassword = lazyPage(() => import('../pages/auth-reset-password/page'));
 const AdminBookings = lazyPage(() => import('../pages/admin/page'));
@@ -123,6 +125,14 @@ const routes: RouteObject[] = [
   {
     path: '/book-experience',
     element: page(BookExperience)
+  },
+  {
+    path: '/login',
+    element: page(Login)
+  },
+  {
+    path: '/register',
+    element: page(Register)
   },
   {
     path: '/auth/callback',

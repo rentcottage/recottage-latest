@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, signOutUser } from '../../hooks/useAuth';
-import AuthModals from './AuthModals';
 import LanguageSelector from './LanguageSelector';
 import CancellationModal from './CancellationModal';
 
@@ -13,8 +12,6 @@ interface HeaderProps {
 export default function Header({}: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [showSignup, setShowSignup] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showMobileHelpModal, setShowMobileHelpModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
@@ -112,7 +109,7 @@ export default function Header({}: HeaderProps) {
               {/* Ghost "Log in" — logged out only (mockup CTA) */}
               {!loading && !isLoggedIn && (
                 <button
-                  onClick={() => setShowLogin(true)}
+                  onClick={() => navigate('/login')}
                   className="border-[1.5px] border-red-500 text-red-500 hover:bg-red-50 font-semibold rounded-xl px-4 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap"
                 >
                   Log in
@@ -147,8 +144,8 @@ export default function Header({}: HeaderProps) {
                       </>
                     ) : (
                       <>
-                        <MenuItem icon="ri-user-add-line" label="Sign up" onClick={() => { setShowSignup(true); setIsUserMenuOpen(false); }} bold />
-                        <MenuItem icon="ri-login-box-line" label="Log in" onClick={() => { setShowLogin(true); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-user-add-line" label="Sign up" onClick={() => { navigate('/register'); setIsUserMenuOpen(false); }} bold />
+                        <MenuItem icon="ri-login-box-line" label="Log in" onClick={() => { navigate('/login'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
                         <MenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
@@ -165,7 +162,7 @@ export default function Header({}: HeaderProps) {
               {/* Quick login pill — only when logged out */}
               {!loading && !isLoggedIn && (
                 <button
-                  onClick={() => setShowLogin(true)}
+                  onClick={() => navigate('/login')}
                   className="text-xs font-semibold text-red-500 border border-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors"
                 >
                   Log in
@@ -228,13 +225,13 @@ export default function Header({}: HeaderProps) {
             ) : (
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => { setIsMenuOpen(false); setShowSignup(true); }}
+                  onClick={() => { setIsMenuOpen(false); navigate('/register'); }}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg cursor-pointer transition-colors whitespace-nowrap"
                 >
                   Sign up
                 </button>
                 <button
-                  onClick={() => { setIsMenuOpen(false); setShowLogin(true); }}
+                  onClick={() => { setIsMenuOpen(false); navigate('/login'); }}
                   className="flex-1 border border-gray-300 text-gray-700 text-sm font-semibold py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors whitespace-nowrap"
                 >
                   Log in
@@ -274,16 +271,6 @@ export default function Header({}: HeaderProps) {
           </div>
         </div>
       )}
-
-      {/* Auth Modals */}
-      <AuthModals
-        showLogin={showLogin}
-        showSignup={showSignup}
-        onCloseLogin={() => setShowLogin(false)}
-        onCloseSignup={() => setShowSignup(false)}
-        onSwitchToSignup={() => { setShowLogin(false); setShowSignup(true); }}
-        onSwitchToLogin={() => { setShowSignup(false); setShowLogin(true); }}
-      />
 
       {/* Help Center Modal — Desktop only (unchanged) */}
       {showHelpModal && (
