@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
+import { useApprovedCount } from '../../hooks/useApprovedCount';
 
 type SeasonKey = 'summer' | 'autumn' | 'winter' | 'spring';
 
@@ -89,6 +90,7 @@ const PRACTICAL = [
 
 export default function AboutGeorgia() {
   const navigate = useNavigate();
+  const { count } = useApprovedCount();
   const [season, setSeason] = useState<SeasonKey>('summer');
 
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
@@ -245,7 +247,7 @@ export default function AboutGeorgia() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-[20px] md:text-[28px] font-extrabold tracking-tight text-ink">Ready to travel?</h2>
           <p className="text-muted-foreground max-w-md mx-auto mt-2.5 mb-6">
-            Pick a region and find your cottage — 500+ options across Georgia
+            Pick a region and find your cottage{count !== null ? ` — ${count} options` : ''} across Georgia
           </p>
           <button
             onClick={() => navigate('/search')}

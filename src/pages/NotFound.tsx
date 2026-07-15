@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom';
 import Header from '../components/feature/Header';
 import Footer from '../components/feature/Footer';
 import SEO from '../components/feature/SEO';
+import { useApprovedCount } from '../hooks/useApprovedCount';
 
 export default function NotFound() {
+  const { count } = useApprovedCount();
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEO
@@ -19,7 +21,7 @@ export default function NotFound() {
         </p>
         <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-ink">We couldn&apos;t find that cottage</h1>
         <p className="mt-3 max-w-md text-base md:text-lg text-soft">
-          The page you&apos;re looking for doesn&apos;t exist or has moved — but 500+ real cottages are waiting for you!
+          The page you&apos;re looking for doesn&apos;t exist or has moved — but {count !== null ? `${count} ` : ''}real cottages are waiting for you!
         </p>
         <Link
           to="/"

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
+import { useApprovedCount } from '../../hooks/useApprovedCount';
 
 interface Step {
   num: number;
@@ -16,7 +17,7 @@ const GUEST_STEPS: Step[] = [
     num: 1,
     title: 'Search',
     description: 'Pick a place, dates and guests',
-    bullets: ['500+ verified cottages', 'Filters: jacuzzi, fireplace, pool', 'Real photos and reviews'],
+    bullets: ['{count} verified cottages', 'Filters: jacuzzi, fireplace, pool', 'Real photos and reviews'],
   },
   {
     num: 2,
@@ -95,6 +96,7 @@ const FAQS = [
 ];
 
 export default function HowItWorks() {
+  const { count } = useApprovedCount();
   const [activeTab, setActiveTab] = useState<'guests' | 'hosts'>('guests');
   const navigate = useNavigate();
 
@@ -189,7 +191,7 @@ export default function HowItWorks() {
                   {step.bullets.map((b, i) => (
                     <li key={i} className="relative pl-5 text-[13.5px] text-muted-foreground">
                       <span className="absolute left-0 text-red-500 font-extrabold" aria-hidden="true">✓</span>
-                      {b}
+                      {b.replace('{count} ', count !== null ? `${count} ` : '')}
                     </li>
                   ))}
                 </ul>
@@ -249,7 +251,7 @@ export default function HowItWorks() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-[20px] md:text-[28px] font-extrabold tracking-tight text-ink">Ready to relax?</h2>
           <p className="text-soft max-w-md mx-auto mt-2.5 mb-6">
-            Find your perfect cottage now — 500+ options across Georgia
+            Find your perfect cottage now{count !== null ? ` — ${count} options` : ''} across Georgia
           </p>
           <button
             onClick={() => navigate(activeTab === 'guests' ? '/search' : '/become-host')}

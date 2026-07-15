@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { signInWithEmail, signInWithGoogle, signInWithFacebook, sendPasswordReset } from '../../hooks/useAuth';
 import SEO from '../../components/feature/SEO';
+import { useApprovedCount } from '../../hooks/useApprovedCount';
 
 // Public hCaptcha sitekey for rentcottage.ge — validated server-side by Supabase.
 const HCAPTCHA_SITE_KEY = '525e8946-9664-4210-8c24-6e9e1a4057ca';
@@ -11,6 +12,7 @@ type View = 'login' | 'forgot' | 'forgot-sent';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { count } = useApprovedCount();
   const [view, setView] = useState<View>('login');
 
   const [form, setForm] = useState({ email: '', password: '' });
@@ -129,7 +131,7 @@ export default function LoginPage() {
             <div className="mt-3.5 text-sm opacity-85">— Nino K., Gudauri · ★★★★★</div>
           </div>
           <div className="flex gap-3 flex-wrap text-[13px] font-semibold">
-            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ 500+ verified cottages</span>
+            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ {count !== null ? `${count} ` : ''}verified cottages</span>
             <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ Free cancellation</span>
             <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ Support in Georgian</span>
           </div>
