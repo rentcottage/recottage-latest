@@ -434,26 +434,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Guest reviews */}
-      <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <div className="mb-8 md:mb-10">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">What guests say</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
-          {[
-            { text: 'The cottage was exactly like the photos. The host was very attentive and booking took just minutes.', who: 'Nino K. · Gudauri, January 2026' },
-            { text: 'We stayed in Bakuriani with the family. No surprises on price — you pay exactly what\u2019s listed. We\u2019ll be back.', who: 'Giorgi M. · Bakuriani, February 2026' },
-            { text: 'Rented a winery cottage in Kakheti with friends. Tastings, views, calm — a perfect ten!', who: 'Tamar B. · Sighnaghi, October 2025' },
-          ].map((review, i) => (
-            <div key={i} className="bg-white rounded-card shadow-card p-6">
-              <div className="text-red-500 tracking-[2px] mb-2.5" translate="no" aria-hidden="true">★★★★★</div>
-              <p className="text-[14.5px] text-ink leading-relaxed">“{review.text}”</p>
-              <p className="mt-3.5 text-[13.5px] font-bold text-soft">{review.who}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Host CTA */}
       <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div

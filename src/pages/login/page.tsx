@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
-import { signInWithEmail, signInWithGoogle, signInWithFacebook, sendPasswordReset } from '../../hooks/useAuth';
+import { signInWithEmail, signInWithGoogle, sendPasswordReset } from '../../hooks/useAuth';
 import SEO from '../../components/feature/SEO';
 import { useApprovedCount } from '../../hooks/useApprovedCount';
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [forgotToken, setForgotToken] = useState('');
   const forgotCaptchaRef = useRef<HCaptchaLib>(null);
 
-  const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
+  const [socialLoading, setSocialLoading] = useState<'google' | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,15 +87,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleFacebook = async () => {
-    setSocialLoading('facebook');
-    try {
-      await signInWithFacebook();
-    } catch {
-      setSocialLoading(null);
-      setError('Could not start Facebook sign-in. Please try again.');
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -124,12 +115,6 @@ export default function LoginPage() {
           >
             Rent<span className="text-red-500">Cottage</span>.Ge
           </button>
-          <div>
-            <blockquote className="text-[clamp(18px,2.4vw,26px)] font-bold leading-snug max-w-md">
-              “I booked in minutes, and the cottage was exactly like the photos.”
-            </blockquote>
-            <div className="mt-3.5 text-sm opacity-85">— Nino K., Gudauri · ★★★★★</div>
-          </div>
           <div className="flex gap-3 flex-wrap text-[13px] font-semibold">
             <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ {count !== null ? `${count} ` : ''}verified cottages</span>
             <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ Free cancellation</span>
@@ -231,14 +216,6 @@ export default function LoginPage() {
                   >
                     <i className="ri-google-fill text-lg"></i>
                     {socialLoading === 'google' ? 'Connecting…' : 'Continue with Google'}
-                  </button>
-                  <button
-                    onClick={handleFacebook}
-                    disabled={socialLoading !== null}
-                    className="flex items-center justify-center gap-2.5 border-[1.5px] border-line rounded-xl py-3 text-[14.5px] font-bold text-ink hover:border-ink disabled:opacity-60 transition-colors cursor-pointer"
-                  >
-                    <i className="ri-facebook-circle-fill text-lg text-[#1877f2]"></i>
-                    {socialLoading === 'facebook' ? 'Connecting…' : 'Continue with Facebook'}
                   </button>
                 </div>
 
