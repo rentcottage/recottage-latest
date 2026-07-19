@@ -294,7 +294,7 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
-            { name: 'Gudauri', tag: 'Winter ski hub', img: '/redesign/region-gudauri.jpg' },
+            { name: 'Adjara', tag: 'Black Sea coast', img: '/redesign/region-adjara.jpg' },
             { name: 'Bakuriani', tag: 'Family favorite', img: '/redesign/region-bakuriani.jpg' },
             { name: 'Kakheti', tag: 'Wine country', img: '/redesign/region-kakheti.jpg' },
             { name: 'Kazbegi', tag: 'Mountain views', img: '/redesign/region-kazbegi.jpg' },
