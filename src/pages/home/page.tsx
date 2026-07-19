@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import SearchBar from '../../components/feature/SearchBar';
@@ -62,11 +62,18 @@ function seasonByMonth(m: number): SeasonKey {
 }
 
 export default function HomePage() {
-  // Seasonal hero — auto-selects by current month, switchable via the pills.
+  // Seasonal hero carousel — starts on the current month's season, then
+  // auto-advances through the rest on its own.
   const [season, setSeason] = useState<SeasonKey>(() => seasonByMonth(new Date().getMonth()));
   const [heroFading, setHeroFading] = useState(false);
-  const selectSeason = (key: SeasonKey) => {
-    if (key === season) return;
+  const seasonRef = useRef(season);
+  seasonRef.current = season;
+  const heroPausedRef = useRef(false);
+  const [carouselRestart, setCarouselRestart] = useState(0);
+
+  // Crossfade the hero to a season, preloading its image so the swap doesn't flash.
+  const transitionToSeason = useCallback((key: SeasonKey) => {
+    if (key === seasonRef.current) return;
     setHeroFading(true);
     const img = new Image();
     img.onload = img.onerror = () => {
@@ -74,6 +81,23 @@ export default function HomePage() {
       setHeroFading(false);
     };
     img.src = SEASONS[key].img;
+  }, []);
+
+  // Auto-advance through the seasons; pauses on hover and honors reduced-motion.
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const id = window.setInterval(() => {
+      if (heroPausedRef.current) return;
+      const i = SEASON_ORDER.indexOf(seasonRef.current);
+      transitionToSeason(SEASON_ORDER[(i + 1) % SEASON_ORDER.length]);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [transitionToSeason, carouselRestart]);
+
+  // Manual jump via the indicators — also resets the auto-advance countdown.
+  const goToSeason = (key: SeasonKey) => {
+    transitionToSeason(key);
+    setCarouselRestart((n) => n + 1);
   };
 
   const [promos, setPromos] = useState<Promo[]>([]);
@@ -185,10 +209,12 @@ export default function HomePage() {
       />
       <Header />
 
-      {/* Hero Section — seasonal (auto-selects by month, switchable). Search bar
-          floats below, overlapping the hero's bottom edge — matches the mockup. */}
+      {/* Hero Section — seasonal carousel that auto-rotates through the seasons.
+          Search bar floats below, overlapping the hero's bottom edge (mockup). */}
       <section
         className="relative w-full min-h-[60vh] md:min-h-[62vh] flex flex-col justify-center items-center text-center px-4 pt-28 pb-28 md:pt-32 md:pb-40 transition-[background-image] duration-500"
+        onMouseEnter={() => { heroPausedRef.current = true; }}
+        onMouseLeave={() => { heroPausedRef.current = false; }}
         style={{
           backgroundImage: `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)), url('${SEASONS[season].img}')`,
           backgroundSize: 'cover',
@@ -196,14 +222,15 @@ export default function HomePage() {
           backgroundRepeat: 'no-repeat',
         }}
       >
-        {/* Season switcher pills */}
+        {/* Carousel indicators — the hero auto-rotates; click a season to jump. */}
         <div className="absolute top-4 right-4 z-20 flex gap-1.5 bg-black/35 border border-white/25 rounded-full p-1.5">
           {SEASON_ORDER.map((key) => (
             <button
               key={key}
               type="button"
-              aria-label={`${key} season`}
-              onClick={() => selectSeason(key)}
+              aria-label={`Show ${key} hero`}
+              aria-current={season === key}
+              onClick={() => goToSeason(key)}
               className={`text-xs md:text-[13px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-opacity ${
                 season === key ? 'bg-red-500 text-white opacity-100' : 'text-white opacity-75 hover:opacity-100'
               }`}
