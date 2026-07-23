@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
-import SearchBar from '../../components/feature/SearchBar';
+import CinematicHero from '../../components/feature/CinematicHero';
 import PropertyCard from '../../components/feature/PropertyCard';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
@@ -9,97 +9,7 @@ import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, type Promo } from '../../lib/promos';
 
-type SeasonKey = 'winter' | 'spring' | 'summer' | 'autumn';
-
-interface SeasonContent {
-  label: string;
-  img: string;
-  title: string;
-  sub: string;
-  badges: string[];
-}
-
-// Seasonal hero content (ported from the mockup script). Source stays English —
-// Google Translate localizes it at runtime like the rest of the app.
-const SEASONS: Record<SeasonKey, SeasonContent> = {
-  winter: {
-    label: 'Winter',
-    img: '/redesign/season-winter.jpg',
-    title: 'Winter in the mountains awaits',
-    sub: 'Warm cottages in Gudauri and Bakuriani — close to the slopes, with a fireplace and jacuzzi',
-    badges: ['🎿 Close to the slopes', '♨️ Jacuzzi in the snow', '🔥 Fireplace & warmth'],
-  },
-  spring: {
-    label: 'Spring',
-    img: '/redesign/season-spring.jpg',
-    title: 'Spring — get ahead of the season',
-    sub: 'Blossoming valleys and peaceful cottages — book early at the best price',
-    badges: ['🌸 Blossoming nature', '💰 Early-bird prices', '🏞 Peaceful season'],
-  },
-  summer: {
-    label: 'Summer',
-    img: '/redesign/season-summer.jpg',
-    title: 'Escape the city heat',
-    sub: 'Cool mountain air in Racha, Svaneti and Borjomi — a yard, a grill and the sound of the river',
-    badges: ['⛰ Cool mountain air', '🍖 Grill & yard', '🏞 By the river'],
-  },
-  autumn: {
-    label: 'Autumn',
-    img: '/redesign/season-autumn.jpg',
-    title: 'Harvest season in Kakheti',
-    sub: 'Winery cottages in the vineyards — tastings, golden autumn and a Georgian feast',
-    badges: ['🍷 Winery cottages', '🍇 Harvest & tastings', '🍂 Golden autumn'],
-  },
-};
-
-const SEASON_ORDER: SeasonKey[] = ['winter', 'spring', 'summer', 'autumn'];
-
-function seasonByMonth(m: number): SeasonKey {
-  if (m === 11 || m <= 2) return 'winter';
-  if (m <= 4) return 'spring';
-  if (m <= 7) return 'summer';
-  return 'autumn';
-}
-
 export default function HomePage() {
-  // Seasonal hero carousel — starts on the current month's season, then
-  // auto-advances through the rest on its own.
-  const [season, setSeason] = useState<SeasonKey>(() => seasonByMonth(new Date().getMonth()));
-  const [heroFading, setHeroFading] = useState(false);
-  const seasonRef = useRef(season);
-  seasonRef.current = season;
-  const heroPausedRef = useRef(false);
-  const [carouselRestart, setCarouselRestart] = useState(0);
-
-  // Crossfade the hero to a season, preloading its image so the swap doesn't flash.
-  const transitionToSeason = useCallback((key: SeasonKey) => {
-    if (key === seasonRef.current) return;
-    setHeroFading(true);
-    const img = new Image();
-    img.onload = img.onerror = () => {
-      setSeason(key);
-      setHeroFading(false);
-    };
-    img.src = SEASONS[key].img;
-  }, []);
-
-  // Auto-advance through the seasons; pauses on hover and honors reduced-motion.
-  useEffect(() => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    const id = window.setInterval(() => {
-      if (heroPausedRef.current) return;
-      const i = SEASON_ORDER.indexOf(seasonRef.current);
-      transitionToSeason(SEASON_ORDER[(i + 1) % SEASON_ORDER.length]);
-    }, 6000);
-    return () => window.clearInterval(id);
-  }, [transitionToSeason, carouselRestart]);
-
-  // Manual jump via the indicators — also resets the auto-advance countdown.
-  const goToSeason = (key: SeasonKey) => {
-    transitionToSeason(key);
-    setCarouselRestart((n) => n + 1);
-  };
-
   const [promos, setPromos] = useState<Promo[]>([]);
 
   // Offers & Promos — dormant until FEATURE_FLAGS.ENABLE_PROMOS is flipped on.
@@ -207,76 +117,10 @@ export default function HomePage() {
         jsonLd={jsonLd}
         ogImage="https://rentcottage.ge/og-image.png"
       />
-      <Header />
+      <Header overlay />
 
-      {/* Hero Section — seasonal carousel that auto-rotates through the seasons.
-          Search bar floats below, overlapping the hero's bottom edge (mockup). */}
-      <section
-        className="relative w-full min-h-[60vh] md:min-h-[62vh] flex flex-col justify-center items-center text-center px-4 pt-28 pb-28 md:pt-32 md:pb-40 transition-[background-image] duration-500"
-        onMouseEnter={() => { heroPausedRef.current = true; }}
-        onMouseLeave={() => { heroPausedRef.current = false; }}
-        style={{
-          backgroundImage: `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)), url('${SEASONS[season].img}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        {/* Carousel indicators — the hero auto-rotates; click a season to jump. */}
-        <div className="absolute top-4 right-4 z-20 flex gap-1.5 bg-black/35 border border-white/25 rounded-full p-1.5">
-          {SEASON_ORDER.map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-label={`Show ${key} hero`}
-              aria-current={season === key}
-              onClick={() => goToSeason(key)}
-              className={`text-xs md:text-[13px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-opacity ${
-                season === key ? 'bg-red-500 text-white opacity-100' : 'text-white opacity-75 hover:opacity-100'
-              }`}
-            >
-              {SEASONS[key].label}
-            </button>
-          ))}
-        </div>
-
-        {/* Hero content */}
-        <div className="relative z-10 w-full flex flex-col items-center text-center px-4">
-          <h1
-            className={`text-3xl md:text-5xl font-extrabold text-white mb-3 md:mb-5 leading-tight tracking-tight drop-shadow-md max-w-3xl transition-opacity duration-300 ${
-              heroFading ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            {SEASONS[season].title}
-          </h1>
-          <p
-            className={`text-base md:text-lg text-white/95 mb-5 md:mb-7 max-w-xl leading-relaxed transition-opacity duration-300 ${
-              heroFading ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            {SEASONS[season].sub}
-          </p>
-          <div
-            className={`flex flex-wrap justify-center gap-2.5 md:gap-3 transition-opacity duration-300 ${
-              heroFading ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            {SEASONS[season].badges.map((badge, i) => (
-              <span
-                key={i}
-                className="bg-white/15 border border-white/30 text-white text-xs md:text-[13.5px] font-semibold px-3.5 py-1.5 rounded-full"
-              >
-                {badge}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Floating search card — overlaps the hero's bottom edge (mockup) */}
-      <div className="relative z-20 w-full max-w-[940px] mx-auto px-4 -mt-12 md:-mt-14">
-        <SearchBar />
-      </div>
+      {/* Cinematic hero — outside→inside window reveal (landing-redesign) */}
+      <CinematicHero />
 
       {/* Popular destinations — region cards */}
       <section className="py-12 md:py-16 px-4 md:px-6 max-w-6xl mx-auto">

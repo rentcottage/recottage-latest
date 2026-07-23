@@ -7,10 +7,13 @@ import CancellationModal from './CancellationModal';
 interface HeaderProps {
   onStaysClick?: () => void;
   onExperiencesClick?: () => void;
+  /** Float transparently over a hero and solidify on scroll (home page). */
+  overlay?: boolean;
 }
 
-export default function Header({}: HeaderProps) {
+export default function Header({ overlay = false }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showMobileHelpModal, setShowMobileHelpModal] = useState(false);
@@ -39,6 +42,21 @@ export default function Header({}: HeaderProps) {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
+  // Overlay mode: transparent over the hero, solid once the user scrolls past it.
+  useEffect(() => {
+    if (!overlay) return;
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [overlay]);
+
+  // Transparent (light-on-dark) treatment only while overlaying an un-scrolled hero.
+  const dark = overlay && !scrolled && !isMenuOpen;
+  const navLinkCls = `transition-colors cursor-pointer whitespace-nowrap ${
+    dark ? 'hover:text-white' : 'hover:text-red-500'
+  }`;
+
   // Lock body scroll when mobile menu is open
   useEffect(() => {
     if (isMenuOpen) {
@@ -56,15 +74,24 @@ export default function Header({}: HeaderProps) {
 
   return (
     <div onClick={handleOutsideClick}>
-      {/* Sticky blurred header — mockup "new look" */}
-      <header className="sticky top-0 z-50 border-b border-line bg-[rgba(255,255,255,0.94)] backdrop-blur-md">
+      {/* Sticky blurred header — mockup "new look". In overlay mode it floats
+          transparently over the hero and fades to solid white on scroll. */}
+      <header
+        className={`${overlay ? 'fixed' : 'sticky'} top-0 inset-x-0 z-50 border-b transition-colors duration-300 ${
+          dark
+            ? 'bg-transparent border-transparent'
+            : 'bg-[rgba(255,255,255,0.94)] border-line backdrop-blur-md'
+        }`}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16 md:h-[68px] gap-4">
 
             {/* Logo */}
             <h1
               translate="no"
-              className="notranslate text-lg md:text-[21px] font-extrabold text-ink cursor-pointer whitespace-nowrap tracking-tight"
+              className={`notranslate text-lg md:text-[21px] font-extrabold cursor-pointer whitespace-nowrap tracking-tight transition-colors ${
+                dark ? 'text-white' : 'text-ink'
+              }`}
               style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: 800 }}
               onClick={() => navigate('/')}
             >
@@ -72,29 +99,21 @@ export default function Header({}: HeaderProps) {
             </h1>
 
             {/* ── Desktop nav links ── */}
-            <nav className="hidden md:flex items-center gap-6 ml-auto text-[14.5px] font-medium text-gray-700">
-              <button
-                onClick={() => navigate('/search')}
-                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
-              >
+            <nav
+              className={`hidden md:flex items-center gap-6 ml-auto text-[14.5px] font-medium transition-colors ${
+                dark ? 'text-white/90' : 'text-gray-700'
+              }`}
+            >
+              <button onClick={() => navigate('/search')} className={navLinkCls}>
                 Search
               </button>
-              <button
-                onClick={() => navigate('/how-it-works')}
-                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
-              >
+              <button onClick={() => navigate('/how-it-works')} className={navLinkCls}>
                 How It Works
               </button>
-              <button
-                onClick={() => navigate('/about-georgia')}
-                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
-              >
+              <button onClick={() => navigate('/about-georgia')} className={navLinkCls}>
                 About Georgia
               </button>
-              <button
-                onClick={() => navigate('/become-host')}
-                className="hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
-              >
+              <button onClick={() => navigate('/become-host')} className={navLinkCls}>
                 Become a Host
               </button>
             </nav>
@@ -102,15 +121,21 @@ export default function Header({}: HeaderProps) {
             {/* ── Desktop right cluster ── */}
             <div className="hidden md:flex items-center gap-2">
               {/* Pill language control */}
-              <div className="flex items-center rounded-full border border-line px-1.5 py-0.5 hover:border-gray-300 transition-colors">
-                <LanguageSelector variant="desktop" />
+              <div className={`flex items-center rounded-full border px-1.5 py-0.5 transition-colors ${
+                dark ? 'border-white/40 hover:border-white/70' : 'border-line hover:border-gray-300'
+              }`}>
+                <LanguageSelector variant="desktop" onDark={dark} />
               </div>
 
               {/* Ghost "Log in" — logged out only (mockup CTA) */}
               {!loading && !isLoggedIn && (
                 <button
                   onClick={() => navigate('/login')}
-                  className="border-[1.5px] border-red-500 text-red-500 hover:bg-red-50 font-semibold rounded-xl px-4 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap"
+                  className={`border-[1.5px] font-semibold rounded-xl px-4 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap ${
+                    dark
+                      ? 'border-white/70 text-white hover:bg-white/10'
+                      : 'border-red-500 text-red-500 hover:bg-red-50'
+                  }`}
                 >
                   Log in
                 </button>
@@ -119,11 +144,13 @@ export default function Header({}: HeaderProps) {
               {/* Account menu */}
               <div className="relative user-menu-container">
                 <div
-                  className="flex items-center border border-gray-300 rounded-full p-1 hover:shadow-md transition-shadow cursor-pointer"
+                  className={`flex items-center border rounded-full p-1 hover:shadow-md transition-shadow cursor-pointer ${
+                    dark ? 'border-white/40' : 'border-gray-300'
+                  }`}
                   onClick={(e) => { e.stopPropagation(); setIsUserMenuOpen((o) => !o); }}
                 >
                   <div className="w-8 h-8 flex items-center justify-center">
-                    <i className="ri-menu-line text-gray-700"></i>
+                    <i className={`ri-menu-line ${dark ? 'text-white' : 'text-gray-700'}`}></i>
                   </div>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ml-1 ${isLoggedIn ? 'bg-red-500' : 'bg-gray-500'}`}>
                     <i className="ri-user-line text-white"></i>
@@ -163,7 +190,9 @@ export default function Header({}: HeaderProps) {
               {!loading && !isLoggedIn && (
                 <button
                   onClick={() => navigate('/login')}
-                  className="text-xs font-semibold text-red-500 border border-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors"
+                  className={`text-xs font-semibold border px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors ${
+                    dark ? 'text-white border-white/70 hover:bg-white/10' : 'text-red-500 border-red-500 hover:bg-red-50'
+                  }`}
                 >
                   Log in
                 </button>
@@ -176,11 +205,13 @@ export default function Header({}: HeaderProps) {
               )}
               {/* Hamburger */}
               <button
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
+                className={`w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-colors ${
+                  dark ? 'hover:bg-white/10' : 'hover:bg-gray-100'
+                }`}
                 onClick={() => setIsMenuOpen(true)}
                 aria-label="Open menu"
               >
-                <i className="ri-menu-3-line text-gray-700 text-xl"></i>
+                <i className={`ri-menu-3-line text-xl ${dark ? 'text-white' : 'text-gray-700'}`}></i>
               </button>
             </div>
 

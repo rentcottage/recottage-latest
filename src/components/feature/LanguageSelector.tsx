@@ -51,9 +51,11 @@ function triggerGoogleTranslate(targetCode: string) {
 interface LanguageSelectorProps {
   variant?: 'desktop' | 'mobile';
   onClose?: () => void;
+  /** Recolor the desktop trigger for a dark/transparent header (e.g. the home hero overlay). */
+  onDark?: boolean;
 }
 
-export default function LanguageSelector({ variant = 'desktop', onClose }: LanguageSelectorProps) {
+export default function LanguageSelector({ variant = 'desktop', onClose, onDark = false }: LanguageSelectorProps) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<string>(detectCurrentLang);
   const ref = useRef<HTMLDivElement>(null);
@@ -112,11 +114,13 @@ export default function LanguageSelector({ variant = 'desktop', onClose }: Langu
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-gray-700 hover:text-red-500 cursor-pointer transition-colors group"
+        className={`flex items-center gap-1 cursor-pointer transition-colors group ${
+          onDark ? 'text-white/90 hover:text-white' : 'text-gray-700 hover:text-red-500'
+        }`}
         aria-label="Select language"
       >
         <div className="w-8 h-8 flex items-center justify-center">
-          <i className="ri-global-line text-lg group-hover:text-red-500 transition-colors"></i>
+          <i className={`ri-global-line text-lg transition-colors ${onDark ? 'group-hover:text-white' : 'group-hover:text-red-500'}`}></i>
         </div>
         <span className="text-sm font-medium hidden lg:block whitespace-nowrap">{currentLabel}</span>
         <div className="w-4 h-4 flex items-center justify-center">
