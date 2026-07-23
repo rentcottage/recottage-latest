@@ -268,7 +268,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-[26px] mt-8 md:mt-[34px]">
             {[
               { icon: '🛡️', title: 'Verified cottages', desc: 'We personally check every listing — the photos match reality' },
-              { icon: '💳', title: 'Secure payment', desc: 'Pay by card or in installments. Funds are released to the host after check-in' },
+              { icon: '💳', title: 'Secure payment', desc: 'Pay securely by card. Funds are released to the host after check-in' },
               { icon: '💬', title: 'Support in Georgian', desc: 'Our team answers calls and chats every day, 9:00–23:00' },
               { icon: '↩️', title: 'Flexible cancellation', desc: 'Free cancellation up to 48 hours before check-in — a full refund' },
             ].map((item) => (

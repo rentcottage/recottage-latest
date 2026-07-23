@@ -36,7 +36,7 @@ export default function Footer() {
                 with no hidden fees.
               </p>
               <div className="flex flex-wrap gap-2">
-                {['VISA', 'Mastercard', 'TBC', 'BOG', 'Installment'].map((p) => (
+                {['VISA', 'Mastercard', 'TBC', 'BOG'].map((p) => (
                   <span
                     key={p}
                     className="bg-white/10 rounded-md px-2.5 py-1 text-xs font-semibold text-gray-200"
