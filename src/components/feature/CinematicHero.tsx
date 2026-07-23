@@ -167,10 +167,6 @@ export default function CinematicHero() {
             >
               Wake up to this view
             </h1>
-            <p className="mt-4 mx-auto max-w-[560px] text-white/90 text-[clamp(14px,1.6vw,18px)]">
-              500+ verified cottages across Georgia. Book directly with the host, prices in GEL,
-              free cancellation.
-            </p>
           </div>
 
           {/* Live search card + amenity quick-filters */}
