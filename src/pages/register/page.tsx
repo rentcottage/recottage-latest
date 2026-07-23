@@ -93,7 +93,7 @@ export default function RegisterPage() {
           className="hidden md:flex flex-col justify-between p-11 text-white"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(15,15,15,.55),rgba(15,15,15,.55)), url('/redesign/region-gudauri.jpg')",
+              "linear-gradient(rgba(15,15,15,.35),rgba(15,15,15,.6)), url('/redesign/auth-cottage.jpg')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
