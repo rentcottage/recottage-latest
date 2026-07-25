@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DEFAULT_LANG, STORAGE_KEY, isLang, type Lang } from './config';
-import { messages, type Messages } from './messages';
+import { messages } from './messages';
 
 type Vars = Record<string, string | number>;
 
@@ -74,7 +74,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         typeof active === 'string'
           ? active
           : (() => {
-              const en = lookup(messages.en as Messages, key);
+              const en = lookup(messages.en, key);
               return typeof en === 'string' ? en : key;
             })();
       return interpolate(value, vars);
@@ -90,8 +90,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       const active =
         lookup(messages[lang], `${key}.${category}`) ??
         lookup(messages[lang], `${key}.other`) ??
-        lookup(messages.en as Messages, `${key}.${category}`) ??
-        lookup(messages.en as Messages, `${key}.other`) ??
+        lookup(messages.en, `${key}.${category}`) ??
+        lookup(messages.en, `${key}.other`) ??
         key;
       const value = typeof active === 'string' ? active : key;
       return interpolate(value, { count, ...vars });
