@@ -139,7 +139,7 @@ export default function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
             { name: 'Adjara', tag: 'Black Sea coast', img: '/redesign/region-adjara.jpg' },
-            { name: 'Bakuriani', tag: 'Family favorite', img: '/redesign/region-bakuriani.jpg' },
+            { name: 'Racha', tag: 'Untouched nature', img: '/redesign/region-racha.jpg' },
             { name: 'Kakheti', tag: 'Wine country', img: '/redesign/region-kakheti.jpg' },
             { name: 'Kazbegi', tag: 'Mountain views', img: '/redesign/region-kazbegi.jpg' },
           ].map((region) => (
