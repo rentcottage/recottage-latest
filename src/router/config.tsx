@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import type { ComponentType } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import Home from '../pages/home/page';
+import { useT } from '../i18n';
 
 // Route-level code splitting: every page except Home loads its own chunk on
 // demand. Before this, all 22 pages (admin panel, host dashboard, corporate,
@@ -57,13 +58,14 @@ const CorporateDashboard = lazyPage(() => import('../pages/corporate/dashboard/p
 
 // Minimal centered spinner shown only during a lazy chunk fetch (~50-200 ms).
 function RouteFallback() {
+  const { t } = useT();
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="flex items-center gap-3 text-gray-400">
         <div className="w-5 h-5 flex items-center justify-center animate-spin">
           <i className="ri-loader-4-line text-xl"></i>
         </div>
-        <span className="text-sm">Loading…</span>
+        <span className="text-sm">{t('common.loading')}</span>
       </div>
     </div>
   );

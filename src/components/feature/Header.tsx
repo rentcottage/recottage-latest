@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, signOutUser } from '../../hooks/useAuth';
 import LanguageSelector from './LanguageSelector';
 import CancellationModal from './CancellationModal';
+import { useT } from '../../i18n';
 
 interface HeaderProps {
   onStaysClick?: () => void;
@@ -21,6 +22,7 @@ export default function Header({ overlay = false }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, loading } = useAuth();
+  const { t } = useT();
 
   const handleLogout = () => {
     // Close menus and navigate immediately — no waiting on network
@@ -105,16 +107,16 @@ export default function Header({ overlay = false }: HeaderProps) {
               }`}
             >
               <button onClick={() => navigate('/search')} className={navLinkCls}>
-                Search
+                {t('nav.search')}
               </button>
               <button onClick={() => navigate('/how-it-works')} className={navLinkCls}>
-                How It Works
+                {t('nav.howItWorks')}
               </button>
               <button onClick={() => navigate('/about-georgia')} className={navLinkCls}>
-                About Georgia
+                {t('nav.aboutGeorgia')}
               </button>
               <button onClick={() => navigate('/become-host')} className={navLinkCls}>
-                Become a Host
+                {t('nav.becomeHost')}
               </button>
             </nav>
 
@@ -137,7 +139,7 @@ export default function Header({ overlay = false }: HeaderProps) {
                       : 'border-red-500 text-red-500 hover:bg-red-50'
                   }`}
                 >
-                  Log in
+                  {t('common.login')}
                 </button>
               )}
 
@@ -161,22 +163,22 @@ export default function Header({ overlay = false }: HeaderProps) {
                   <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                     {isLoggedIn ? (
                       <>
-                        <MenuItem icon="ri-user-line" label="My Profile" onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); }} />
-                        <MenuItem icon="ri-layout-line" label="Host Dashboard" onClick={() => { navigate('/host-dashboard'); setIsUserMenuOpen(false); }} />
-                        <MenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-user-line" label={t('nav.myProfile')} onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-layout-line" label={t('nav.hostDashboard')} onClick={() => { navigate('/host-dashboard'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-logout-box-line" label="Log out" onClick={handleLogout} />
+                        <MenuItem icon="ri-logout-box-line" label={t('nav.logOut')} onClick={handleLogout} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-question-line" label="Help Center" onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-question-line" label={t('nav.helpCenter')} onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
                       </>
                     ) : (
                       <>
                         <MenuItem icon="ri-user-add-line" label="Sign up" onClick={() => { navigate('/register'); setIsUserMenuOpen(false); }} bold />
                         <MenuItem icon="ri-login-box-line" label="Log in" onClick={() => { navigate('/login'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
                         <div className="border-t border-gray-100 my-2" />
-                        <MenuItem icon="ri-question-line" label="Help Center" onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-question-line" label={t('nav.helpCenter')} onClick={() => { setShowHelpModal(true); setIsUserMenuOpen(false); }} />
                       </>
                     )}
                   </div>
@@ -194,7 +196,7 @@ export default function Header({ overlay = false }: HeaderProps) {
                     dark ? 'text-white border-white/70 hover:bg-white/10' : 'text-red-500 border-red-500 hover:bg-red-50'
                   }`}
                 >
-                  Log in
+                  {t('common.login')}
                 </button>
               )}
               {/* User avatar dot — when logged in */}
@@ -249,8 +251,8 @@ export default function Header({ overlay = false }: HeaderProps) {
                   <i className="ri-user-line text-white"></i>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">My Account</p>
-                  <p className="text-xs text-gray-500">Logged in</p>
+                  <p className="text-sm font-semibold text-gray-900">{t('nav.myAccount')}</p>
+                  <p className="text-xs text-gray-500">{t('nav.loggedIn')}</p>
                 </div>
               </div>
             ) : (
@@ -259,13 +261,13 @@ export default function Header({ overlay = false }: HeaderProps) {
                   onClick={() => { setIsMenuOpen(false); navigate('/register'); }}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg cursor-pointer transition-colors whitespace-nowrap"
                 >
-                  Sign up
+                  {t('common.signUp')}
                 </button>
                 <button
                   onClick={() => { setIsMenuOpen(false); navigate('/login'); }}
                   className="flex-1 border border-gray-300 text-gray-700 text-sm font-semibold py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors whitespace-nowrap"
                 >
-                  Log in
+                  {t('common.login')}
                 </button>
               </div>
             )}
@@ -275,20 +277,20 @@ export default function Header({ overlay = false }: HeaderProps) {
           <div className="flex-1 overflow-y-auto px-3 py-3">
             {isLoggedIn && (
               <>
-                <MobileMenuItem icon="ri-user-line" label="My Profile" onClick={() => mobileNavTo('/profile')} />
-                <MobileMenuItem icon="ri-layout-line" label="Host Dashboard" onClick={() => mobileNavTo('/host-dashboard')} />
+                <MobileMenuItem icon="ri-user-line" label={t('nav.myProfile')} onClick={() => mobileNavTo('/profile')} />
+                <MobileMenuItem icon="ri-layout-line" label={t('nav.hostDashboard')} onClick={() => mobileNavTo('/host-dashboard')} />
                 <div className="border-t border-gray-100 my-2" />
               </>
             )}
 
-            <MobileMenuItem icon="ri-home-heart-line" label="Become a Host" onClick={() => mobileNavTo('/become-host')} />
-            <MobileMenuItem icon="ri-search-line" label="Search Cottages" onClick={() => mobileNavTo('/search')} />
-            <MobileMenuItem icon="ri-map-pin-line" label="About Georgia" onClick={() => mobileNavTo('/about-georgia')} />
-            <MobileMenuItem icon="ri-information-line" label="How It Works" onClick={() => mobileNavTo('/how-it-works')} />
+            <MobileMenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => mobileNavTo('/become-host')} />
+            <MobileMenuItem icon="ri-search-line" label={t('nav.searchCottages')} onClick={() => mobileNavTo('/search')} />
+            <MobileMenuItem icon="ri-map-pin-line" label={t('nav.aboutGeorgia')} onClick={() => mobileNavTo('/about-georgia')} />
+            <MobileMenuItem icon="ri-information-line" label={t('nav.howItWorks')} onClick={() => mobileNavTo('/how-it-works')} />
 
             <div className="border-t border-gray-100 my-2" />
 
-            <MobileMenuItem icon="ri-question-line" label="Help Center" onClick={() => { setIsMenuOpen(false); setShowMobileHelpModal(true); }} />
+            <MobileMenuItem icon="ri-question-line" label={t('nav.helpCenter')} onClick={() => { setIsMenuOpen(false); setShowMobileHelpModal(true); }} />
 
             <div className="border-t border-gray-100 my-2" />
             <LanguageSelector variant="mobile" onClose={() => setIsMenuOpen(false)} />
@@ -296,7 +298,7 @@ export default function Header({ overlay = false }: HeaderProps) {
             {isLoggedIn && (
               <>
                 <div className="border-t border-gray-100 my-2" />
-                <MobileMenuItem icon="ri-logout-box-line" label="Log out" onClick={handleLogout} danger />
+                <MobileMenuItem icon="ri-logout-box-line" label={t('nav.logOut')} onClick={handleLogout} danger />
               </>
             )}
           </div>
@@ -309,7 +311,7 @@ export default function Header({ overlay = false }: HeaderProps) {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Help Center</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900">{t('nav.helpCenter')}</h2>
                 <button onClick={() => setShowHelpModal(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer">
                   <i className="ri-close-line text-xl"></i>
                 </button>
@@ -369,7 +371,7 @@ export default function Header({ overlay = false }: HeaderProps) {
           <div className="bg-white rounded-t-2xl w-full max-h-[85vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-bold text-gray-900">Help Center</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('nav.helpCenter')}</h2>
               <button
                 onClick={() => setShowMobileHelpModal(false)}
                 className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors"

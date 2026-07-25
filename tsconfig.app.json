@@ -33,6 +33,7 @@
       "@lib/*": ["src/lib/*"],
       "@pages/*": ["src/pages/*"],
       "@router/*": ["src/router/*"],
+      "@i18n/*": ["src/i18n/*"],
       "@mocks/*": ["src/mocks/*"]
     }
   },

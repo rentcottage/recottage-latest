@@ -73,6 +73,7 @@ export default defineConfig({
       '@lib': resolve(__dirname, './src/lib'),
       '@pages': resolve(__dirname, './src/pages'),
       '@router': resolve(__dirname, './src/router'),
+      '@i18n': resolve(__dirname, './src/i18n'),
       '@mocks': resolve(__dirname, './src/mocks'),
     }
   },

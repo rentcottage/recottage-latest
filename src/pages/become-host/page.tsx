@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
@@ -7,50 +7,15 @@ import SEO from '../../components/feature/SEO';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { supabase } from '../../lib/supabase';
 import { compressImage } from '../../lib/imageCompression';
+import { useLang } from '../../i18n';
 
 const PROPERTY_APP_FN_URL =
   'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/property-application-handler';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
-function useCurrentLang(): string {
-  const [lang, setLang] = useState<string>(() => {
-    try {
-      const cookies = document.cookie.split('; ');
-      const gt = cookies.find((c) => c.startsWith('googtrans='));
-      if (gt) {
-        const parts = gt.split('=')[1].split('/');
-        const code = parts[parts.length - 1];
-        if (code && code.length === 2) return code;
-      }
-    } catch { /* ignore */ }
-    return 'en';
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        const cookies = document.cookie.split('; ');
-        const gt = cookies.find((c) => c.startsWith('googtrans='));
-        if (gt) {
-          const parts = gt.split('=')[1].split('/');
-          const code = parts[parts.length - 1];
-          if (code && code.length === 2) {
-            setLang(code);
-            return;
-          }
-        }
-      } catch { /* ignore */ }
-      setLang('en');
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return lang;
-}
-
 export default function BecomeHost() {
-  const currentLang = useCurrentLang();
+  const { lang: currentLang } = useLang();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');

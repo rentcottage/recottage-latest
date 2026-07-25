@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
+import { useLang } from '@/i18n';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
@@ -67,21 +68,6 @@ interface BookingWidgetProps {
 /** ₾ amounts: whole numbers stay whole, fractional show 2 decimals. */
 function formatGel(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
-}
-
-/** Detect the active Google Translate language from the cookie */
-function detectGoogleTranslateLang(): string {
-  try {
-    const cookies = document.cookie.split('; ');
-    const gt = cookies.find((c) => c.startsWith('googtrans='));
-    if (gt) {
-      const parts = gt.split('=')[1].split('/');
-      return parts[parts.length - 1] ?? 'en';
-    }
-  } catch {
-    // ignore
-  }
-  return 'en';
 }
 
 // ─── Booking Form ─────────────────────────────────────────────────────────────
@@ -560,16 +546,7 @@ export default function BookingWidget({
 }: BookingWidgetProps) {
   const captchaRef = useRef<HCaptchaLib>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [lang, setLang] = useState<string>('en');
-
-  // Detect Google Translate language on mount and whenever the cookie might change
-  useEffect(() => {
-    const detect = () => setLang(detectGoogleTranslateLang());
-    detect();
-    // Re-detect after a short delay (Google Translate sets cookie asynchronously)
-    const timer = setInterval(detect, 1500);
-    return () => clearInterval(timer);
-  }, []);
+  const { lang } = useLang();
 
   // Lock body scroll when sheet is open
   useEffect(() => {

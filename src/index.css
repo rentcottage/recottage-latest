@@ -189,30 +189,6 @@ body {
   min-height: 100vh;
 }
 
-/* ── Google Translate – hide the default toolbar / banner ── */
-.goog-te-banner-frame,
-#goog-gt-tt,
-.goog-te-balloon-frame,
-.goog-te-ftab-float,
-#goog-gt- {
-  display: none !important;
-}
-body {
-  top: 0 !important;
-  position: static !important;
-}
-.goog-text-highlight {
-  background: none !important;
-  box-shadow: none !important;
-}
-.VIpgJd-ZVi9od-l4eHX-hSRGPd,
-.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
-  display: none !important;
-}
-.skiptranslate {
-  display: none !important;
-}
-
 /* ── Cinematic landing hero (landing-redesign port) ──────────────────────
    Outside→inside window reveal. Every keyframe is disabled under
    prefers-reduced-motion (see the guard at the end of this block), where the

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
+import { useT } from '../../i18n';
 
 // Local production assets (no Unsplash hotlinking — see public/redesign/).
 const EXTERIOR = "url('/redesign/hero-exterior.jpg')";
@@ -11,14 +12,13 @@ const SUNSET_FILTER = 'sepia(.3) saturate(1.35) hue-rotate(-12deg) brightness(.9
 
 // Amenity quick-filters. Each maps to a real value the /search page filters on
 // (searchParams `amenities`, substring-matched) so every chip is a live filter,
-// never a dead control. Source copy stays English — Google Translate localizes
-// it at runtime like the rest of the app.
-const HERO_CHIPS: { label: string; amenity: string }[] = [
-  { label: 'Hot tub', amenity: 'Hot Tub' },
-  { label: 'Fireplace', amenity: 'Fireplace' },
-  { label: 'Mountain view', amenity: 'Mountain View' },
-  { label: 'Swimming pool', amenity: 'Swimming Pool' },
-  { label: 'Pet-friendly', amenity: 'Pet Friendly' },
+// never a dead control. `labelKey` resolves via the i18n catalog at render.
+const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
+  { labelKey: 'hero.chipHotTub', amenity: 'Hot Tub' },
+  { labelKey: 'hero.chipFireplace', amenity: 'Fireplace' },
+  { labelKey: 'hero.chipMountainView', amenity: 'Mountain View' },
+  { labelKey: 'hero.chipSwimmingPool', amenity: 'Swimming Pool' },
+  { labelKey: 'hero.chipPetFriendly', amenity: 'Pet Friendly' },
 ];
 
 type Phase = 'out' | 'crossfade' | 'in';
@@ -38,6 +38,7 @@ const prefersReducedMotion = () =>
  */
 export default function CinematicHero() {
   const navigate = useNavigate();
+  const { t } = useT();
   // Reduced-motion users start (and stay) on the functional "inside" state.
   const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'in' : 'out'));
   const [sunset, setSunset] = useState(false);
@@ -136,13 +137,13 @@ export default function CinematicHero() {
             className="text-xs font-extrabold uppercase text-white/80"
             style={{ letterSpacing: '.35em' }}
           >
-            Outside · Nature
+            {t('hero.outsideLabel')}
           </div>
           <div
             className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)]"
             style={{ textShadow: '0 2px 18px rgba(0,0,0,.45)' }}
           >
-            Your cottage in the Caucasus mountains
+            {t('hero.outsideTitle')}
           </div>
         </div>
 
@@ -159,13 +160,13 @@ export default function CinematicHero() {
               className="text-xs font-extrabold uppercase text-white/80"
               style={{ letterSpacing: '.35em' }}
             >
-              Inside · Comfort
+              {t('hero.insideLabel')}
             </div>
             <h1
               className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)]"
               style={{ textShadow: '0 2px 18px rgba(0,0,0,.45)' }}
             >
-              Wake up to this view
+              {t('hero.insideTitle')}
             </h1>
           </div>
 
@@ -183,7 +184,7 @@ export default function CinematicHero() {
                   onClick={() => navigate(`/search?amenities=${encodeURIComponent(chip.amenity)}`)}
                   className="rounded-full border border-white/40 bg-black/25 backdrop-blur-sm text-white text-xs font-bold px-[15px] py-[7px] hover:bg-black/40 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  {chip.label}
+                  {t(chip.labelKey)}
                 </button>
               ))}
             </div>
@@ -203,7 +204,7 @@ export default function CinematicHero() {
         }`}
       >
         <i className="ri-sun-line" aria-hidden="true" />
-        Golden hour
+        {t('hero.goldenHour')}
       </button>
 
       <button
@@ -212,7 +213,7 @@ export default function CinematicHero() {
         className="hidden md:inline-flex items-center gap-1.5 absolute bottom-6 right-6 z-20 rounded-full border border-white/30 bg-black/30 text-white text-xs font-bold px-4 py-2.5 backdrop-blur-sm hover:bg-black/50 transition-colors cursor-pointer"
       >
         <i className="ri-restart-line" aria-hidden="true" />
-        Replay intro
+        {t('hero.replay')}
       </button>
 
       <div

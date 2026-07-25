@@ -4,6 +4,7 @@ import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { signInWithEmail, signInWithGoogle, sendPasswordReset } from '../../hooks/useAuth';
 import SEO from '../../components/feature/SEO';
 import { useApprovedCount } from '../../hooks/useApprovedCount';
+import { useT } from '../../i18n';
 
 // Public hCaptcha sitekey for rentcottage.ge — validated server-side by Supabase.
 const HCAPTCHA_SITE_KEY = '525e8946-9664-4210-8c24-6e9e1a4057ca';
@@ -13,6 +14,7 @@ type View = 'login' | 'forgot' | 'forgot-sent';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { count } = useApprovedCount();
+  const { t } = useT();
   const [view, setView] = useState<View>('login');
 
   const [form, setForm] = useState({ email: '', password: '' });
@@ -116,9 +118,9 @@ export default function LoginPage() {
             Rent<span className="text-red-500">Cottage</span>.Ge
           </button>
           <div className="flex gap-3 flex-wrap text-[13px] font-semibold">
-            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ {count !== null ? `${count} ` : ''}verified cottages</span>
-            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ Free cancellation</span>
-            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ Support in Georgian</span>
+            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ {count !== null ? `${count} ` : ''}{t('auth.badgeVerified')}</span>
+            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ {t('auth.badgeFreeCancellation')}</span>
+            <span className="bg-white/[0.14] border border-white/30 px-3.5 py-1.5 rounded-full">✓ {t('auth.badgeSupport')}</span>
           </div>
         </div>
 
@@ -137,24 +139,24 @@ export default function LoginPage() {
             {/* Pill tabs */}
             <div className="flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 mb-6">
               <button className="flex-1 py-2.5 rounded-full text-[14.5px] font-bold bg-red-500 text-white cursor-pointer" aria-current="page">
-                Log in
+                {t('auth.login')}
               </button>
               <button
                 onClick={() => navigate('/register')}
                 className="flex-1 py-2.5 rounded-full text-[14.5px] font-bold text-muted-foreground hover:text-ink transition-colors cursor-pointer"
               >
-                Register
+                {t('auth.register')}
               </button>
             </div>
 
             {view === 'login' && (
               <>
-                <h1 className="text-[22px] font-extrabold text-ink mb-1.5">Welcome back 👋</h1>
-                <p className="text-sm text-soft mb-5">Log in to manage your bookings and listings</p>
+                <h1 className="text-[22px] font-extrabold text-ink mb-1.5">{t('auth.welcomeBack')}</h1>
+                <p className="text-sm text-soft mb-5">{t('auth.welcomeBackSub')}</p>
 
                 <form onSubmit={handleLogin}>
                   <label className="block text-[12.5px] font-bold mt-3.5 mb-1.5">
-                    Email <span className="text-red-500">*</span>
+                    {t('auth.email')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -165,7 +167,7 @@ export default function LoginPage() {
                     required
                   />
                   <label className="block text-[12.5px] font-bold mt-3.5 mb-1.5">
-                    Password <span className="text-red-500">*</span>
+                    {t('auth.password')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="password"
@@ -181,7 +183,7 @@ export default function LoginPage() {
                     onClick={() => { setView('forgot'); setError(''); }}
                     className="block ml-auto mt-2 text-[12.5px] font-bold text-red-500 hover:text-red-600 cursor-pointer"
                   >
-                    Forgot password?
+                    {t('auth.forgotPassword')}
                   </button>
 
                   <div className="mt-4">
@@ -200,12 +202,12 @@ export default function LoginPage() {
                     disabled={loading}
                     className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white font-bold rounded-xl py-3.5 text-[15.5px] mt-5 cursor-pointer transition-colors"
                   >
-                    {loading ? 'Logging in…' : 'Log in'}
+                    {loading ? t('auth.loggingIn') : t('auth.login')}
                   </button>
                 </form>
 
                 <div className="flex items-center gap-3 my-5 text-soft text-[13px] before:content-[''] before:flex-1 before:h-px before:bg-line after:content-[''] after:flex-1 after:h-px after:bg-line">
-                  or continue
+                  {t('auth.orContinue')}
                 </div>
 
                 <div className="grid gap-2.5">
@@ -215,7 +217,7 @@ export default function LoginPage() {
                     className="flex items-center justify-center gap-2.5 border-[1.5px] border-line rounded-xl py-3 text-[14.5px] font-bold text-ink hover:border-ink disabled:opacity-60 transition-colors cursor-pointer"
                   >
                     <i className="ri-google-fill text-lg"></i>
-                    {socialLoading === 'google' ? 'Connecting…' : 'Continue with Google'}
+                    {socialLoading === 'google' ? t('common.loading') : t('auth.continueGoogle')}
                   </button>
                 </div>
 

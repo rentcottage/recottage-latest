@@ -9,14 +9,35 @@ interface State {
 }
 
 /**
- * App-wide error boundary. Without this, any render-time throw — most notably the
- * Google Translate ⇄ React DOM conflict (see lib/googleTranslateGuard.ts) —
- * unmounts the whole tree to a blank white screen. This catches the throw and
- * shows a recoverable, on-brand fallback with a reload action instead.
+ * App-wide error boundary. Catches any render-time throw and shows a recoverable,
+ * on-brand fallback with a reload action instead of unmounting the whole tree to a
+ * blank white screen.
+ *
+ * Note: this sits OUTSIDE <I18nProvider> (so it can catch provider errors too) and
+ * is a class component, so it can't use the useT() hook. It localizes its three
+ * fallback strings by reading the persisted language from localStorage directly.
  *
  * Uses inline styles so the fallback renders even if the crash left the stylesheet
  * or surrounding layout in a bad state.
  */
+
+const FALLBACK_STRINGS: Record<string, { title: string; sub: string; reload: string }> = {
+  ka: {
+    title: 'რაღაც შეწდომა მოხდა',
+    sub: 'გვერდმა მოულოდნელი შეცდომა დააფიქსირა. გვერდის განახლება დაგეხმარებათ.',
+    reload: 'გვერდის განახლება',
+  },
+  en: {
+    title: 'Something went wrong',
+    sub: 'The page hit an unexpected error. Reloading usually fixes it.',
+    reload: 'Reload page',
+  },
+  ru: {
+    title: 'Что-то пошло не так',
+    sub: 'На странице произошла ошибка. Обычно помогает перезагрузка.',
+    reload: 'Перезагрузить',
+  },
+};
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
@@ -34,6 +55,15 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+
+    let lang = 'ka';
+    try {
+      const stored = localStorage.getItem('rc_lang');
+      if (stored && stored in FALLBACK_STRINGS) lang = stored;
+    } catch {
+      /* ignore */
+    }
+    const s = FALLBACK_STRINGS[lang];
 
     return (
       <div
@@ -65,14 +95,10 @@ export default class ErrorBoundary extends Component<Props, State> {
             ⚠️
           </div>
           <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>
-            Something went wrong
+            {s.title}
           </h1>
           <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.5, margin: '0 0 20px' }}>
-            The page hit an unexpected error. Reloading usually fixes it.
-            <br />
-            <span translate="no" style={{ color: '#9ca3af' }}>
-              გვერდის განახლება დაგეხმარებათ
-            </span>
+            {s.sub}
           </p>
           <button
             type="button"
@@ -88,7 +114,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Reload page
+            {s.reload}
           </button>
         </div>
       </div>

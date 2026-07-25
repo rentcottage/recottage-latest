@@ -3,9 +3,11 @@ import Header from '../components/feature/Header';
 import Footer from '../components/feature/Footer';
 import SEO from '../components/feature/SEO';
 import { useApprovedCount } from '../hooks/useApprovedCount';
+import { useT } from '../i18n';
 
 export default function NotFound() {
   const { count } = useApprovedCount();
+  const { t } = useT();
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEO
@@ -19,31 +21,31 @@ export default function NotFound() {
         <p className="font-extrabold text-red-500 leading-none tracking-tight" style={{ fontSize: 'clamp(80px,14vw,130px)' }}>
           4<span className="inline-block rotate-12" translate="no">🏚</span>4
         </p>
-        <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-ink">We couldn&apos;t find that cottage</h1>
+        <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-ink">{t('notFound.title')}</h1>
         <p className="mt-3 max-w-md text-base md:text-lg text-soft">
-          The page you&apos;re looking for doesn&apos;t exist or has moved — but {count !== null ? `${count} ` : ''}real cottages are waiting for you!
+          {t('notFound.sub', { count: count !== null ? `${count} ` : '' })}
         </p>
         <Link
           to="/"
           className="mt-8 inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-3.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
         >
           <i className="ri-home-5-line"></i>
-          Back to home
+          {t('notFound.backHome')}
         </Link>
 
         {/* Alternative destinations */}
         <div className="flex flex-wrap justify-center gap-3 mt-7">
           {[
-            { to: '/search', label: 'Search cottages' },
-            { to: '/about-georgia', label: 'Where to stay' },
-            { to: '/book-experience', label: 'Experiences' },
+            { to: '/search', labelKey: 'notFound.altSearch' },
+            { to: '/about-georgia', labelKey: 'notFound.altStay' },
+            { to: '/book-experience', labelKey: 'notFound.altExperiences' },
           ].map((alt) => (
             <Link
               key={alt.to}
               to={alt.to}
               className="border-[1.5px] border-line rounded-full px-4 py-2 text-[13.5px] font-bold text-gray-600 hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap"
             >
-              {alt.label}
+              {t(alt.labelKey)}
             </Link>
           ))}
         </div>

@@ -8,8 +8,10 @@ import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, type Promo } from '../../lib/promos';
+import { useT } from '../../i18n';
 
 export default function HomePage() {
+  const { t } = useT();
   const [promos, setPromos] = useState<Promo[]>([]);
 
   // Offers & Promos — dormant until FEATURE_FLAGS.ENABLE_PROMOS is flipped on.
@@ -126,22 +128,22 @@ export default function HomePage() {
       <section className="py-12 md:py-16 px-4 md:px-6 max-w-6xl mx-auto">
         <div className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">Popular destinations</h2>
-            <p className="text-soft mt-1">Pick a region and discover its best cottages</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.popularDestinations')}</h2>
+            <p className="text-soft mt-1">{t('home.popularSub')}</p>
           </div>
           <button
             onClick={() => navigate('/search')}
             className="text-red-500 font-bold text-sm hover:text-red-600 transition-colors cursor-pointer whitespace-nowrap"
           >
-            All regions →
+            {t('home.allRegions')}
           </button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
-            { name: 'Adjara', tag: 'Black Sea coast', img: '/redesign/region-adjara.jpg' },
-            { name: 'Racha', tag: 'Untouched nature', img: '/redesign/region-racha.jpg' },
-            { name: 'Kakheti', tag: 'Wine country', img: '/redesign/region-kakheti.jpg' },
-            { name: 'Kazbegi', tag: 'Mountain views', img: '/redesign/region-kazbegi.jpg' },
+            { name: 'Adjara', nameKey: 'home.regionAdjara', tagKey: 'home.regionAdjaraTag', img: '/redesign/region-adjara.jpg' },
+            { name: 'Racha', nameKey: 'home.regionRacha', tagKey: 'home.regionRachaTag', img: '/redesign/region-racha.jpg' },
+            { name: 'Kakheti', nameKey: 'home.regionKakheti', tagKey: 'home.regionKakhetiTag', img: '/redesign/region-kakheti.jpg' },
+            { name: 'Kazbegi', nameKey: 'home.regionKazbegi', tagKey: 'home.regionKazbegiTag', img: '/redesign/region-kazbegi.jpg' },
           ].map((region) => (
             <button
               key={region.name}
@@ -151,8 +153,8 @@ export default function HomePage() {
             >
               <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
               <span className="relative z-10 text-white">
-                <span className="block text-lg md:text-[19px] font-extrabold">{region.name}</span>
-                <span className="block text-xs md:text-[13px] opacity-90">{region.tag}</span>
+                <span className="block text-lg md:text-[19px] font-extrabold">{t(region.nameKey)}</span>
+                <span className="block text-xs md:text-[13px] opacity-90">{t(region.tagKey)}</span>
               </span>
             </button>
           ))}
@@ -209,20 +211,20 @@ export default function HomePage() {
         {/* Featured Properties */}
         <div id="property-listings" className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">Featured cottages</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.featured')}</h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <p className="text-soft">Top-rated cottages this week</p>
+              <p className="text-soft">{t('home.featuredSub')}</p>
               {dbLoading ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
                   <span className="w-3 h-3 flex items-center justify-center animate-spin">
                     <i className="ri-loader-4-line"></i>
                   </span>
-                  Loading live listings…
+                  {t('home.loadingLive')}
                 </span>
               ) : (totalCount ?? dbProperties.length) > 0 ? (
                 <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
-                  {totalCount ?? dbProperties.length} live listing{(totalCount ?? dbProperties.length) !== 1 ? 's' : ''} from real hosts
+                  {t('home.liveListings', { count: totalCount ?? dbProperties.length })}
                 </span>
               ) : null}
             </div>
@@ -231,7 +233,7 @@ export default function HomePage() {
             onClick={() => navigate('/search')}
             className="text-red-500 font-bold text-sm hover:text-red-600 transition-colors cursor-pointer whitespace-nowrap"
           >
-            View all →
+            {t('home.viewAll')}
           </button>
         </div>
 
@@ -241,7 +243,7 @@ export default function HomePage() {
               <span className="w-5 h-5 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line text-xl"></i>
               </span>
-              <span className="text-sm">Loading listings…</span>
+              <span className="text-sm">{t('home.loadingListings')}</span>
             </div>
           </div>
         ) : featuredProperties.length > 0 ? (
@@ -255,8 +257,8 @@ export default function HomePage() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <i className="ri-home-2-line text-2xl text-gray-400"></i>
             </div>
-            <h3 className="text-base font-semibold text-gray-700 mb-1">No cottages available yet</h3>
-            <p className="text-sm text-gray-400">Listings coming soon — check back shortly.</p>
+            <h3 className="text-base font-semibold text-gray-700 mb-1">{t('home.noListings')}</h3>
+            <p className="text-sm text-gray-400">{t('home.noListingsSub')}</p>
           </div>
         )}
       </section>
@@ -264,18 +266,18 @@ export default function HomePage() {
       {/* Trust band — why choose us (4 static items, mockup) */}
       <section className="bg-[#222222] text-white py-14 md:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-center tracking-tight">Why RentCottage.Ge?</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-center tracking-tight">{t('home.why')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-[26px] mt-8 md:mt-[34px]">
             {[
-              { icon: '🛡️', title: 'Verified cottages', desc: 'We personally check every listing — the photos match reality' },
-              { icon: '💳', title: 'Secure payment', desc: 'Pay securely by card. Funds are released to the host after check-in' },
-              { icon: '💬', title: 'Support in Georgian', desc: 'Our team answers calls and chats every day, 9:00–23:00' },
-              { icon: '↩️', title: 'Flexible cancellation', desc: 'Free cancellation up to 48 hours before check-in — a full refund' },
+              { icon: '🛡️', titleKey: 'home.whyVerifiedTitle', descKey: 'home.whyVerifiedDesc' },
+              { icon: '💳', titleKey: 'home.whySecureTitle', descKey: 'home.whySecureDesc' },
+              { icon: '💬', titleKey: 'home.whySupportTitle', descKey: 'home.whySupportDesc' },
+              { icon: '↩️', titleKey: 'home.whyFlexibleTitle', descKey: 'home.whyFlexibleDesc' },
             ].map((item) => (
-              <div key={item.title} className="text-left">
+              <div key={item.titleKey} className="text-left">
                 <div className="text-3xl leading-none" aria-hidden="true">{item.icon}</div>
-                <h3 className="text-[16.5px] font-bold mt-2.5 mb-1.5">{item.title}</h3>
-                <p className="text-[13.5px] opacity-85 leading-relaxed">{item.desc}</p>
+                <h3 className="text-[16.5px] font-bold mt-2.5 mb-1.5">{t(item.titleKey)}</h3>
+                <p className="text-[13.5px] opacity-85 leading-relaxed">{t(item.descKey)}</p>
               </div>
             ))}
           </div>
@@ -285,21 +287,21 @@ export default function HomePage() {
       {/* How it works */}
       <section className="py-14 md:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="mb-8 md:mb-10">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">How it works</h2>
-          <p className="text-soft mt-1">Book in just 3 steps</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.howTitle')}</h2>
+          <p className="text-soft mt-1">{t('home.howSub')}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
           {[
-            { n: 1, title: 'Search', desc: 'Pick a region, dates and guests — filter by jacuzzi, fireplace or pool' },
-            { n: 2, title: 'Book', desc: 'Request to book or message the host. Payment is safe and secure' },
-            { n: 3, title: 'Relax', desc: 'Get check-in details and enjoy your stay. We\u2019re here if you need us' },
+            { n: 1, titleKey: 'home.step1Title', descKey: 'home.step1Desc' },
+            { n: 2, titleKey: 'home.step2Title', descKey: 'home.step2Desc' },
+            { n: 3, titleKey: 'home.step3Title', descKey: 'home.step3Desc' },
           ].map((step) => (
             <div key={step.n} className="bg-white border border-line rounded-card p-6 md:p-7">
               <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 font-extrabold text-lg flex items-center justify-center mb-3.5">
                 {step.n}
               </div>
-              <h3 className="text-[17px] font-bold text-ink mb-1.5">{step.title}</h3>
-              <p className="text-sm text-soft leading-relaxed">{step.desc}</p>
+              <h3 className="text-[17px] font-bold text-ink mb-1.5">{t(step.titleKey)}</h3>
+              <p className="text-sm text-soft leading-relaxed">{t(step.descKey)}</p>
             </div>
           ))}
         </div>
@@ -316,15 +318,15 @@ export default function HomePage() {
             backgroundPosition: 'center',
           }}
         >
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">Have a cottage? Earn more</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">{t('home.hostCtaTitle')}</h2>
           <p className="max-w-xl mx-auto opacity-95 mb-6">
-            List your cottage for free, get bookings directly, and pay a commission only on successful stays
+            {t('home.hostCtaSub')}
           </p>
           <button
             onClick={() => navigate('/become-host')}
             className="bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl px-6 py-3 cursor-pointer transition-colors whitespace-nowrap"
           >
-            List your cottage for free
+            {t('home.hostCtaButton')}
           </button>
         </div>
       </section>
