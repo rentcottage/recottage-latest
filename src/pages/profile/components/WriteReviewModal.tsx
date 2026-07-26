@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
+import { useT } from '../../../i18n';
 
 interface WriteReviewModalProps {
   propertyId: string;
@@ -11,8 +12,9 @@ interface WriteReviewModalProps {
 }
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useT();
   const [hover, setHover] = useState(0);
-  const labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  const labels = ['', t('account.writeReviewModal.ratingPoor'), t('account.writeReviewModal.ratingFair'), t('account.writeReviewModal.ratingGood'), t('account.writeReviewModal.ratingVeryGood'), t('account.writeReviewModal.ratingExcellent')];
   return (
     <div>
       <div className="flex items-center gap-1.5">
@@ -43,6 +45,7 @@ export default function WriteReviewModal({
   onClose,
   onSuccess,
 }: WriteReviewModalProps) {
+  const { t } = useT();
   const { user } = useAuth();
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
@@ -70,7 +73,7 @@ export default function WriteReviewModal({
     });
 
     if (insertError) {
-      setError('Something went wrong. Please try again.');
+      setError(t('account.writeReviewModal.somethingWrongError'));
     } else {
       onSuccess();
       onClose();
@@ -84,7 +87,7 @@ export default function WriteReviewModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Write a Review</h2>
+            <h2 className="text-sm font-semibold text-gray-900">{t('account.writeReviewModal.title')}</h2>
             <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{propertyTitle}</p>
           </div>
           <button
@@ -100,7 +103,7 @@ export default function WriteReviewModal({
           {/* Rating */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">
-              Overall Rating <span className="text-red-400">*</span>
+              {t('account.writeReviewModal.overallRating')} <span className="text-red-400">*</span>
             </label>
             <StarPicker value={rating} onChange={setRating} />
           </div>
@@ -108,12 +111,12 @@ export default function WriteReviewModal({
           {/* Review text */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">
-              Your Experience <span className="text-red-400">*</span>
+              {t('account.writeReviewModal.yourExperience')} <span className="text-red-400">*</span>
             </label>
             <textarea
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value.slice(0, 500))}
-              placeholder="Share what you loved about this place — the atmosphere, the host, the location..."
+              placeholder={t('account.writeReviewModal.experiencePlaceholder')}
               rows={5}
               maxLength={500}
               required
@@ -141,14 +144,14 @@ export default function WriteReviewModal({
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-loader-4-line animate-spin"></i>
                   </div>
-                  Submitting...
+                  {t('account.writeReviewModal.submittingEllipsis')}
                 </>
               ) : (
                 <>
                   <div className="w-4 h-4 flex items-center justify-center">
                     <i className="ri-star-fill text-yellow-400 text-xs"></i>
                   </div>
-                  Submit Review
+                  {t('account.writeReviewModal.submitReview')}
                 </>
               )}
             </button>
@@ -157,7 +160,7 @@ export default function WriteReviewModal({
               onClick={onClose}
               className="px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap"
             >
-              Cancel
+              {t('account.writeReviewModal.cancel')}
             </button>
           </div>
         </form>

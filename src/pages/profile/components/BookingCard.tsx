@@ -5,6 +5,9 @@ import type { Booking } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
 import ChangeDatesModal from './ChangeDatesModal';
 import WriteReviewModal from './WriteReviewModal';
+import { useT } from '../../../i18n';
+
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
 const BOOKING_HANDLER_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/booking-handler';
 
@@ -47,23 +50,24 @@ function getStatusColor(status: string) {
   }
 }
 
-function getStatusLabel(status: string) {
+function getStatusLabel(status: string, t: TFunc) {
   const labels: Record<string, string> = {
-    confirmed: 'Confirmed',
-    pending: 'Pending Review',
-    pending_host_approval: 'Awaiting Host Approval',
-    pending_payment: 'Pending Payment',
-    cancelled: 'Cancelled',
-    cancelled_by_host: 'Cancelled by Host',
-    rejected: 'Not Approved',
-    completed: 'Completed',
-    payment_failed: 'Payment Failed',
-    refund_pending: 'Refund Pending',
+    confirmed: t('account.bookingCard.statusConfirmed'),
+    pending: t('account.bookingCard.statusPendingReview'),
+    pending_host_approval: t('account.bookingCard.statusAwaitingHostApproval'),
+    pending_payment: t('account.bookingCard.statusPendingPayment'),
+    cancelled: t('account.bookingCard.statusCancelled'),
+    cancelled_by_host: t('account.bookingCard.statusCancelledByHost'),
+    rejected: t('account.bookingCard.statusNotApproved'),
+    completed: t('account.bookingCard.statusCompleted'),
+    payment_failed: t('account.bookingCard.statusPaymentFailed'),
+    refund_pending: t('account.bookingCard.statusRefundPending'),
   };
   return labels[status] ?? status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
+  const { t, plural } = useT();
   const { user } = useAuth();
   const [showChangeDates, setShowChangeDates] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -148,14 +152,14 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        showToast(data.error ?? 'Could not cancel booking. Please try again.', 'error');
+        showToast(data.error ?? t('account.bookingCard.couldNotCancelError'), 'error');
       } else {
-        showToast('Booking cancelled. A confirmation email has been sent to you.', 'success');
+        showToast(t('account.bookingCard.cancelledSuccessToast'), 'success');
         setShowCancelConfirm(false);
         onRefresh();
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('account.bookingCard.networkError'), 'error');
     } finally {
       setCancelling(false);
     }
@@ -199,22 +203,22 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
               <i className="ri-calendar-line text-gray-400 text-xs"></i>
               {booking.check_in} &rarr; {booking.check_out}
               &nbsp;&middot;&nbsp;
-              {booking.guests} guest{booking.guests !== 1 ? 's' : ''}
+              {plural('account.bookingCard.guestsCount', booking.guests)}
             </p>
             {booking.total_price && (
-              <p className="text-gray-500 text-xs mt-1">Total: &#8382;{booking.total_price}</p>
+              <p className="text-gray-500 text-xs mt-1">{t('account.bookingCard.total', { price: booking.total_price })}</p>
             )}
             {/* Payment method badge */}
             <div className="mt-2">
               {booking.payment_method === 'pay_at_property' ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                   <i className="ri-home-heart-line text-xs"></i>
-                  Pay at Property
+                  {t('account.bookingCard.payAtProperty')}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                   <i className="ri-bank-card-line text-xs"></i>
-                  {booking.payment_status === 'paid' ? 'Paid Online' : 'Online Payment'}
+                  {booking.payment_status === 'paid' ? t('account.bookingCard.paidOnline') : t('account.bookingCard.onlinePayment')}
                 </span>
               )}
             </div>
@@ -225,10 +229,10 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-xs font-semibold text-green-800 mb-2 flex items-center gap-1.5">
                       <i className="ri-user-star-line text-green-600"></i>
-                      Host Contact Details
+                      {t('account.bookingCard.hostContactDetails')}
                       <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-semibold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full">
                         <i className="ri-eye-line text-[10px]"></i>
-                        Visible
+                        {t('account.bookingCard.visible')}
                       </span>
                     </p>
                     <div className="space-y-1.5">
@@ -270,7 +274,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                           className="inline-flex items-center gap-2 w-full justify-center px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
                         >
                           <i className="ri-mail-send-line text-sm"></i>
-                          Message Host
+                          {t('account.bookingCard.messageHost')}
                         </a>
                       </div>
                     )}
@@ -281,13 +285,13 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                       <i className="ri-lock-line text-gray-400 text-xs"></i>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-600">Host contact details are private</p>
+                      <p className="text-xs font-medium text-gray-600">{t('account.bookingCard.hostContactPrivate')}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Host contact information will be revealed <strong>1 day before check-in</strong> ({(() => {
+                        {t('account.bookingCard.hostContactRevealNotePre')} <strong>{t('account.bookingCard.hostContactRevealNoteBold')}</strong> {t('account.bookingCard.hostContactRevealNotePost', { date: (() => {
                           const d = new Date(booking.check_in);
                           d.setDate(d.getDate() - 1);
                           return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                        })()}).
+                        })() })}
                       </p>
                     </div>
                   </div>
@@ -298,7 +302,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
             {isPastCheckIn && !isCancelled && (
               <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                 <i className="ri-lock-line"></i>
-                Changes locked after check-in
+                {t('account.bookingCard.changesLocked')}
               </p>
             )}
           </div>
@@ -306,7 +310,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
           {/* Right side: status + actions */}
           <div className="flex flex-col items-end gap-2 shrink-0">
             <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-              {getStatusLabel(booking.status)}
+              {getStatusLabel(booking.status, t)}
             </span>
 
             {/* Write a Review — completed bookings */}
@@ -315,7 +319,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 {hasReviewed ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                     <i className="ri-checkbox-circle-line text-xs"></i>
-                    Reviewed
+                    {t('account.bookingCard.reviewed')}
                   </span>
                 ) : (
                   <button
@@ -323,7 +327,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-300 rounded-md transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <i className="ri-star-line text-amber-500"></i>
-                    Write a Review
+                    {t('account.bookingCard.writeReview')}
                   </button>
                 )}
               </div>
@@ -341,14 +345,14 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                   }`}
                 >
                   <i className="ri-calendar-2-line"></i>
-                  {hasPendingDateChange ? 'Change Pending' : 'Change Dates'}
+                  {hasPendingDateChange ? t('account.bookingCard.changePending') : t('account.bookingCard.changeDates')}
                 </button>
                 <button
                   onClick={() => setShowCancelConfirm(true)}
                   className="text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-md px-3 py-1.5 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5"
                 >
                   <i className="ri-close-circle-line"></i>
-                  Cancel
+                  {t('account.bookingCard.cancel')}
                 </button>
               </div>
             )}
@@ -359,7 +363,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
         {showCancelConfirm && (
           <div className="mt-3 pt-3 border-t border-red-100 bg-red-50 rounded-lg p-3">
             <p className="text-sm text-gray-700 mb-3">
-              Are you sure you want to cancel this booking? A confirmation email will be sent to you. This action cannot be undone.
+              {t('account.bookingCard.cancelBookingQ')}
             </p>
             <div className="flex gap-2">
               <button
@@ -370,12 +374,12 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 {cancelling ? (
                   <>
                     <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                    Cancelling...
+                    {t('account.bookingCard.cancellingEllipsis')}
                   </>
                 ) : (
                   <>
                     <i className="ri-check-line"></i>
-                    Yes, Cancel Booking
+                    {t('account.bookingCard.yesCancelBooking')}
                   </>
                 )}
               </button>
@@ -383,7 +387,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 onClick={() => setShowCancelConfirm(false)}
                 className="text-xs font-medium text-gray-600 border border-gray-200 rounded-md px-4 py-2 hover:bg-white transition-colors cursor-pointer whitespace-nowrap"
               >
-                Keep Booking
+                {t('account.bookingCard.keepBooking')}
               </button>
             </div>
           </div>
@@ -397,12 +401,12 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 <i className="ri-time-line text-amber-500 text-xs"></i>
               </div>
               <div>
-                <p className="text-xs font-semibold text-amber-700">Date change pending approval</p>
+                <p className="text-xs font-semibold text-amber-700">{t('account.bookingCard.datePendingApproval')}</p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  Requested: <strong>{booking.requested_check_in} → {booking.requested_check_out}</strong>
+                  {t('account.bookingCard.requested', { checkIn: booking.requested_check_in ?? '', checkOut: booking.requested_check_out ?? '' })}
                   {booking.requested_total_price && <span className="ml-1">· ₾{booking.requested_total_price}</span>}
                 </p>
-                <p className="text-xs text-amber-500 mt-0.5">Your original dates remain active until the host responds.</p>
+                <p className="text-xs text-amber-500 mt-0.5">{t('account.bookingCard.originalDatesActive')}</p>
               </div>
             </div>
           </div>
@@ -415,8 +419,8 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 <i className="ri-close-circle-line text-red-400 text-xs"></i>
               </div>
               <div>
-                <p className="text-xs font-semibold text-red-600">Date change request was not approved</p>
-                <p className="text-xs text-red-400 mt-0.5">Your original booking dates remain unchanged. You may submit a new request.</p>
+                <p className="text-xs font-semibold text-red-600">{t('account.bookingCard.dateChangeNotApproved')}</p>
+                <p className="text-xs text-red-400 mt-0.5">{t('account.bookingCard.originalDatesUnchanged')}</p>
               </div>
             </div>
           </div>
@@ -430,11 +434,11 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 <i className="ri-information-line text-red-500 text-sm"></i>
               </div>
               <div>
-                <p className="text-xs font-semibold text-red-700">This booking was cancelled by the host</p>
+                <p className="text-xs font-semibold text-red-700">{t('account.bookingCard.cancelledByHostTitle')}</p>
                 <p className="text-xs text-red-500 mt-1 leading-relaxed">
-                  The host cancelled this confirmed booking. You should have received an email with details.
+                  {t('account.bookingCard.cancelledByHostBody')}
                   {(booking.payment_status === 'refund_pending' || booking.payment_status === 'paid') && (
-                    <span> Since you paid online, a <strong>refund will be processed</strong> within 5–10 business days.</span>
+                    <span> {t('account.bookingCard.refundNotePre')} <strong>{t('account.bookingCard.refundNoteBold')}</strong> {t('account.bookingCard.refundNotePost')}</span>
                   )}
                 </p>
                 <a
@@ -442,7 +446,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                   className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-red-600 hover:text-red-800 transition-colors cursor-pointer"
                 >
                   <i className="ri-search-line text-xs"></i>
-                  Browse other cottages
+                  {t('account.bookingCard.browseOtherCottages')}
                 </a>
               </div>
             </div>
@@ -457,12 +461,12 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 <i className="ri-close-circle-line text-gray-400 text-sm"></i>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-600">Booking request was not approved</p>
+                <p className="text-xs font-semibold text-gray-600">{t('account.bookingCard.rejectedTitle')}</p>
                 {(booking as Booking & { rejection_note?: string | null }).rejection_note ? (
                   <div className="mt-1.5 bg-red-50 border border-red-100 rounded-md px-3 py-2">
                     <p className="text-xs font-semibold text-red-600 mb-0.5 flex items-center gap-1">
                       <i className="ri-chat-1-line text-xs"></i>
-                      Reason from host
+                      {t('account.bookingCard.reasonFromHost')}
                     </p>
                     <p className="text-xs text-red-500 leading-relaxed">
                       {(booking as Booking & { rejection_note?: string | null }).rejection_note}
@@ -470,7 +474,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                   </div>
                 ) : (
                   <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                    The host was unable to accommodate this booking request. Feel free to explore other available cottages.
+                    {t('account.bookingCard.rejectedGenericBody')}
                   </p>
                 )}
                 <a
@@ -478,7 +482,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                   className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <i className="ri-search-line text-xs"></i>
-                  Browse other cottages
+                  {t('account.bookingCard.browseOtherCottages')}
                 </a>
               </div>
             </div>
@@ -493,9 +497,9 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
                 <i className="ri-time-line text-amber-500 text-sm"></i>
               </div>
               <div>
-                <p className="text-xs font-semibold text-amber-700">Awaiting host approval</p>
+                <p className="text-xs font-semibold text-amber-700">{t('account.bookingCard.awaitingApprovalTitle')}</p>
                 <p className="text-xs text-amber-600 mt-1 leading-relaxed">
-                  Your booking request has been submitted. The host will review it and you will receive an email once a decision is made.
+                  {t('account.bookingCard.awaitingApprovalBody')}
                 </p>
               </div>
             </div>
@@ -511,7 +515,7 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
           onClose={() => setShowReviewModal(false)}
           onSuccess={() => {
             setHasReviewed(true);
-            setToast({ msg: 'Review submitted! Thank you for your feedback.', type: 'success' });
+            setToast({ msg: t('account.bookingCard.reviewSubmittedToast'), type: 'success' });
             setTimeout(() => setToast(null), 3500);
           }}
         />
