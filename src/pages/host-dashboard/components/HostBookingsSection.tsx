@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useT } from '../../../i18n';
 
 interface Booking {
   id: string;
@@ -74,17 +75,17 @@ function statusBadge(s: string) {
   return map[s] ?? 'bg-gray-100 text-gray-600';
 }
 
-function statusLabel(s: string) {
+function statusLabel(s: string, t: (key: string) => string) {
   const map: Record<string, string> = {
-    pending: 'Pending',
-    pending_host_approval: 'Awaiting Approval',
-    pending_payment: 'Pending Payment',
-    confirmed: 'Confirmed',
-    cancelled: 'Cancelled',
-    cancelled_by_host: 'Cancelled by Host',
-    rejected: 'Rejected',
-    completed: 'Completed',
-    payment_failed: 'Payment Failed',
+    pending: t('host.bookings.statusPending'),
+    pending_host_approval: t('host.bookings.statusAwaitingApproval'),
+    pending_payment: t('host.bookings.statusPendingPayment'),
+    confirmed: t('host.bookings.statusConfirmed'),
+    cancelled: t('host.bookings.statusCancelled'),
+    cancelled_by_host: t('host.bookings.statusCancelledByHost'),
+    rejected: t('host.bookings.statusRejected'),
+    completed: t('host.bookings.statusCompleted'),
+    payment_failed: t('host.bookings.statusPaymentFailed'),
   };
   return map[s] ?? s;
 }
@@ -97,6 +98,17 @@ function statusIcon(s: string) {
   return 'ri-time-line';
 }
 
+function paymentStatusLabel(s: string | null, t: (key: string) => string) {
+  const map: Record<string, string> = {
+    paid: t('host.common.statusPaid'),
+    pending: t('host.bookings.statusPending'),
+    refunded: t('host.bookings.paymentStatusRefunded'),
+    refund_pending: t('host.bookings.paymentStatusRefundPending'),
+    cancelled: t('host.bookings.statusCancelled'),
+  };
+  return map[s ?? 'pending'] ?? (s ?? 'pending');
+}
+
 function paymentBadge(s: string | null) {
   if (s === 'paid') return 'bg-green-100 text-green-700';
   if (s === 'refunded' || s === 'refund_pending') return 'bg-amber-100 text-amber-700';
@@ -104,9 +116,9 @@ function paymentBadge(s: string | null) {
   return 'bg-gray-100 text-gray-500';
 }
 
-function paymentMethodBadge(m: string | null) {
-  if (m === 'pay_at_property') return { cls: 'bg-amber-100 text-amber-700', label: 'At Property', icon: 'ri-home-heart-line' };
-  return { cls: 'bg-gray-100 text-gray-500', label: 'Online', icon: 'ri-bank-card-line' };
+function paymentMethodBadge(m: string | null, t: (key: string) => string) {
+  if (m === 'pay_at_property') return { cls: 'bg-amber-100 text-amber-700', label: t('host.bookings.paymentAtProperty'), icon: 'ri-home-heart-line' };
+  return { cls: 'bg-gray-100 text-gray-500', label: t('host.bookings.paymentOnline'), icon: 'ri-bank-card-line' };
 }
 
 function needsApproval(status: string) {
@@ -138,19 +150,20 @@ function useApprovalCountdown(deadline: string | null | undefined) {
 }
 
 function ApprovalCountdown({ deadline }: { deadline: string | null | undefined }) {
+  const { t } = useT();
   const r = useApprovalCountdown(deadline);
   if (!r) return null;
   if (r.expired) return (
     <span className="inline-flex items-center gap-1 text-xs text-red-500 font-semibold">
       <i className="ri-alarm-warning-line"></i>
-      Deadline expired
+      {t('host.bookings.deadlineExpired')}
     </span>
   );
   const isUrgent = r.hours < 3;
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isUrgent ? 'text-red-500' : 'text-amber-600'}`}>
       <i className={`${isUrgent ? 'ri-alarm-warning-line' : 'ri-timer-2-line'}`}></i>
-      {r.hours}h {r.mins}m left
+      {t('host.bookings.timeLeft', { hours: r.hours, mins: r.mins })}
     </span>
   );
 }
@@ -168,14 +181,14 @@ function ApprovalCountdown({ deadline }: { deadline: string | null | undefined }
 // in this component without an explicit user request.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const QUICK_REJECT_REASONS = [
-  'The dates are no longer available',
-  'The property cannot host this request',
-  'The booking request cannot be accepted at this time',
-  'Minimum stay requirement not met',
-];
-
 export default function HostBookingsSection({ bookings, loading, showCancelledOnly = false, hostEmail, onRefresh }: Props) {
+  const { t, plural } = useT();
+  const QUICK_REJECT_REASONS = [
+    t('host.bookings.reason1'),
+    t('host.bookings.reason2'),
+    t('host.bookings.reason3'),
+    t('host.bookings.reason4'),
+  ];
   const [filter, setFilter] = useState<FilterStatus>(showCancelledOnly ? 'cancelled' : 'all');
   const [search, setSearch] = useState('');
 
@@ -240,15 +253,15 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
         body: JSON.stringify({ action: 'host-approve-booking', bookingId, hostEmail }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed to approve booking');
+      if (!res.ok) throw new Error(data.error ?? t('host.bookings.failedToApprove'));
       setActionSuccess((prev) => ({ ...prev, [bookingId]: 'approved' }));
       onRefresh();
     } catch (e: unknown) {
-      setActionError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : 'Something went wrong' }));
+      setActionError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : t('host.bookings.somethingWentWrong') }));
     } finally {
       setActionLoading((prev) => ({ ...prev, [bookingId]: null }));
     }
-  }, [hostEmail, onRefresh]);
+  }, [hostEmail, onRefresh, t]);
 
   // ── Reject (with note) ───────────────────────────────────────────────
   const handleReject = useCallback(async (bookingId: string, note: string) => {
@@ -262,17 +275,17 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
         body: JSON.stringify({ action: 'host-reject-booking', bookingId, hostEmail, rejectionNote: note }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed to reject booking');
+      if (!res.ok) throw new Error(data.error ?? t('host.bookings.failedToReject'));
       setActionSuccess((prev) => ({ ...prev, [bookingId]: 'rejected' }));
       setRejectNoteBookingId(null);
       setRejectNote('');
       onRefresh();
     } catch (e: unknown) {
-      setActionError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : 'Something went wrong' }));
+      setActionError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : t('host.bookings.somethingWentWrong') }));
     } finally {
       setActionLoading((prev) => ({ ...prev, [bookingId]: null }));
     }
-  }, [hostEmail, onRefresh]);
+  }, [hostEmail, onRefresh, t]);
 
   // ── Cancel (confirmed bookings) ──────────────────────────────────────
   const handleCancelConfirmed = useCallback(async (bookingId: string) => {
@@ -285,26 +298,26 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
         body: JSON.stringify({ action: 'host-cancel-booking', bookingId, hostEmail }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed to cancel booking');
+      if (!res.ok) throw new Error(data.error ?? t('host.bookings.failedToCancel'));
       setCancelSuccess((prev) => new Set(prev).add(bookingId));
       setCancelConfirm(null);
       onRefresh();
     } catch (e: unknown) {
-      setCancelError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : 'Something went wrong' }));
+      setCancelError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : t('host.bookings.somethingWentWrong') }));
     } finally {
       setCancelLoading((prev) => ({ ...prev, [bookingId]: false }));
     }
-  }, [hostEmail, onRefresh]);
+  }, [hostEmail, onRefresh, t]);
 
   const tabs: { key: FilterStatus; label: string; color: string }[] = showCancelledOnly
-    ? [{ key: 'cancelled', label: 'Cancelled', color: 'text-red-500' }]
+    ? [{ key: 'cancelled', label: t('host.bookings.tabCancelled'), color: 'text-red-500' }]
     : [
-        { key: 'all', label: 'All', color: 'text-gray-600' },
-        { key: 'pending_host_approval', label: 'Needs Approval', color: 'text-orange-600' },
-        { key: 'confirmed', label: 'Confirmed', color: 'text-green-600' },
-        { key: 'rejected', label: 'Rejected', color: 'text-red-500' },
-        { key: 'cancelled', label: 'Cancelled', color: 'text-red-400' },
-        { key: 'completed', label: 'Completed', color: 'text-gray-500' },
+        { key: 'all', label: t('host.bookings.tabAll'), color: 'text-gray-600' },
+        { key: 'pending_host_approval', label: t('host.bookings.tabNeedsApproval'), color: 'text-orange-600' },
+        { key: 'confirmed', label: t('host.bookings.tabConfirmed'), color: 'text-green-600' },
+        { key: 'rejected', label: t('host.bookings.tabRejected'), color: 'text-red-500' },
+        { key: 'cancelled', label: t('host.bookings.tabCancelled'), color: 'text-red-400' },
+        { key: 'completed', label: t('host.bookings.tabCompleted'), color: 'text-gray-500' },
       ];
 
   const pendingApprovalCount = counts.pending_host_approval;
@@ -338,14 +351,14 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                 <i className="ri-close-circle-line text-red-600 text-xl"></i>
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Reject Booking</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Add a reason for the guest (optional but recommended)</p>
+                <h3 className="text-base font-bold text-gray-900">{t('host.bookings.rejectModalTitle')}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{t('host.bookings.rejectModalSub')}</p>
               </div>
             </div>
 
             {/* Quick reasons */}
             <div className="mb-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quick reasons</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('host.bookings.quickReasons')}</p>
               <div className="flex flex-wrap gap-2">
                 {QUICK_REJECT_REASONS.map((reason) => (
                   <button
@@ -366,14 +379,14 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
             {/* Custom note */}
             <div className="mb-5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-                Custom message
+                {t('host.bookings.customMessage')}
               </label>
               <textarea
                 value={rejectNote}
                 onChange={(e) => setRejectNote(e.target.value)}
                 maxLength={500}
                 rows={3}
-                placeholder="Type a custom reason for the guest…"
+                placeholder={t('host.bookings.customMessagePlaceholder')}
                 className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-200 resize-none"
               />
               <p className="text-xs text-gray-400 text-right mt-1">{rejectNote.length}/500</p>
@@ -392,14 +405,14 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                 {actionLoading[rejectNoteBookingId] === 'reject'
                   ? <i className="ri-loader-4-line animate-spin"></i>
                   : <i className="ri-close-circle-line"></i>}
-                Confirm Rejection
+                {t('host.bookings.confirmRejection')}
               </button>
               <button
                 disabled={!!actionLoading[rejectNoteBookingId]}
                 onClick={() => { setRejectNoteBookingId(null); setRejectNote(''); }}
                 className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors cursor-pointer whitespace-nowrap"
               >
-                Cancel
+                {t('host.bookings.cancel')}
               </button>
             </div>
           </div>
@@ -408,14 +421,14 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
 
       {!showCancelledOnly && (
         <div className="mb-5 md:mb-6">
-          <h2 className="text-base md:text-xl font-bold text-gray-900">Bookings</h2>
-          <p className="text-xs md:text-sm text-gray-400 mt-0.5">All bookings across your properties</p>
+          <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.bookings.title')}</h2>
+          <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.bookings.sub')}</p>
         </div>
       )}
       {showCancelledOnly && (
         <div className="mb-5 md:mb-6">
-          <h2 className="text-base md:text-xl font-bold text-gray-900">Cancelled Bookings</h2>
-          <p className="text-xs md:text-sm text-gray-400 mt-0.5">History of all cancelled reservations</p>
+          <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.bookings.cancelledTitle')}</h2>
+          <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.bookings.cancelledSub')}</p>
         </div>
       )}
 
@@ -427,15 +440,15 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs md:text-sm font-semibold text-orange-800">
-              {pendingApprovalCount} booking {pendingApprovalCount === 1 ? 'request needs' : 'requests need'} your approval
+              {plural('host.bookings.needsApprovalAlert', pendingApprovalCount)}
             </p>
-            <p className="text-xs text-orange-600 mt-0.5 hidden sm:block">Review and approve or reject below — guests are waiting.</p>
+            <p className="text-xs text-orange-600 mt-0.5 hidden sm:block">{t('host.bookings.reviewApproveHint')}</p>
           </div>
           <button
             onClick={() => setFilter('pending_host_approval')}
             className="flex-shrink-0 px-2.5 md:px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
           >
-            Review Now
+            {t('host.bookings.reviewNow')}
           </button>
         </div>
       )}
@@ -470,7 +483,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-close-circle-line text-red-500"></i>
               </div>
-              <span className="font-medium text-gray-700">{counts.cancelled} cancelled bookings</span>
+              <span className="font-medium text-gray-700">{plural('host.bookings.cancelledBookingsCount', counts.cancelled)}</span>
             </div>
           )}
           <div className="relative w-full sm:w-auto">
@@ -481,7 +494,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search property, location…"
+              placeholder={t('host.bookings.searchPlaceholder')}
               className="pl-9 pr-4 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 w-full sm:w-52"
             />
           </div>
@@ -493,7 +506,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
             <i className="ri-lock-line text-amber-500 text-xs"></i>
           </div>
           <p className="text-xs text-amber-700">
-            Guest contact details are private and only revealed <strong>1 day before check-in</strong>.
+            {t('host.bookings.privacyNoticePre')} <strong>{t('host.bookings.privacyNoticeStrong')}</strong>{t('host.bookings.privacyNoticePost')}
           </p>
         </div>
 
@@ -504,7 +517,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
               <div className="w-5 h-5 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line text-xl"></i>
               </div>
-              <span className="text-sm">Loading bookings…</span>
+              <span className="text-sm">{t('host.bookings.loadingBookings')}</span>
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -512,9 +525,9 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
             <div className="w-12 h-12 flex items-center justify-center mb-3">
               <i className="ri-inbox-line text-4xl"></i>
             </div>
-            <p className="text-sm font-medium">No bookings found</p>
+            <p className="text-sm font-medium">{t('host.bookings.noBookingsFound')}</p>
             <p className="text-xs mt-1">
-              {filter === 'pending_host_approval' ? 'No bookings awaiting your approval right now.' : 'Try adjusting your filters.'}
+              {filter === 'pending_host_approval' ? t('host.bookings.noBookingsAwaiting') : t('host.bookings.tryAdjustingFilters')}
             </p>
           </div>
         ) : (
@@ -522,7 +535,18 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Guest', 'Property', 'Dates', 'Guests', 'Total', 'Payment', 'Method', 'Status', 'Submitted', 'Actions'].map((h) => (
+                  {[
+                    t('host.bookings.colGuest'),
+                    t('host.bookings.colProperty'),
+                    t('host.bookings.colDates'),
+                    t('host.bookings.colGuests'),
+                    t('host.bookings.colTotal'),
+                    t('host.bookings.colPayment'),
+                    t('host.bookings.colMethod'),
+                    t('host.bookings.colStatus'),
+                    t('host.bookings.colSubmitted'),
+                    t('host.bookings.colActions'),
+                  ].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
@@ -559,10 +583,10 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                             <i className="ri-lock-line text-gray-400 text-xs"></i>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-700">Guest</p>
+                            <p className="text-sm font-medium text-gray-700">{t('host.bookings.guest')}</p>
                             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
                               <i className="ri-lock-line text-[10px]"></i>
-                              Private
+                              {t('host.bookings.private')}
                             </p>
                           </div>
                         </div>
@@ -595,13 +619,13 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                       {/* Payment status */}
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${paymentBadge(b.payment_status)}`}>
-                          {b.payment_status ?? 'pending'}
+                          {paymentStatusLabel(b.payment_status, t)}
                         </span>
                       </td>
                       {/* Payment method */}
                       <td className="px-4 py-4">
                         {(() => {
-                          const pm = paymentMethodBadge(b.payment_method);
+                          const pm = paymentMethodBadge(b.payment_method, t);
                           return (
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${pm.cls}`}>
                               <i className={`${pm.icon} text-xs`}></i>
@@ -614,7 +638,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(b.status)}`}>
                           <i className={`${statusIcon(b.status)} text-xs`}></i>
-                          {statusLabel(b.status)}
+                          {statusLabel(b.status, t)}
                         </span>
                         {b.status === 'pending_host_approval' && b.approval_deadline && (
                           <div className="mt-1">
@@ -624,7 +648,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                         {b.date_change_status === 'pending' && (
                           <span className="mt-1 flex items-center gap-1 text-xs text-amber-600">
                             <i className="ri-calendar-2-line text-xs"></i>
-                            Date change requested
+                            {t('host.bookings.dateChangeRequested')}
                           </span>
                         )}
                         {/* Rejection note indicator */}
@@ -651,7 +675,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                             {successMsg ? (
                               <span className={`text-xs font-semibold ${successMsg === 'approved' ? 'text-green-600' : 'text-red-600'}`}>
                                 <i className={`${successMsg === 'approved' ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'} mr-1`}></i>
-                                {successMsg === 'approved' ? 'Approved!' : 'Rejected'}
+                                {successMsg === 'approved' ? t('host.bookings.approved') : t('host.bookings.rejected')}
                               </span>
                             ) : (
                               <>
@@ -663,7 +687,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                                   {actionLoading[b.id] === 'approve'
                                     ? <i className="ri-loader-4-line animate-spin"></i>
                                     : <i className="ri-checkbox-circle-line"></i>}
-                                  Approve
+                                  {t('host.bookings.approve')}
                                 </button>
                                 <button
                                   disabled={isActing}
@@ -671,7 +695,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                                   className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-red-600 text-xs font-semibold rounded-lg border border-red-200 transition-colors cursor-pointer whitespace-nowrap"
                                 >
                                   <i className="ri-close-circle-line"></i>
-                                  Reject
+                                  {t('host.bookings.reject')}
                                 </button>
                                 {errMsg && (
                                   <p className="text-xs text-red-500 mt-0.5 max-w-[140px] leading-snug">{errMsg}</p>
@@ -690,15 +714,15 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                                 className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white hover:bg-red-50 text-red-500 hover:text-red-700 text-xs font-semibold rounded-lg border border-red-200 hover:border-red-300 transition-colors cursor-pointer whitespace-nowrap"
                               >
                                 <i className="ri-calendar-close-line"></i>
-                                Cancel Booking
+                                {t('host.bookings.cancelBooking')}
                               </button>
                             ) : (
                               <div className="bg-red-50 border border-red-200 rounded-lg p-3 max-w-[200px]">
                                 <p className="text-xs text-gray-700 font-medium mb-1 leading-snug">
-                                  Cancel this booking?
+                                  {t('host.bookings.cancelThisBookingQ')}
                                 </p>
                                 <p className="text-xs text-gray-500 mb-3 leading-snug">
-                                  The guest will be notified by email. This cannot be undone.
+                                  {t('host.bookings.cancelWarning')}
                                 </p>
                                 {cancelErr && (
                                   <p className="text-xs text-red-500 mb-2 leading-snug">{cancelErr}</p>
@@ -712,14 +736,14 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                                     {isCancelling
                                       ? <i className="ri-loader-4-line animate-spin text-xs"></i>
                                       : <i className="ri-check-line text-xs"></i>}
-                                    Yes, Cancel
+                                    {t('host.bookings.yesCancel')}
                                   </button>
                                   <button
                                     disabled={isCancelling}
                                     onClick={() => { setCancelConfirm(null); setCancelError((p) => ({ ...p, [b.id]: '' })); }}
                                     className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-600 text-xs font-medium rounded-md border border-line transition-colors cursor-pointer whitespace-nowrap"
                                   >
-                                    Keep
+                                    {t('host.bookings.keep')}
                                   </button>
                                 </div>
                               </div>
@@ -731,7 +755,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
                         {wasCancelled && (
                           <span className="text-xs font-semibold text-red-500">
                             <i className="ri-close-circle-line mr-1"></i>
-                            Cancelled
+                            {t('host.bookings.statusCancelled')}
                           </span>
                         )}
 
