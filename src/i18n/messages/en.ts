@@ -100,8 +100,6 @@ const en = {
     featuredSub: 'Top-rated cottages this week',
     viewAll: 'View all →',
     loadingListings: 'Loading listings…',
-    loadingLive: 'Loading live listings…',
-    liveListings: '{count} live listings from real hosts',
     noListings: 'No cottages available yet',
     noListingsSub: 'Listings coming soon — check back shortly.',
     why: 'Why RentCottage.Ge?',

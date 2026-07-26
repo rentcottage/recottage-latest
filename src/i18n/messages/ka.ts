@@ -97,8 +97,6 @@ const ka: Messages = {
     featuredSub: 'ამ კვირის საუკეთესო კოტეჯები',
     viewAll: 'ყველას ნახვა →',
     loadingListings: 'იტვირთება…',
-    loadingLive: 'ცვალი განცხადებები იტვირთება…',
-    liveListings: '{count} ცვალი განცხადება ნამდვილი მასპინძლებისგან',
     noListings: 'ჯერ არ არის ხელმისაწვდომი კოტეჯები',
     noListingsSub: 'მალე დაემატება — შემოგვიარეთ მოგვიანებით.',
     why: 'რატომ RentCottage.Ge?',

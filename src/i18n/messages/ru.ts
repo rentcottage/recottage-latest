@@ -97,8 +97,6 @@ const ru: Messages = {
     featuredSub: 'Лучшие коттеджи этой недели',
     viewAll: 'Показать все →',
     loadingListings: 'Загрузка…',
-    loadingLive: 'Загрузка актуальных объявлений…',
-    liveListings: '{count} актуальных объявлений от реальных хозяев',
     noListings: 'Коттеджей пока нет',
     noListingsSub: 'Объявления скоро появятся — загляните позже.',
     why: 'Почему RentCottage.Ge?',

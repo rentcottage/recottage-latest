@@ -31,7 +31,7 @@ export default function HomePage() {
     navigate(`/search?${searchParams.toString()}`);
   };
 
-  const { dbProperties, loading: dbLoading, totalCount } = useApprovedProperties();
+  const { dbProperties, loading: dbLoading } = useApprovedProperties();
 
   // Featured cottages: newest first, then 5 random from the rest.
   // Memoized on the fetched list so re-renders (e.g. season switch) don't reshuffle.
@@ -214,19 +214,6 @@ export default function HomePage() {
             <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.featured')}</h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               <p className="text-soft">{t('home.featuredSub')}</p>
-              {dbLoading ? (
-                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                  <span className="w-3 h-3 flex items-center justify-center animate-spin">
-                    <i className="ri-loader-4-line"></i>
-                  </span>
-                  {t('home.loadingLive')}
-                </span>
-              ) : (totalCount ?? dbProperties.length) > 0 ? (
-                <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
-                  {t('home.liveListings', { count: totalCount ?? dbProperties.length })}
-                </span>
-              ) : null}
             </div>
           </div>
           <button
