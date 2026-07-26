@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../../i18n';
 import BookingHistoryPanel from './components/BookingHistoryPanel';
 import AdminGate from './components/AdminGate';
 import DateChangeRequests from './components/DateChangeRequests';
@@ -45,36 +46,38 @@ interface StatusDisplay {
   badgeClass: string;
 }
 
-function getStatusDisplay(booking: Booking): StatusDisplay {
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
+
+function getStatusDisplay(booking: Booking, t: TFunc): StatusDisplay {
   const { status, canceled_by } = booking;
 
   if (status === 'cancelled_by_host') {
-    return { icon: 'ri-calendar-close-line', label: 'Cancelled by Host', badgeClass: 'bg-red-100 text-red-700' };
+    return { icon: 'ri-calendar-close-line', label: t('admin.page.statusCancelledByHost'), badgeClass: 'bg-red-100 text-red-700' };
   }
   if (status === 'cancelled') {
     if (canceled_by === 'host') {
-      return { icon: 'ri-calendar-close-line', label: 'Cancelled by Host', badgeClass: 'bg-red-100 text-red-700' };
+      return { icon: 'ri-calendar-close-line', label: t('admin.page.statusCancelledByHost'), badgeClass: 'bg-red-100 text-red-700' };
     }
     if (canceled_by === 'customer') {
-      return { icon: 'ri-user-unfollow-line', label: 'Cancelled by Customer', badgeClass: 'bg-orange-100 text-orange-700' };
+      return { icon: 'ri-user-unfollow-line', label: t('admin.page.statusCancelledByCustomer'), badgeClass: 'bg-orange-100 text-orange-700' };
     }
     if (canceled_by === 'admin') {
-      return { icon: 'ri-close-circle-line', label: 'Cancelled by Admin', badgeClass: 'bg-red-100 text-red-600' };
+      return { icon: 'ri-close-circle-line', label: t('admin.page.statusCancelledByAdmin'), badgeClass: 'bg-red-100 text-red-600' };
     }
-    return { icon: 'ri-close-circle-line', label: 'Cancelled', badgeClass: 'bg-red-100 text-red-600' };
+    return { icon: 'ri-close-circle-line', label: t('admin.page.statusCancelled'), badgeClass: 'bg-red-100 text-red-600' };
   }
   if (status === 'rejected') {
     if (canceled_by === 'host') {
-      return { icon: 'ri-close-circle-line', label: 'Rejected by Host', badgeClass: 'bg-rose-100 text-rose-700' };
+      return { icon: 'ri-close-circle-line', label: t('admin.page.statusRejectedByHost'), badgeClass: 'bg-rose-100 text-rose-700' };
     }
     if (canceled_by === 'admin') {
-      return { icon: 'ri-close-circle-line', label: 'Rejected by Admin', badgeClass: 'bg-rose-100 text-rose-700' };
+      return { icon: 'ri-close-circle-line', label: t('admin.page.statusRejectedByAdmin'), badgeClass: 'bg-rose-100 text-rose-700' };
     }
-    return { icon: 'ri-close-circle-line', label: 'Rejected', badgeClass: 'bg-rose-100 text-rose-700' };
+    return { icon: 'ri-close-circle-line', label: t('admin.page.statusRejected'), badgeClass: 'bg-rose-100 text-rose-700' };
   }
-  if (status === 'confirmed') return { icon: 'ri-checkbox-circle-line', label: 'Confirmed', badgeClass: 'bg-green-100 text-green-700' };
-  if (status === 'pending_host_approval') return { icon: 'ri-time-line', label: 'Awaiting Host', badgeClass: 'bg-amber-100 text-amber-700' };
-  if (status === 'pending') return { icon: 'ri-time-line', label: 'Pending', badgeClass: 'bg-amber-100 text-amber-700' };
+  if (status === 'confirmed') return { icon: 'ri-checkbox-circle-line', label: t('admin.page.statusConfirmed'), badgeClass: 'bg-green-100 text-green-700' };
+  if (status === 'pending_host_approval') return { icon: 'ri-time-line', label: t('admin.page.statusAwaitingHost'), badgeClass: 'bg-amber-100 text-amber-700' };
+  if (status === 'pending') return { icon: 'ri-time-line', label: t('admin.page.statusPending'), badgeClass: 'bg-amber-100 text-amber-700' };
   return { icon: 'ri-question-line', label: status, badgeClass: 'bg-gray-100 text-gray-600' };
 }
 
@@ -110,16 +113,20 @@ interface RejectNoteModalProps {
   loading: boolean
 }
 
-const QUICK_REASONS = [
-  'Required details were missing from the booking request.',
-  'Personal details were missing or incomplete.',
-  'Booking information was incomplete.',
-  'The request could not be accepted at this time.',
-  'The requested dates are no longer available.',
-];
+function getQuickReasons(t: TFunc): string[] {
+  return [
+    t('admin.page.quickReason1'),
+    t('admin.page.quickReason2'),
+    t('admin.page.quickReason3'),
+    t('admin.page.quickReason4'),
+    t('admin.page.quickReason5'),
+  ];
+}
 
 function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCancel, loading }: RejectNoteModalProps) {
+  const { t } = useT();
   const [note, setNote] = useState('');
+  const quickReasons = getQuickReasons(t);
 
   const handleQuickReason = (reason: string) => {
     setNote(reason);
@@ -135,7 +142,7 @@ function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCan
               <i className="ri-close-circle-line text-red-500 text-lg"></i>
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">Reject Booking</h3>
+              <h3 className="text-base font-bold text-gray-900">{t('admin.page.rejectModalTitle')}</h3>
               <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[260px]">
                 {guestName ? `${guestName} · ` : ''}{propertyTitle}
               </p>
@@ -152,14 +159,14 @@ function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCan
         {/* Body */}
         <div className="px-6 py-5">
           <p className="text-sm text-gray-600 mb-4">
-            Optionally add a rejection reason. This will be saved and included in the notification emails sent to both the customer and the host.
+            {t('admin.page.rejectionNoteInfoBody')}
           </p>
 
           {/* Quick reasons */}
           <div className="mb-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quick reasons</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('admin.page.quickReasons')}</p>
             <div className="flex flex-wrap gap-2">
-              {QUICK_REASONS.map((reason) => (
+              {quickReasons.map((reason) => (
                 <button
                   key={reason}
                   onClick={() => handleQuickReason(reason)}
@@ -178,14 +185,14 @@ function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCan
           {/* Custom note textarea */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-              Custom rejection note
+              {t('admin.page.customRejectionNoteLabel')}
             </label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
               rows={3}
-              placeholder="Type a custom reason for rejection (optional)…"
+              placeholder={t('admin.page.customRejectionPlaceholder')}
               className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
             />
             <p className="text-xs text-gray-400 text-right mt-1">{note.length}/500</p>
@@ -199,7 +206,7 @@ function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCan
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 cursor-pointer whitespace-nowrap transition-colors"
           >
-            Cancel
+            {t('admin.page.cancel')}
           </button>
           <button
             onClick={() => onConfirm(bookingId, note)}
@@ -215,7 +222,7 @@ function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCan
                 <i className="ri-close-circle-line"></i>
               </div>
             )}
-            Confirm Rejection
+            {t('admin.page.confirmRejection')}
           </button>
         </div>
       </div>
@@ -224,6 +231,7 @@ function RejectNoteModal({ bookingId, propertyTitle, guestName, onConfirm, onCan
 }
 
 export default function AdminBookings() {
+  const { t } = useT();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>('pending');
@@ -311,12 +319,12 @@ export default function AdminBookings() {
             b.id === bookingId ? { ...b, status: 'confirmed', canceled_by: null, canceled_at: null } : b
           )
         );
-        showToast('Booking confirmed — confirmation email sent to customer.', 'success');
+        showToast(t('admin.page.bookingConfirmedToast'), 'success');
       } else {
-        showToast(data.error ?? 'Something went wrong. Please try again.', 'error');
+        showToast(data.error ?? t('admin.page.somethingWrongError'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.page.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -343,12 +351,12 @@ export default function AdminBookings() {
               : b
           )
         );
-        showToast('Booking rejected — notification emails sent to customer and host.', 'success');
+        showToast(t('admin.page.bookingRejectedToast'), 'success');
       } else {
-        showToast(data.error ?? 'Something went wrong. Please try again.', 'error');
+        showToast(data.error ?? t('admin.page.somethingWrongError'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.page.networkError'), 'error');
     }
     setActionLoading(null);
     setRejectModal(null);
@@ -394,10 +402,10 @@ export default function AdminBookings() {
   };
 
   const tabs: { key: FilterStatus; label: string; color: string }[] = [
-    { key: 'pending', label: 'Pending', color: 'text-amber-600' },
-    { key: 'all', label: 'All Bookings', color: 'text-gray-600' },
-    { key: 'confirmed', label: 'Confirmed', color: 'text-green-600' },
-    { key: 'cancelled', label: 'Cancelled', color: 'text-red-500' },
+    { key: 'pending', label: t('admin.page.tabPending'), color: 'text-amber-600' },
+    { key: 'all', label: t('admin.page.tabAllBookings'), color: 'text-gray-600' },
+    { key: 'confirmed', label: t('admin.page.tabConfirmed'), color: 'text-green-600' },
+    { key: 'cancelled', label: t('admin.page.tabCancelled'), color: 'text-red-500' },
   ];
 
   return (
@@ -411,7 +419,7 @@ export default function AdminBookings() {
                 <i className="ri-calendar-check-line text-white text-sm"></i>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900 leading-tight">Bookings Admin</h1>
+                <h1 className="text-lg font-bold text-gray-900 leading-tight">{t('admin.page.bookingsAdminTitle')}</h1>
                 <p className="text-xs text-gray-400 leading-none">RentCottage.Ge</p>
               </div>
             </div>
@@ -422,7 +430,7 @@ export default function AdminBookings() {
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-refresh-line"></i>
               </div>
-              Refresh
+              {t('admin.page.refresh')}
             </button>
           </div>
           {/* Mobile: section jump chips (desktop uses the left sidebar) */}
@@ -444,14 +452,14 @@ export default function AdminBookings() {
           {/* Stats row */}
           <div id="overview" className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8 scroll-mt-36 lg:scroll-mt-24">
             {[
-              { label: 'Total', count: counts.all, icon: 'ri-file-list-3-line', color: 'text-gray-600', bg: 'bg-gray-100' },
-              { label: 'Pending', count: counts.pending, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50' },
-              { label: 'Confirmed', count: counts.confirmed, icon: 'ri-checkbox-circle-line', color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Completed', count: counts.completed, icon: 'ri-medal-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Cancelled', count: counts.cancelled, icon: 'ri-close-circle-line', color: 'text-red-500', bg: 'bg-red-50' },
-              { label: 'Date Changes', count: dateChangesPending, icon: 'ri-calendar-2-line', color: 'text-amber-600', bg: 'bg-amber-50' },
-              { label: 'Applications', count: pendingApplicationsCount, icon: 'ri-home-smile-line', color: 'text-orange-500', bg: 'bg-orange-50' },
-              { label: 'Experiences', count: pendingExperienceCount, icon: 'ri-goblet-line', color: 'text-purple-500', bg: 'bg-purple-50' },
+              { label: t('admin.page.statTotal'), count: counts.all, icon: 'ri-file-list-3-line', color: 'text-gray-600', bg: 'bg-gray-100' },
+              { label: t('admin.page.statPending'), count: counts.pending, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: t('admin.page.statConfirmed'), count: counts.confirmed, icon: 'ri-checkbox-circle-line', color: 'text-green-600', bg: 'bg-green-50' },
+              { label: t('admin.page.statCompleted'), count: counts.completed, icon: 'ri-medal-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: t('admin.page.statCancelled'), count: counts.cancelled, icon: 'ri-close-circle-line', color: 'text-red-500', bg: 'bg-red-50' },
+              { label: t('admin.page.statDateChanges'), count: dateChangesPending, icon: 'ri-calendar-2-line', color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: t('admin.page.statApplications'), count: pendingApplicationsCount, icon: 'ri-home-smile-line', color: 'text-orange-500', bg: 'bg-orange-50' },
+              { label: t('admin.page.statExperiences'), count: pendingExperienceCount, icon: 'ri-goblet-line', color: 'text-purple-500', bg: 'bg-purple-50' },
             ].map((s) => (
               <div key={s.label} className="bg-white rounded-card border border-line shadow-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -470,17 +478,17 @@ export default function AdminBookings() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               {/* Tabs */}
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                {tabs.map((t) => (
+                {tabs.map((tab) => (
                   <button
-                    key={t.key}
-                    onClick={() => setFilter(t.key)}
+                    key={tab.key}
+                    onClick={() => setFilter(tab.key)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
-                      filter === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                      filter === tab.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    {t.label}
-                    <span className={`text-xs font-semibold ${filter === t.key ? t.color : 'text-gray-400'}`}>
-                      {counts[t.key]}
+                    {tab.label}
+                    <span className={`text-xs font-semibold ${filter === tab.key ? tab.color : 'text-gray-400'}`}>
+                      {counts[tab.key]}
                     </span>
                   </button>
                 ))}
@@ -495,7 +503,7 @@ export default function AdminBookings() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search guest, property…"
+                  placeholder={t('admin.page.searchPlaceholder')}
                   className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-64"
                 />
               </div>
@@ -508,7 +516,7 @@ export default function AdminBookings() {
                   <div className="w-5 h-5 flex items-center justify-center animate-spin">
                     <i className="ri-loader-4-line text-xl"></i>
                   </div>
-                  <span className="text-sm">Loading bookings…</span>
+                  <span className="text-sm">{t('admin.page.loadingBookings')}</span>
                 </div>
               </div>
             ) : filtered.length === 0 ? (
@@ -516,9 +524,9 @@ export default function AdminBookings() {
                 <div className="w-12 h-12 flex items-center justify-center mb-3">
                   <i className="ri-inbox-line text-4xl"></i>
                 </div>
-                <p className="text-sm font-medium">No bookings found</p>
+                <p className="text-sm font-medium">{t('admin.page.noBookingsFound')}</p>
                 <p className="text-xs mt-1">
-                  {filter === 'pending' ? 'No pending requests right now.' : 'Try adjusting your filters.'}
+                  {filter === 'pending' ? t('admin.page.noPendingRequests') : t('admin.page.tryAdjustingFilters')}
                 </p>
               </div>
             ) : (
@@ -527,7 +535,16 @@ export default function AdminBookings() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     <th className="w-10 px-3 py-3" />
-                    {['Guest', 'Property', 'Dates', 'Guests', 'Total', 'Submitted', 'Status', 'Actions'].map((h) => (
+                    {[
+                      t('admin.page.colGuest'),
+                      t('admin.page.colProperty'),
+                      t('admin.page.colDates'),
+                      t('admin.page.colGuests'),
+                      t('admin.page.colTotal'),
+                      t('admin.page.colSubmitted'),
+                      t('admin.page.colStatus'),
+                      t('admin.page.colActions'),
+                    ].map((h) => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {h}
                       </th>
@@ -537,7 +554,7 @@ export default function AdminBookings() {
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map((b) => {
                     const isExpanded = expandedId === b.id;
-                    const statusDisplay = getStatusDisplay(b);
+                    const statusDisplay = getStatusDisplay(b, t);
                     const isCancelled = isCancelledStatus(b.status);
                     return (
                       <>
@@ -546,7 +563,7 @@ export default function AdminBookings() {
                           <td className="px-3 py-4">
                             <button
                               onClick={() => toggleExpand(b.id)}
-                              title="View history"
+                              title={t('admin.page.viewHistoryTitle')}
                               className={`w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer ${
                                 isExpanded
                                   ? 'bg-gray-200 text-gray-700'
@@ -627,7 +644,7 @@ export default function AdminBookings() {
                                       <i className="ri-check-line"></i>
                                     </div>
                                   )}
-                                  Confirm
+                                  {t('admin.page.confirm')}
                                 </button>
                                 <button
                                   onClick={() => handleAction(b.id, 'reject')}
@@ -643,11 +660,11 @@ export default function AdminBookings() {
                                       <i className="ri-close-line"></i>
                                     </div>
                                   )}
-                                  Reject
+                                  {t('admin.page.reject')}
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-xs text-gray-400 italic">No action needed</span>
+                              <span className="text-xs text-gray-400 italic">{t('admin.page.noActionNeeded')}</span>
                             )}
                           </td>
                         </tr>
