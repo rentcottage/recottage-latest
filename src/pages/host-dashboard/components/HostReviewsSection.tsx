@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useT } from '../../../i18n';
 
 interface Review {
   id: string;
@@ -33,18 +34,20 @@ function StarDisplay({ rating }: { rating: number }) {
   );
 }
 
-function timeAgo(d: string): string {
-  const diff = Date.now() - new Date(d).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
-}
-
 export default function HostReviewsSection({ properties, loading: propsLoading }: Props) {
+  const { t } = useT();
+
+  function timeAgo(d: string): string {
+    const diff = Date.now() - new Date(d).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return t('host.reviews.today');
+    if (days === 1) return t('host.reviews.yesterday');
+    if (days < 30) return t('host.reviews.daysAgoShort', { count: days });
+    const months = Math.floor(days / 30);
+    if (months < 12) return t('host.reviews.monthsAgoShort', { count: months });
+    return t('host.reviews.yearsAgoShort', { count: Math.floor(months / 12) });
+  }
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -86,15 +89,15 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Reviews &amp; Ratings</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Guest feedback for your properties</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.reviews.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.reviews.sub')}</p>
       </div>
 
       {/* Overview cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-6">
         <div className="bg-white rounded-card border border-line shadow-card p-3 md:p-5">
           <div className="flex items-center justify-between mb-2 md:mb-3">
-            <span className="text-xs md:text-sm text-gray-500">Overall Rating</span>
+            <span className="text-xs md:text-sm text-gray-500">{t('host.reviews.overallRating')}</span>
             <div className="w-7 h-7 md:w-8 md:h-8 bg-yellow-50 rounded-lg flex items-center justify-center">
               <i className="ri-star-fill text-yellow-500 text-xs md:text-sm"></i>
             </div>
@@ -114,24 +117,24 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
                 ))}
               </>
             )}
-            <span className="text-xs text-gray-400">from {reviews.length} reviews</span>
+            <span className="text-xs text-gray-400">{t('host.reviews.fromReviewsCount', { count: reviews.length })}</span>
           </div>
         </div>
 
         <div className="bg-white rounded-card border border-line shadow-card p-3 md:p-5">
           <div className="flex items-center justify-between mb-2 md:mb-3">
-            <span className="text-xs md:text-sm text-gray-500">Total Reviews</span>
+            <span className="text-xs md:text-sm text-gray-500">{t('host.reviews.totalReviews')}</span>
             <div className="w-7 h-7 md:w-8 md:h-8 bg-gray-100 rounded-lg flex items-center justify-center">
               <i className="ri-chat-3-line text-gray-600 text-xs md:text-sm"></i>
             </div>
           </div>
           <p className="text-xl md:text-3xl font-bold text-gray-900 mb-1">{loading ? '—' : reviews.length}</p>
-          <p className="text-xs text-gray-400">across all properties</p>
+          <p className="text-xs text-gray-400">{t('host.reviews.acrossAllProperties')}</p>
         </div>
 
         <div className="bg-white rounded-card border border-line shadow-card p-3 md:p-5">
           <div className="flex items-center justify-between mb-2 md:mb-3">
-            <span className="text-xs md:text-sm text-gray-500">5-Star Reviews</span>
+            <span className="text-xs md:text-sm text-gray-500">{t('host.reviews.fiveStarReviews')}</span>
             <div className="w-7 h-7 md:w-8 md:h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
               <i className="ri-thumb-up-line text-emerald-600 text-xs md:text-sm"></i>
             </div>
@@ -141,8 +144,8 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
           </p>
           <p className="text-xs text-gray-400">
             {reviews.length > 0
-              ? `${Math.round((reviews.filter((r) => r.rating === 5).length / reviews.length) * 100)}% of all reviews`
-              : 'no reviews yet'}
+              ? t('host.reviews.percentOfAllReviews', { pct: Math.round((reviews.filter((r) => r.rating === 5).length / reviews.length) * 100) })
+              : t('host.reviews.noReviewsYetLower')}
           </p>
         </div>
       </div>
@@ -150,7 +153,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
       {/* Per-property ratings */}
       {perPropertyStats.length > 0 && (
         <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-5 mb-5 md:mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 md:mb-4">Rating per Property</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 md:mb-4">{t('host.reviews.ratingPerProperty')}</h3>
           <div className="space-y-3">
             {perPropertyStats.map((p) => (
               <div key={p.id} className="flex items-center gap-3 md:gap-4">
@@ -183,7 +186,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
               onClick={() => setFilter('all')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              All
+              {t('host.reviews.all')}
               <span className={`text-xs font-bold ${filter === 'all' ? 'text-gray-600' : 'text-gray-400'}`}>{reviews.length}</span>
             </button>
             {properties.map((p) => {
@@ -205,7 +208,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 cursor-pointer whitespace-nowrap flex-shrink-0 ml-2"
           >
             <div className="w-3 h-3 flex items-center justify-center"><i className="ri-refresh-line"></i></div>
-            Refresh
+            {t('host.reviews.refresh')}
           </button>
         </div>
 
@@ -213,7 +216,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
           <div className="flex items-center justify-center py-16">
             <div className="flex items-center gap-2 text-gray-400">
               <div className="w-4 h-4 flex items-center justify-center animate-spin"><i className="ri-loader-4-line"></i></div>
-              <span className="text-sm">Loading reviews…</span>
+              <span className="text-sm">{t('host.reviews.loadingReviews')}</span>
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -221,8 +224,8 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
             <div className="w-10 h-10 flex items-center justify-center mb-2">
               <i className="ri-star-line text-3xl"></i>
             </div>
-            <p className="text-sm">No reviews yet</p>
-            <p className="text-xs mt-1">Reviews from guests will appear here after their stay</p>
+            <p className="text-sm">{t('host.reviews.noReviewsYet')}</p>
+            <p className="text-xs mt-1">{t('host.reviews.noReviewsSub')}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -240,7 +243,7 @@ export default function HostReviewsSection({ properties, loading: propsLoading }
                         <p className="text-xs md:text-sm font-semibold text-gray-900">
                           {r.guest_name || r.guest_email.split('@')[0]}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5 truncate">{propertyMap[r.property_id] || 'Unknown property'}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{propertyMap[r.property_id] || t('host.reviews.unknownProperty')}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         <StarDisplay rating={r.rating} />

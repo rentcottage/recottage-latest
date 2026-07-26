@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import AuthModals from '../../../components/feature/AuthModals';
+import { useT } from '../../../i18n';
 
 interface Props {
   children: React.ReactNode;
 }
 
 export default function HostGate({ children }: Props) {
+  const { t } = useT();
   const { isLoggedIn, loading, user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
@@ -19,7 +21,7 @@ export default function HostGate({ children }: Props) {
           <div className="w-5 h-5 flex items-center justify-center animate-spin">
             <i className="ri-loader-4-line text-xl"></i>
           </div>
-          <span className="text-sm">Loading…</span>
+          <span className="text-sm">{t('host.common.loading')}</span>
         </div>
       </div>
     );
@@ -34,9 +36,9 @@ export default function HostGate({ children }: Props) {
               <i className="ri-home-smile-line text-emerald-600 text-3xl"></i>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Host Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('host.gate.title')}</h1>
           <p className="text-gray-500 text-sm mb-8">
-            Sign in to access your host dashboard, manage bookings, and track your earnings.
+            {t('host.gate.sub')}
           </p>
           <button
             onClick={openAuth}
@@ -45,15 +47,15 @@ export default function HostGate({ children }: Props) {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-login-circle-line"></i>
             </div>
-            Sign In to Continue
+            {t('host.gate.signIn')}
           </button>
           <p className="text-xs text-gray-400 mt-4">
-            Don&apos;t have an account?{' '}
+            {t('host.gate.noAccount')}{' '}
             <button
               onClick={openAuth}
               className="text-emerald-600 hover:underline cursor-pointer whitespace-nowrap"
             >
-              Create one
+              {t('host.gate.createOne')}
             </button>
           </p>
         </div>

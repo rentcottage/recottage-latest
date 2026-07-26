@@ -13,6 +13,7 @@ import HostBlockedDatesSection from './components/HostBlockedDatesSection';
 import HostCalendarSection from './components/HostCalendarSection';
 import HostICalSection from './components/HostICalSection';
 import { signOutUser } from '../../hooks/useAuth';
+import { useT } from '../../i18n';
 
 type NavSection = 'overview' | 'calendar' | 'bookings' | 'cancelled' | 'properties' | 'dates' | 'earnings' | 'activity' | 'reviews' | 'blocked' | 'ical';
 
@@ -62,21 +63,25 @@ interface HostProperty {
   booking_approval_mode?: string | null;
 }
 
-const navItems: { key: NavSection; label: string; icon: string }[] = [
-  { key: 'overview', label: 'Overview', icon: 'ri-dashboard-line' },
-  { key: 'calendar', label: 'Booking Calendar', icon: 'ri-calendar-event-line' },
-  { key: 'bookings', label: 'Bookings', icon: 'ri-calendar-check-line' },
-  { key: 'cancelled', label: 'Cancelled', icon: 'ri-close-circle-line' },
-  { key: 'properties', label: 'My Properties', icon: 'ri-home-smile-line' },
-  { key: 'dates', label: 'Date Requests', icon: 'ri-calendar-2-line' },
-  { key: 'earnings', label: 'Earnings', icon: 'ri-money-cny-circle-line' },
-  { key: 'reviews', label: 'Reviews', icon: 'ri-star-line' },
-  { key: 'blocked', label: 'Blocked Dates', icon: 'ri-calendar-close-line' },
-  { key: 'ical', label: 'Add Calendar', icon: 'ri-calendar-2-line' },
-  { key: 'activity', label: 'Activity', icon: 'ri-notification-3-line' },
-];
+function useNavItems(t: (key: string) => string): { key: NavSection; label: string; icon: string }[] {
+  return [
+    { key: 'overview', label: t('host.dashboard.navOverview'), icon: 'ri-dashboard-line' },
+    { key: 'calendar', label: t('host.dashboard.navCalendar'), icon: 'ri-calendar-event-line' },
+    { key: 'bookings', label: t('host.dashboard.navBookings'), icon: 'ri-calendar-check-line' },
+    { key: 'cancelled', label: t('host.dashboard.navCancelled'), icon: 'ri-close-circle-line' },
+    { key: 'properties', label: t('host.dashboard.navProperties'), icon: 'ri-home-smile-line' },
+    { key: 'dates', label: t('host.dashboard.navDates'), icon: 'ri-calendar-2-line' },
+    { key: 'earnings', label: t('host.dashboard.navEarnings'), icon: 'ri-money-cny-circle-line' },
+    { key: 'reviews', label: t('host.dashboard.navReviews'), icon: 'ri-star-line' },
+    { key: 'blocked', label: t('host.dashboard.navBlocked'), icon: 'ri-calendar-close-line' },
+    { key: 'ical', label: t('host.dashboard.navIcal'), icon: 'ri-calendar-2-line' },
+    { key: 'activity', label: t('host.dashboard.navActivity'), icon: 'ri-notification-3-line' },
+  ];
+}
 
 function HostDashboardContent() {
+  const { t, plural } = useT();
+  const navItems = useNavItems(t);
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<NavSection>('overview');
   const [bookings, setBookings] = useState<HostBooking[]>([]);
@@ -160,7 +165,7 @@ function HostDashboardContent() {
     user?.user_metadata?.first_name ||
     user?.user_metadata?.full_name?.split(' ')[0] ||
     user?.email?.split('@')[0] ||
-    'Host';
+    t('host.dashboard.hostFallback');
 
   const renderSection = () => {
     switch (activeSection) {
@@ -221,7 +226,7 @@ function HostDashboardContent() {
                 <i className="ri-home-smile-line text-white text-base"></i>
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900 leading-tight">Host Dashboard</p>
+                <p className="text-sm font-bold text-gray-900 leading-tight">{t('host.dashboard.title')}</p>
                 <p className="text-xs text-gray-400">RentCottage.Ge</p>
               </div>
             </div>
@@ -229,7 +234,7 @@ function HostDashboardContent() {
             <button
               className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               onClick={() => setMobileSidebarOpen(false)}
-              aria-label="Close menu"
+              aria-label={t('host.dashboard.closeMenu')}
             >
               <i className="ri-close-line text-gray-500 text-lg"></i>
             </button>
@@ -295,7 +300,7 @@ function HostDashboardContent() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh Data
+            {t('host.dashboard.refreshData')}
           </button>
           <a
             href="/"
@@ -304,7 +309,7 @@ function HostDashboardContent() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-arrow-left-line"></i>
             </div>
-            Back to Website
+            {t('host.dashboard.backToWebsite')}
           </a>
           <button
             onClick={async () => {
@@ -316,7 +321,7 @@ function HostDashboardContent() {
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-logout-box-r-line"></i>
             </div>
-            Sign Out
+            {t('host.dashboard.signOut')}
           </button>
         </div>
       </aside>
@@ -331,7 +336,7 @@ function HostDashboardContent() {
               <button
                 className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
                 onClick={() => setMobileSidebarOpen(true)}
-                aria-label="Open menu"
+                aria-label={t('host.dashboard.openMenu')}
               >
                 <i className="ri-menu-line text-gray-700 text-xl"></i>
               </button>
@@ -340,7 +345,7 @@ function HostDashboardContent() {
                   {navItems.find((n) => n.key === activeSection)?.label}
                 </h1>
                 <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
-                  {properties.length} {properties.length === 1 ? 'property' : 'properties'} · {bookings.length} total bookings
+                  {plural('host.dashboard.propertiesCount', properties.length)} · {t('host.dashboard.totalBookingsSuffix', { count: bookings.length })}
                 </p>
               </div>
             </div>
@@ -348,7 +353,7 @@ function HostDashboardContent() {
               {!loading && (
                 <div className="hidden sm:flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  Live data
+                  {t('host.dashboard.liveData')}
                 </div>
               )}
               {loading && (
@@ -356,7 +361,7 @@ function HostDashboardContent() {
                   <div className="w-3 h-3 flex items-center justify-center animate-spin">
                     <i className="ri-loader-4-line"></i>
                   </div>
-                  Loading…
+                  {t('host.common.loading')}
                 </div>
               )}
               <a
@@ -366,8 +371,8 @@ function HostDashboardContent() {
                 <div className="w-3 h-3 flex items-center justify-center">
                   <i className="ri-add-line"></i>
                 </div>
-                <span className="hidden sm:inline">Add Property</span>
-                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">{t('host.dashboard.addProperty')}</span>
+                <span className="sm:hidden">{t('host.dashboard.add')}</span>
               </a>
             </div>
           </div>

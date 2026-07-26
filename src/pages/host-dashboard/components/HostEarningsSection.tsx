@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useT } from '../../../i18n';
 
 interface Booking {
   id: string;
@@ -20,7 +21,17 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+const STATUS_KEY: Record<string, string> = {
+  confirmed: 'host.common.statusConfirmed',
+  completed: 'host.common.statusCompleted',
+};
+const PAYMENT_STATUS_KEY: Record<string, string> = {
+  paid: 'host.common.statusPaid',
+  pending: 'host.common.statusPending',
+};
+
 export default function HostEarningsSection({ bookings, loading }: Props) {
+  const { t } = useT();
   const stats = useMemo(() => {
     const earningBookings = bookings.filter((b) => b.status === 'confirmed' || b.status === 'completed');
     const total = earningBookings.reduce((sum, b) => sum + (b.total_price ?? 0), 0);
@@ -42,16 +53,16 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Earnings</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Revenue from confirmed and completed bookings</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.earnings.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.earnings.sub')}</p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-8">
         {[
-          { label: 'Total Earnings', value: `₾${stats.total.toLocaleString()}`, icon: 'ri-money-cny-circle-line', sub: 'Confirmed + completed', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Confirmed Bookings', value: `₾${stats.confirmed.toLocaleString()}`, icon: 'ri-checkbox-circle-line', sub: 'Active confirmed stays', color: 'text-sky-600', bg: 'bg-sky-50' },
-          { label: 'Completed Stays', value: `₾${stats.completed.toLocaleString()}`, icon: 'ri-star-line', sub: 'Fully completed stays', color: 'text-gray-600', bg: 'bg-gray-100' },
+          { label: t('host.earnings.totalEarnings'), value: `₾${stats.total.toLocaleString()}`, icon: 'ri-money-cny-circle-line', sub: t('host.earnings.confirmedPlusCompleted'), color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: t('host.earnings.confirmedBookings'), value: `₾${stats.confirmed.toLocaleString()}`, icon: 'ri-checkbox-circle-line', sub: t('host.earnings.activeConfirmedStays'), color: 'text-sky-600', bg: 'bg-sky-50' },
+          { label: t('host.earnings.completedStays'), value: `₾${stats.completed.toLocaleString()}`, icon: 'ri-star-line', sub: t('host.earnings.fullyCompletedStays'), color: 'text-gray-600', bg: 'bg-gray-100' },
         ].map((c) => (
           <div key={c.label} className="bg-white rounded-card border border-line shadow-card p-3 md:p-6">
             <div className="flex items-center justify-between mb-2 md:mb-4">
@@ -73,7 +84,7 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
       {/* Monthly breakdown */}
       {monthlyEntries.length > 0 && (
         <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-6 mb-5 md:mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 md:mb-5">Monthly Breakdown</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 md:mb-5">{t('host.earnings.monthlyBreakdown')}</h3>
           <div className="space-y-3">
             {monthlyEntries.map(([month, amount]) => {
               const pct = stats.total > 0 ? Math.round((amount / stats.total) * 100) : 0;
@@ -97,8 +108,8 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
       {/* Earnings table */}
       <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
         <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Payment History</h3>
-          <p className="text-xs text-gray-400 mt-0.5">All bookings that generated revenue</p>
+          <h3 className="text-sm font-semibold text-gray-900">{t('host.earnings.paymentHistory')}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{t('host.earnings.allBookingsRevenue')}</p>
         </div>
 
         {loading ? (
@@ -107,7 +118,7 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
               <div className="w-4 h-4 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line"></i>
               </div>
-              <span className="text-sm">Loading…</span>
+              <span className="text-sm">{t('host.common.loading')}</span>
             </div>
           </div>
         ) : stats.earningBookings.length === 0 ? (
@@ -115,15 +126,22 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
             <div className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center mb-2">
               <i className="ri-money-cny-circle-line text-2xl md:text-3xl"></i>
             </div>
-            <p className="text-sm">No earnings yet</p>
-            <p className="text-xs mt-1">Earnings appear here once bookings are confirmed</p>
+            <p className="text-sm">{t('host.earnings.noEarningsYet')}</p>
+            <p className="text-xs mt-1">{t('host.earnings.noEarningsSub')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Property', 'Stay Dates', 'Status', 'Payment', 'Amount', 'Date'].map((h) => (
+                  {[
+                    t('host.earnings.colProperty'),
+                    t('host.earnings.colStayDates'),
+                    t('host.earnings.colStatus'),
+                    t('host.earnings.colPayment'),
+                    t('host.earnings.colAmount'),
+                    t('host.earnings.colDate'),
+                  ].map((h) => (
                     <th key={h} className="px-3 md:px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
@@ -143,14 +161,17 @@ export default function HostEarningsSection({ bookings, loading }: Props) {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
                         b.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {b.status}
+                        {STATUS_KEY[b.status] ? t(STATUS_KEY[b.status]) : b.status}
                       </span>
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
                         b.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {b.payment_status ?? 'pending'}
+                        {(() => {
+                          const ps = b.payment_status ?? 'pending';
+                          return PAYMENT_STATUS_KEY[ps] ? t(PAYMENT_STATUS_KEY[ps]) : ps;
+                        })()}
                       </span>
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4 whitespace-nowrap">

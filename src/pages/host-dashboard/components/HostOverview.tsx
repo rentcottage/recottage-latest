@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useT } from '../../../i18n';
 
 interface Booking {
   id: string;
@@ -22,7 +23,19 @@ interface Props {
   loading: boolean;
 }
 
+const STATUS_KEY: Record<string, string> = {
+  pending: 'host.common.statusPending',
+  pending_host_approval: 'host.common.statusPendingHostApproval',
+  confirmed: 'host.common.statusConfirmed',
+  cancelled: 'host.common.statusCancelled',
+  cancelled_by_host: 'host.common.statusCancelledByHost',
+  completed: 'host.common.statusCompleted',
+  approved: 'host.common.statusApproved',
+  rejected: 'host.common.statusRejected',
+};
+
 export default function HostOverview({ bookings, properties, loading }: Props) {
+  const { t } = useT();
   const stats = useMemo(() => {
     const active = bookings.filter((b) => b.status === 'confirmed').length;
     const cancelled = bookings.filter((b) => b.status === 'cancelled').length;
@@ -37,60 +50,60 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
 
   const cards = [
     {
-      label: 'My Properties',
+      label: t('host.overview.myProperties'),
       value: loading ? '—' : String(properties.length),
       icon: 'ri-home-smile-line',
       color: 'text-red-500',
       bg: 'bg-red-50',
-      sub: `${properties.filter((p) => p.status === 'approved').length} approved`,
+      sub: t('host.overview.approvedSuffix', { count: properties.filter((p) => p.status === 'approved').length }),
     },
     {
-      label: 'Active Bookings',
+      label: t('host.overview.activeBookings'),
       value: loading ? '—' : String(stats.active),
       icon: 'ri-calendar-check-line',
       color: 'text-sky-600',
       bg: 'bg-sky-50',
-      sub: `${stats.pending} pending requests`,
+      sub: t('host.overview.pendingRequestsSuffix', { count: stats.pending }),
     },
     {
-      label: 'Cancelled',
+      label: t('host.overview.cancelled'),
       value: loading ? '—' : String(stats.cancelled),
       icon: 'ri-close-circle-line',
       color: 'text-red-500',
       bg: 'bg-red-50',
-      sub: 'Total cancellations',
+      sub: t('host.overview.totalCancellations'),
     },
     {
-      label: 'Completed',
+      label: t('host.overview.completed'),
       value: loading ? '—' : String(stats.completed),
       icon: 'ri-checkbox-circle-line',
       color: 'text-gray-600',
       bg: 'bg-gray-100',
-      sub: 'Finished stays',
+      sub: t('host.overview.finishedStays'),
     },
     {
-      label: 'Total Earnings',
+      label: t('host.overview.totalEarnings'),
       value: loading ? '—' : `₾${stats.earnings.toLocaleString()}`,
       icon: 'ri-money-cny-circle-line',
       color: 'text-red-500',
       bg: 'bg-red-50',
-      sub: 'Confirmed + completed',
+      sub: t('host.overview.confirmedPlusCompleted'),
     },
     {
-      label: 'Date Requests',
+      label: t('host.overview.dateRequests'),
       value: loading ? '—' : String(stats.dateChangeRequests),
       icon: 'ri-calendar-2-line',
       color: 'text-amber-600',
       bg: 'bg-amber-50',
-      sub: 'Pending date changes',
+      sub: t('host.overview.pendingDateChanges'),
     },
   ];
 
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Dashboard Overview</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">All activity across your properties</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.overview.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.overview.sub')}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-8">
@@ -116,7 +129,7 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
 
       {/* Recent bookings summary */}
       <div className="bg-white rounded-card border border-line shadow-card p-4 md:p-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3 md:mb-4">Recent Booking Activity</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3 md:mb-4">{t('host.overview.recentActivityTitle')}</h3>
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -128,8 +141,8 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
             <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center mb-2">
               <i className="ri-inbox-line text-2xl md:text-3xl"></i>
             </div>
-            <p className="text-sm">No bookings yet</p>
-            <p className="text-xs mt-1 text-center">Bookings for your properties will appear here</p>
+            <p className="text-sm">{t('host.overview.noBookingsYet')}</p>
+            <p className="text-xs mt-1 text-center">{t('host.overview.noBookingsSub')}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -158,7 +171,7 @@ export default function HostOverview({ bookings, properties, loading }: Props) {
                       {b.total_price ? `₾${b.total_price}` : '—'}
                     </span>
                     <span className={`px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-full text-xs font-semibold capitalize ${badgeMap[b.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {b.status}
+                      {STATUS_KEY[b.status] ? t(STATUS_KEY[b.status]) : b.status}
                     </span>
                   </div>
                 </div>

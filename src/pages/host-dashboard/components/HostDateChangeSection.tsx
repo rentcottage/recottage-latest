@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useT } from '../../../i18n';
 
 interface Booking {
   id: string;
@@ -37,7 +38,14 @@ function statusBadge(s: string) {
   return 'bg-amber-100 text-amber-700';
 }
 
+const STATUS_KEY: Record<string, string> = {
+  approved: 'host.common.statusApproved',
+  rejected: 'host.common.statusRejected',
+  pending: 'host.common.statusPending',
+};
+
 export default function HostDateChangeSection({ bookings, loading }: Props) {
+  const { t } = useT();
   const dateChanges = useMemo(() =>
     bookings.filter((b) => b.date_change_status !== null),
     [bookings]
@@ -46,8 +54,8 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Date Change Requests</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Guest-requested booking date modifications for your properties</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.dateChange.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.dateChange.sub')}</p>
       </div>
 
       <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
@@ -57,7 +65,7 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
               <div className="w-4 h-4 flex items-center justify-center animate-spin">
                 <i className="ri-loader-4-line"></i>
               </div>
-              <span className="text-sm">Loading…</span>
+              <span className="text-sm">{t('host.common.loading')}</span>
             </div>
           </div>
         ) : dateChanges.length === 0 ? (
@@ -65,15 +73,23 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
             <div className="w-10 h-10 flex items-center justify-center mb-2">
               <i className="ri-calendar-check-line text-3xl"></i>
             </div>
-            <p className="text-sm">No date change requests</p>
-            <p className="text-xs mt-1">Guest date change requests will appear here</p>
+            <p className="text-sm">{t('host.dateChange.noRequestsTitle')}</p>
+            <p className="text-xs mt-1">{t('host.dateChange.noRequestsSub')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Guest', 'Property', 'Current Dates', 'Requested Dates', 'Price', 'Requested', 'Status'].map((h) => (
+                  {[
+                    t('host.dateChange.colGuest'),
+                    t('host.dateChange.colProperty'),
+                    t('host.dateChange.colCurrentDates'),
+                    t('host.dateChange.colRequestedDates'),
+                    t('host.dateChange.colPrice'),
+                    t('host.dateChange.colRequested'),
+                    t('host.dateChange.colStatus'),
+                  ].map((h) => (
                     <th key={h} className="px-3 md:px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
@@ -127,7 +143,7 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
                     </td>
                     <td className="px-3 md:px-5 py-3 md:py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusBadge(b.date_change_status ?? 'pending')}`}>
-                        {b.date_change_status}
+                        {b.date_change_status && STATUS_KEY[b.date_change_status] ? t(STATUS_KEY[b.date_change_status]) : b.date_change_status}
                       </span>
                     </td>
                   </tr>
