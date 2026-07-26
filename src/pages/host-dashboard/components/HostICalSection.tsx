@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
+import { useT } from '../../../i18n';
+
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
 const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
 const ICAL_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/ical-sync`;
@@ -41,46 +44,48 @@ interface Props {
 }
 
 // ─── Platform config ──────────────────────────────────────────────────────────
-const PLATFORMS = [
-  {
-    value: 'airbnb',
-    label: 'Airbnb',
-    color: 'orange',
-    icon: 'ri-home-smile-line',
-    placeholder: 'https://www.airbnb.com/calendar/ical/XXXXX.ics?s=...',
-    importSteps: [
-      'Log in to Airbnb → go to your Listing',
-      'Click "Availability" tab',
-      'Scroll to "Sync calendars" section',
-      'Click "Export calendar" and copy the .ics link',
-    ],
-    exportSteps: [
-      'Log in to Airbnb → go to your Listing',
-      'Click "Availability" → "Sync calendars"',
-      'Click "Import calendar" and paste the link below',
-      'Airbnb refreshes imported calendars every ~24 hours',
-    ],
-  },
-  {
-    value: 'booking_com',
-    label: 'Booking.com',
-    color: 'blue',
-    icon: 'ri-building-line',
-    placeholder: 'https://admin.booking.com/hotel/hoteladmin/ical.html?...',
-    importSteps: [
-      'Log in to Booking.com Extranet',
-      'Go to "Calendar" → "Sync calendars"',
-      'Click "Export calendar" and copy the .ics link',
-      'Paste it below and click Add',
-    ],
-    exportSteps: [
-      'Log in to Booking.com Extranet',
-      'Go to "Calendar" → "Sync calendars"',
-      'Click "Import calendar" and paste the link below',
-      'Booking.com refreshes imported calendars every ~24 hours',
-    ],
-  },
-];
+function getPlatforms(t: TFunc) {
+  return [
+    {
+      value: 'airbnb',
+      label: t('host.ical.platformAirbnb'),
+      color: 'orange',
+      icon: 'ri-home-smile-line',
+      placeholder: 'https://www.airbnb.com/calendar/ical/XXXXX.ics?s=...',
+      importSteps: [
+        t('host.ical.airbnbImport1'),
+        t('host.ical.airbnbImport2'),
+        t('host.ical.airbnbImport3'),
+        t('host.ical.airbnbImport4'),
+      ],
+      exportSteps: [
+        t('host.ical.airbnbExport1'),
+        t('host.ical.airbnbExport2'),
+        t('host.ical.airbnbExport3'),
+        t('host.ical.airbnbExport4'),
+      ],
+    },
+    {
+      value: 'booking_com',
+      label: t('host.ical.platformBookingCom'),
+      color: 'blue',
+      icon: 'ri-building-line',
+      placeholder: 'https://admin.booking.com/hotel/hoteladmin/ical.html?...',
+      importSteps: [
+        t('host.ical.bookingImport1'),
+        t('host.ical.bookingImport2'),
+        t('host.ical.bookingImport3'),
+        t('host.ical.bookingImport4'),
+      ],
+      exportSteps: [
+        t('host.ical.bookingExport1'),
+        t('host.ical.bookingExport2'),
+        t('host.ical.bookingExport3'),
+        t('host.ical.bookingExport4'),
+      ],
+    },
+  ];
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(d: string) {
@@ -101,8 +106,8 @@ function fmtDateTime(iso: string) {
   });
 }
 
-function getPlatformConfig(platform: string) {
-  return PLATFORMS.find((p) => p.value === platform) ?? PLATFORMS[0];
+function getPlatformConfig(platform: string, platforms: ReturnType<typeof getPlatforms>) {
+  return platforms.find((p) => p.value === platform) ?? platforms[0];
 }
 
 function getPlatformBadgeClass(platform: string) {
@@ -119,17 +124,19 @@ function AddCalendarModal({
   onClose: () => void;
   onAdd: (platform: string, label: string, url: string) => Promise<void>;
 }) {
+  const { t } = useT();
+  const platforms = getPlatforms(t);
   const [platform, setPlatform] = useState('airbnb');
   const [url, setUrl] = useState('');
   const [label, setLabel] = useState('');
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
 
-  const cfg = getPlatformConfig(platform);
+  const cfg = getPlatformConfig(platform, platforms);
 
   const handleSubmit = async () => {
-    if (!url.trim()) { setError('Please enter a calendar URL'); return; }
-    if (!url.trim().startsWith('http')) { setError('URL must start with http:// or https://'); return; }
+    if (!url.trim()) { setError(t('host.ical.urlRequiredError')); return; }
+    if (!url.trim().startsWith('http')) { setError(t('host.ical.urlProtocolError')); return; }
     setError('');
     setAdding(true);
     try {
@@ -147,7 +154,7 @@ function AddCalendarModal({
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">Add External Calendar</h3>
+          <h3 className="text-base font-bold text-gray-900">{t('host.ical.addModalTitle')}</h3>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 cursor-pointer"
@@ -159,9 +166,9 @@ function AddCalendarModal({
         <div className="p-6 space-y-5">
           {/* Platform selector */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Platform</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{t('host.ical.platformLabel')}</label>
             <div className="grid grid-cols-2 gap-2">
-              {PLATFORMS.map((p) => (
+              {platforms.map((p) => (
                 <button
                   key={p.value}
                   onClick={() => setPlatform(p.value)}
@@ -185,7 +192,7 @@ function AddCalendarModal({
           {/* How to get the link */}
           <div className={`rounded-xl p-4 ${platform === 'airbnb' ? 'bg-orange-50 border border-orange-100' : 'bg-sky-50 border border-sky-100'}`}>
             <p className={`text-xs font-semibold mb-2 ${platform === 'airbnb' ? 'text-orange-800' : 'text-sky-800'}`}>
-              How to get your {cfg.label} iCal link:
+              {t('host.ical.howToGetLink', { platform: cfg.label })}
             </p>
             <ol className="space-y-1">
               {cfg.importSteps.map((step, i) => (
@@ -202,13 +209,13 @@ function AddCalendarModal({
           {/* Label (optional) */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
-              Label <span className="text-gray-300">(optional)</span>
+              {t('host.ical.labelField')} <span className="text-gray-300">{t('host.ical.optional')}</span>
             </label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder={`e.g. My ${cfg.label} listing`}
+              placeholder={t('host.ical.labelPlaceholder', { platform: cfg.label })}
               className="w-full text-sm border border-line rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
           </div>
@@ -216,7 +223,7 @@ function AddCalendarModal({
           {/* URL */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
-              {cfg.label} Calendar Export URL <span className="text-red-400">*</span>
+              {t('host.ical.exportUrlField', { platform: cfg.label })} <span className="text-red-400">*</span>
             </label>
             <input
               type="url"
@@ -235,7 +242,7 @@ function AddCalendarModal({
             onClick={onClose}
             className="flex-1 py-2.5 border border-line text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors cursor-pointer whitespace-nowrap"
           >
-            Cancel
+            {t('host.ical.cancel')}
           </button>
           <button
             onClick={handleSubmit}
@@ -247,14 +254,14 @@ function AddCalendarModal({
                 <div className="w-3 h-3 flex items-center justify-center animate-spin">
                   <i className="ri-loader-4-line"></i>
                 </div>
-                Adding…
+                {t('host.ical.adding')}
               </>
             ) : (
               <>
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-add-line"></i>
                 </div>
-                Add Calendar
+                {t('host.ical.addCalendar')}
               </>
             )}
           </button>
@@ -276,7 +283,9 @@ function CalendarCard({
   onRemove: (id: string) => void;
   syncing: boolean;
 }) {
-  const cfg = getPlatformConfig(cal.platform);
+  const { t } = useT();
+  const platforms = getPlatforms(t);
+  const cfg = getPlatformConfig(cal.platform, platforms);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   return (
@@ -301,19 +310,19 @@ function CalendarCard({
             {cal.sync_status === 'synced' && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Synced
+                {t('host.ical.synced')}
               </span>
             )}
             {cal.sync_status === 'error' && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">
                 <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                Error
+                {t('host.ical.error')}
               </span>
             )}
             {cal.sync_status === 'pending' && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                Not synced
+                {t('host.ical.notSynced')}
               </span>
             )}
           </div>
@@ -329,7 +338,7 @@ function CalendarCard({
           {/* Last synced */}
           {cal.last_synced && (
             <p className="text-xs text-gray-400 mt-1">
-              Last synced: {fmtDateTime(cal.last_synced)}
+              {t('host.ical.lastSynced', { date: fmtDateTime(cal.last_synced) })}
             </p>
           )}
         </div>
@@ -339,7 +348,7 @@ function CalendarCard({
           <button
             onClick={() => onSync(cal.id)}
             disabled={syncing}
-            title="Refresh sync"
+            title={t('host.ical.refreshSync')}
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-500 cursor-pointer transition-colors"
           >
             <i className={`ri-refresh-line text-sm ${syncing ? 'animate-spin' : ''}`}></i>
@@ -347,7 +356,7 @@ function CalendarCard({
           {!confirmRemove ? (
             <button
               onClick={() => setConfirmRemove(true)}
-              title="Remove calendar"
+              title={t('host.ical.removeCalendar')}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-line hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
             >
               <i className="ri-delete-bin-line text-sm"></i>
@@ -358,13 +367,13 @@ function CalendarCard({
                 onClick={() => onRemove(cal.id)}
                 className="text-xs px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
               >
-                Remove
+                {t('host.ical.remove')}
               </button>
               <button
                 onClick={() => setConfirmRemove(false)}
                 className="text-xs px-2.5 py-1.5 border border-line text-gray-500 font-semibold rounded-lg cursor-pointer whitespace-nowrap hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {t('host.ical.cancel')}
               </button>
             </div>
           )}
@@ -376,6 +385,8 @@ function CalendarCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HostICalSection({ properties, loading: propsLoading, onRefresh }: Props) {
+  const { t, plural } = useT();
+  const platforms = getPlatforms(t);
   const { user } = useAuth();
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [calendars, setCalendars] = useState<ExternalCalendar[]>([]);
@@ -449,8 +460,8 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
       }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to add calendar');
-    showToast('Calendar added! Click Sync to import blocked dates.', 'success');
+    if (!data.success) throw new Error(data.error || t('host.ical.error'));
+    showToast(t('host.ical.calendarAddedToast'), 'success');
     await fetchCalendars();
     onRefresh();
   };
@@ -471,11 +482,11 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
         }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Sync failed');
-      showToast(data.message || `Synced ${data.imported} event(s)`, 'success');
+      if (!data.success) throw new Error(data.error || t('host.ical.syncFailedToast', { error: '' }));
+      showToast(data.message || t('host.ical.syncedEventsToast', { count: data.imported }), 'success');
       await Promise.all([fetchCalendars(), fetchICalBlocks()]);
     } catch (err) {
-      showToast(`Sync failed: ${err}`, 'error');
+      showToast(t('host.ical.syncFailedToast', { error: String(err) }), 'error');
       await fetchCalendars();
     } finally {
       setSyncingId(null);
@@ -497,11 +508,11 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
         }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Sync failed');
-      showToast(`Synced ${data.synced} calendar(s) — ${data.total_imported} blocked period(s) imported`, 'success');
+      if (!data.success) throw new Error(data.error || t('host.ical.syncFailedToast', { error: '' }));
+      showToast(t('host.ical.syncedCalendarsToast', { synced: data.synced, imported: data.total_imported }), 'success');
       await Promise.all([fetchCalendars(), fetchICalBlocks()]);
     } catch (err) {
-      showToast(`Sync failed: ${err}`, 'error');
+      showToast(t('host.ical.syncFailedToast', { error: String(err) }), 'error');
     } finally {
       setSyncingAll(false);
     }
@@ -522,11 +533,11 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
         }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Remove failed');
-      showToast('Calendar removed', 'info');
+      if (!data.success) throw new Error(data.error || t('host.ical.removeFailedToast', { error: '' }));
+      showToast(t('host.ical.calendarRemovedToast'), 'info');
       await Promise.all([fetchCalendars(), fetchICalBlocks()]);
     } catch (err) {
-      showToast(`Failed to remove: ${err}`, 'error');
+      showToast(t('host.ical.removeFailedToast', { error: String(err) }), 'error');
     }
   };
 
@@ -538,7 +549,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
     if (!exportUrl) return;
     await navigator.clipboard.writeText(exportUrl);
     setCopied(true);
-    showToast('Export link copied to clipboard!', 'info');
+    showToast(t('host.ical.exportLinkCopiedToast'), 'info');
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -549,7 +560,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
           <div className="w-4 h-4 flex items-center justify-center animate-spin">
             <i className="ri-loader-4-line"></i>
           </div>
-          <span className="text-sm">Loading…</span>
+          <span className="text-sm">{t('host.ical.loading')}</span>
         </div>
       </div>
     );
@@ -561,8 +572,8 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
         <div className="w-10 h-10 flex items-center justify-center mb-2">
           <i className="ri-home-smile-line text-3xl"></i>
         </div>
-        <p className="text-sm">No properties yet</p>
-        <p className="text-xs mt-1">Submit a property first to connect its calendar</p>
+        <p className="text-sm">{t('host.ical.noPropertiesYet')}</p>
+        <p className="text-xs mt-1">{t('host.ical.noPropertiesSub')}</p>
       </div>
     );
   }
@@ -574,7 +585,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
             <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-              Select Property
+              {t('host.ical.selectProperty')}
             </label>
             <select
               value={selectedPropertyId}
@@ -598,14 +609,14 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                     <div className="w-3 h-3 flex items-center justify-center animate-spin">
                       <i className="ri-loader-4-line"></i>
                     </div>
-                    Syncing all…
+                    {t('host.ical.syncingAll')}
                   </>
                 ) : (
                   <>
                     <div className="w-4 h-4 flex items-center justify-center">
                       <i className="ri-refresh-line"></i>
                     </div>
-                    Sync All Calendars
+                    {t('host.ical.syncAllCalendars')}
                   </>
                 )}
               </button>
@@ -617,9 +628,9 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
         {[
-          { key: 'import', label: 'Import Calendars', icon: 'ri-import-line' },
-          { key: 'export', label: 'Export Calendar', icon: 'ri-export-line' },
-          { key: 'blocked', label: 'Blocked Dates', icon: 'ri-calendar-close-line' },
+          { key: 'import', label: t('host.ical.tabImport'), icon: 'ri-import-line' },
+          { key: 'export', label: t('host.ical.tabExport'), icon: 'ri-export-line' },
+          { key: 'blocked', label: t('host.ical.tabBlocked'), icon: 'ri-calendar-close-line' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -644,9 +655,9 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-gray-900">Connected External Calendars</h3>
+              <h3 className="text-sm font-bold text-gray-900">{t('host.ical.connectedCalendarsTitle')}</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Import blocked dates from Airbnb and Booking.com to prevent double bookings
+                {t('host.ical.connectedCalendarsSub')}
               </p>
             </div>
             <button
@@ -656,13 +667,13 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className="ri-add-line"></i>
               </div>
-              Add Calendar
+              {t('host.ical.addCalendar')}
             </button>
           </div>
 
           {/* Platform info cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {PLATFORMS.map((p) => {
+            {platforms.map((p) => {
               const count = calendars.filter((c) => c.platform === p.value).length;
               return (
                 <div
@@ -685,7 +696,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                       {p.label}
                     </p>
                     <p className={`text-xs ${p.value === 'airbnb' ? 'text-orange-600' : 'text-sky-600'}`}>
-                      {count === 0 ? 'Not connected' : `${count} calendar${count > 1 ? 's' : ''} connected`}
+                      {count === 0 ? t('host.ical.notConnected') : plural('host.ical.calendarsConnectedCount', count)}
                     </p>
                   </div>
                   {count > 0 && (
@@ -705,7 +716,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                 <div className="w-4 h-4 flex items-center justify-center animate-spin">
                   <i className="ri-loader-4-line"></i>
                 </div>
-                <span className="text-sm">Loading calendars…</span>
+                <span className="text-sm">{t('host.ical.loadingCalendars')}</span>
               </div>
             </div>
           ) : calendars.length === 0 ? (
@@ -713,9 +724,9 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               <div className="w-12 h-12 flex items-center justify-center mb-3">
                 <i className="ri-calendar-2-line text-3xl"></i>
               </div>
-              <p className="text-sm font-medium text-gray-500">No external calendars connected</p>
+              <p className="text-sm font-medium text-gray-500">{t('host.ical.noExternalCalendars')}</p>
               <p className="text-xs mt-1 text-center px-8 text-gray-400">
-                Add your Airbnb or Booking.com calendar to automatically block booked dates
+                {t('host.ical.noExternalCalendarsSub')}
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
@@ -724,7 +735,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className="ri-add-line"></i>
                 </div>
-                Add First Calendar
+                {t('host.ical.addFirstCalendar')}
               </button>
             </div>
           ) : (
@@ -753,16 +764,16 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               </div>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-gray-900">Export Your Website Calendar</h3>
+              <h3 className="text-sm font-bold text-gray-900">{t('host.ical.exportTitle')}</h3>
               <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                Copy this link and import it into Airbnb and Booking.com so your website bookings block dates on those platforms too.
+                {t('host.ical.exportSub')}
               </p>
             </div>
           </div>
 
           {/* Export URL */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-2">Your Website Calendar Export URL</label>
+            <label className="block text-xs font-medium text-gray-500 mb-2">{t('host.ical.exportUrlLabel')}</label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -778,14 +789,14 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                 <div className="w-4 h-4 flex items-center justify-center">
                   <i className={copied ? 'ri-check-line text-emerald-600' : 'ri-clipboard-line'}></i>
                 </div>
-                {copied ? 'Copied!' : 'Copy'}
+                {copied ? t('host.ical.copied') : t('host.ical.copy')}
               </button>
             </div>
           </div>
 
           {/* Instructions for each platform */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {PLATFORMS.map((p) => (
+            {platforms.map((p) => (
               <div
                 key={p.value}
                 className={`rounded-xl p-4 border ${
@@ -799,7 +810,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                     <i className={`${p.icon} ${p.value === 'airbnb' ? 'text-orange-600' : 'text-sky-600'} text-sm`}></i>
                   </div>
                   <p className={`text-xs font-bold ${p.value === 'airbnb' ? 'text-orange-800' : 'text-sky-800'}`}>
-                    Import into {p.label}:
+                    {t('host.ical.importInto', { platform: p.label })}
                   </p>
                 </div>
                 <ol className="space-y-1">
@@ -821,7 +832,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               <i className="ri-information-line text-gray-400 text-xs"></i>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed">
-              This link is public and always up to date. It includes all confirmed bookings and manually blocked dates from your website. External platforms typically refresh imported calendars every 24 hours.
+              {t('host.ical.publicLinkNote')}
             </p>
           </div>
         </div>
@@ -832,9 +843,9 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
         <div className="bg-white rounded-card border border-line shadow-card overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-gray-900">Externally Blocked Dates</h3>
+              <h3 className="text-sm font-bold text-gray-900">{t('host.ical.externallyBlockedTitle')}</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Dates imported from Airbnb and Booking.com — unavailable to guests on your website
+                {t('host.ical.externallyBlockedSub')}
               </p>
             </div>
             <button
@@ -844,7 +855,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               <div className="w-3 h-3 flex items-center justify-center">
                 <i className="ri-refresh-line"></i>
               </div>
-              Refresh
+              {t('host.ical.refresh')}
             </button>
           </div>
 
@@ -854,7 +865,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                 <div className="w-4 h-4 flex items-center justify-center animate-spin">
                   <i className="ri-loader-4-line"></i>
                 </div>
-                <span className="text-sm">Loading…</span>
+                <span className="text-sm">{t('host.ical.loading')}</span>
               </div>
             </div>
           ) : icalBlocks.length === 0 ? (
@@ -862,11 +873,11 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               <div className="w-10 h-10 flex items-center justify-center mb-2">
                 <i className="ri-calendar-2-line text-2xl"></i>
               </div>
-              <p className="text-sm">No external blocks imported yet</p>
+              <p className="text-sm">{t('host.ical.noExternalBlocks')}</p>
               <p className="text-xs mt-1 text-center px-8">
                 {calendars.length > 0
-                  ? 'Click "Sync All Calendars" to pull the latest bookings'
-                  : 'Connect a calendar in the Import tab first'}
+                  ? t('host.ical.clickSyncAllHint')
+                  : t('host.ical.connectCalendarFirstHint')}
               </p>
             </div>
           ) : (
@@ -874,10 +885,10 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/60">
-                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">From</th>
-                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">To</th>
-                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">Summary</th>
-                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">Source</th>
+                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">{t('host.ical.colFrom')}</th>
+                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">{t('host.ical.colTo')}</th>
+                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">{t('host.ical.colSummary')}</th>
+                    <th className="text-left text-xs font-semibold text-gray-400 px-5 py-3">{t('host.ical.colSource')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -886,13 +897,13 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
                       <td className="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">{fmt(block.start_date)}</td>
                       <td className="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">{fmt(block.end_date)}</td>
                       <td className="px-5 py-3 text-sm text-gray-500 max-w-xs truncate">
-                        {block.summary || <span className="text-gray-300 italic">No summary</span>}
+                        {block.summary || <span className="text-gray-300 italic">{t('host.ical.noSummary')}</span>}
                       </td>
                       <td className="px-5 py-3">
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${getPlatformBadgeClass(block.platform)}`}>
                           {block.platform === 'airbnb' && <i className="ri-home-smile-line text-[10px]"></i>}
                           {block.platform === 'booking_com' && <i className="ri-building-line text-[10px]"></i>}
-                          {block.platform === 'airbnb' ? 'Airbnb' : block.platform === 'booking_com' ? 'Booking.com' : block.platform}
+                          {block.platform === 'airbnb' ? t('host.ical.platformAirbnb') : block.platform === 'booking_com' ? t('host.ical.platformBookingCom') : block.platform}
                         </span>
                       </td>
                     </tr>
