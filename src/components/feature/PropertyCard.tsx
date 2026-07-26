@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropertyImageSlider from './PropertyImageSlider';
+import { useT } from '../../i18n';
 
 interface PropertyCardProps {
   id: string;
@@ -30,6 +31,7 @@ export default function PropertyCard({
   isRealListing,
   coverPosition,
 }: PropertyCardProps) {
+  const { t } = useT();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -99,7 +101,7 @@ export default function PropertyCard({
         <p className="text-xs md:text-[13.5px] text-soft mb-1.5 truncate leading-tight">{location}</p>
 
         {/* Host — desktop only */}
-        <p className="hidden md:block text-xs text-gray-400 mb-2.5 truncate">Hosted by {host}</p>
+        <p className="hidden md:block text-xs text-gray-400 mb-2.5 truncate">{t('property.detail.hostedBy', { host })}</p>
 
         {/* Amenities — desktop */}
         <div className="hidden md:flex items-center gap-1.5 mb-3 flex-nowrap overflow-hidden">
