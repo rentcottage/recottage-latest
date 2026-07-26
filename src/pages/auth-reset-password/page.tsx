@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { supabase } from '../../lib/supabase';
+import { useT } from '../../i18n';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
@@ -9,6 +10,7 @@ type PageState = 'loading' | 'ready' | 'success' | 'error';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [pageState, setPageState] = useState<PageState>('loading');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -57,15 +59,15 @@ export default function ResetPassword() {
     setFormError('');
 
     if (password.length < 8) {
-      setFormError('Password must be at least 8 characters.');
+      setFormError(t('account.authResetPassword.passwordLengthError'));
       return;
     }
     if (password !== confirmPassword) {
-      setFormError('Passwords do not match.');
+      setFormError(t('account.authResetPassword.passwordMismatchError'));
       return;
     }
     if (!captchaToken) {
-      setFormError('Please complete the CAPTCHA verification.');
+      setFormError(t('account.authResetPassword.captchaRequiredError'));
       return;
     }
 
@@ -92,8 +94,8 @@ export default function ResetPassword() {
         {pageState === 'loading' && (
           <div className="text-center py-8">
             <div className="w-12 h-12 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-5"></div>
-            <p className="text-gray-700 font-medium">Verifying reset link...</p>
-            <p className="text-gray-400 text-sm mt-1">Just a moment</p>
+            <p className="text-gray-700 font-medium">{t('account.authResetPassword.verifyingLink')}</p>
+            <p className="text-gray-400 text-sm mt-1">{t('account.authResetPassword.justAMoment')}</p>
           </div>
         )}
 
@@ -103,15 +105,15 @@ export default function ResetPassword() {
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <i className="ri-error-warning-line text-red-500 text-2xl"></i>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Link expired or invalid</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{t('account.authResetPassword.linkExpiredTitle')}</h2>
             <p className="text-gray-500 text-sm mb-6">
-              This password reset link has expired or already been used. Please request a new one.
+              {t('account.authResetPassword.linkExpiredBody')}
             </p>
             <button
               onClick={() => navigate('/')}
               className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap"
             >
-              Back to home
+              {t('account.authResetPassword.backToHomeBtn')}
             </button>
           </div>
         )}
@@ -122,15 +124,15 @@ export default function ResetPassword() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <i className="ri-shield-check-line text-green-500 text-2xl"></i>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Password updated!</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{t('account.authResetPassword.successTitle')}</h2>
             <p className="text-gray-500 text-sm mb-6">
-              Your password has been changed successfully. You can now log in with your new password.
+              {t('account.authResetPassword.successBody')}
             </p>
             <Link
               to="/"
               className="block w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors text-center whitespace-nowrap"
             >
-              Go to home &amp; log in
+              {t('account.authResetPassword.goHomeLogin')}
             </Link>
           </div>
         )}
@@ -142,8 +144,8 @@ export default function ResetPassword() {
               <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
                 <i className="ri-lock-password-line text-red-500 text-xl"></i>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Set new password</h2>
-              <p className="text-gray-500 text-sm mt-1">Choose a strong password for your account.</p>
+              <h2 className="text-2xl font-bold text-gray-900">{t('account.authResetPassword.setNewPasswordTitle')}</h2>
+              <p className="text-gray-500 text-sm mt-1">{t('account.authResetPassword.setNewPasswordSub')}</p>
             </div>
 
             {formError && (
@@ -155,7 +157,7 @@ export default function ResetPassword() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authResetPassword.newPassword')}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -164,7 +166,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-                    placeholder="Enter new password"
+                    placeholder={t('account.authResetPassword.newPasswordPlaceholder')}
                     autoFocus
                   />
                   <button
@@ -175,11 +177,11 @@ export default function ResetPassword() {
                     <i className={showPassword ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+                <p className="text-xs text-gray-400 mt-1">{t('account.authResetPassword.minChars')}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm new password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authResetPassword.confirmNewPassword')}</label>
                 <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
@@ -188,7 +190,7 @@ export default function ResetPassword() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
-                    placeholder="Confirm new password"
+                    placeholder={t('account.authResetPassword.confirmNewPasswordPlaceholder')}
                   />
                   <button
                     type="button"
@@ -217,7 +219,7 @@ export default function ResetPassword() {
                 disabled={saving || !captchaToken}
                 className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 mt-2"
               >
-                {saving ? 'Saving...' : 'Save new password'}
+                {saving ? t('account.authResetPassword.savingEllipsis') : t('account.authResetPassword.saveNewPassword')}
               </button>
             </form>
           </>
