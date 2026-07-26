@@ -7,15 +7,46 @@ import SEO from '../../components/feature/SEO';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { supabase } from '../../lib/supabase';
 import { compressImage } from '../../lib/imageCompression';
-import { useLang } from '../../i18n';
+import { useT } from '../../i18n';
 
 const PROPERTY_APP_FN_URL =
   'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/property-application-handler';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
+const PROPERTY_TYPE_KEY: Record<string, string> = {
+  Cottage: 'account.becomeHost.typeCottage',
+  Cabin: 'account.becomeHost.typeCabin',
+  Farmhouse: 'account.becomeHost.typeFarmhouse',
+  Villa: 'account.becomeHost.typeVilla',
+};
+
+const CATEGORY_KEY: Record<string, string> = {
+  Mountain: 'account.becomeHost.categoryMountain',
+  Lakeside: 'account.becomeHost.categoryLakeside',
+  Traditional: 'account.becomeHost.categoryTraditional',
+  Forest: 'account.becomeHost.categoryForest',
+  Countryside: 'account.becomeHost.categoryCountryside',
+  Winery: 'account.becomeHost.categoryWinery',
+};
+
+const AMENITY_KEY: Record<string, string> = {
+  'WiFi': 'account.becomeHost.amenityWifi',
+  'Kitchen': 'account.becomeHost.amenityKitchen',
+  'Fireplace': 'account.becomeHost.amenityFireplace',
+  'Swimming Pool': 'account.becomeHost.amenitySwimmingPool',
+  'Parking': 'account.becomeHost.amenityParking',
+  'Hot Tub': 'account.becomeHost.amenityHotTub',
+  'Mountain View': 'account.becomeHost.amenityMountainView',
+  'Lake Access': 'account.becomeHost.amenityLakeAccess',
+  'BBQ Grill': 'account.becomeHost.amenityBbqGrill',
+  'Pet Friendly': 'account.becomeHost.amenityPetFriendly',
+  'Heating': 'account.becomeHost.amenityHeating',
+  'Air Conditioning': 'account.becomeHost.amenityAirConditioning',
+};
+
 export default function BecomeHost() {
-  const { lang: currentLang } = useLang();
+  const { t, plural } = useT();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -109,33 +140,33 @@ export default function BecomeHost() {
 
     if (currentStep === 1) {
       const missing: string[] = [];
-      if (!formData.propertyType) missing.push('Property Type');
-      if (!formData.location) missing.push('Location');
-      if (!formData.bedrooms) missing.push('Bedrooms');
-      if (!formData.bathrooms) missing.push('Bathrooms');
-      if (!formData.guests) missing.push('Guests');
-      if (missing.length) { fail('Step 1 missing: ' + missing.join(', ')); return; }
+      if (!formData.propertyType) missing.push(t('account.becomeHost.missingPropertyType'));
+      if (!formData.location) missing.push(t('account.becomeHost.missingLocation'));
+      if (!formData.bedrooms) missing.push(t('account.becomeHost.missingBedrooms'));
+      if (!formData.bathrooms) missing.push(t('account.becomeHost.missingBathrooms'));
+      if (!formData.guests) missing.push(t('account.becomeHost.missingGuests'));
+      if (missing.length) { fail(t('account.becomeHost.step1MissingPrefix', { fields: missing.join(', ') })); return; }
     }
 
     if (currentStep === 3) {
       if (formData.photos.length < 3) {
-        fail(`Step 3: need 3 photos, have ${formData.photos.length}`);
+        fail(t('account.becomeHost.step3NeedPhotos', { count: formData.photos.length }));
         return;
       }
     }
 
     if (currentStep === 4) {
       const missing: string[] = [];
-      if (!formData.title) missing.push('Title');
-      if (!formData.description) missing.push('Description');
-      if (formData.description.length > 2000) missing.push('Description too long (max 2000)');
+      if (!formData.title) missing.push(t('account.becomeHost.missingTitle'));
+      if (!formData.description) missing.push(t('account.becomeHost.missingDescription'));
+      if (formData.description.length > 2000) missing.push(t('account.becomeHost.descriptionTooLong'));
       if (pricingType === 'fixed') {
-        if (!formData.price) missing.push('Price');
+        if (!formData.price) missing.push(t('account.becomeHost.missingPrice'));
       } else {
         const hasEmpty = guestRange.some(n => !guestTierPrices[n] || parseFloat(guestTierPrices[n]) <= 0);
-        if (hasEmpty || guestRange.length === 0) missing.push('Per-guest price');
+        if (hasEmpty || guestRange.length === 0) missing.push(t('account.becomeHost.missingPerGuestPrice'));
       }
-      if (missing.length) { fail('Step 4 missing: ' + missing.join(', ')); return; }
+      if (missing.length) { fail(t('account.becomeHost.step4MissingPrefix', { fields: missing.join(', ') })); return; }
     }
 
     setErrorDetail('');
@@ -151,7 +182,7 @@ export default function BecomeHost() {
     if (isSubmitting) return;
 
     if (!hostCaptchaToken) {
-      setErrorDetail('Please complete the CAPTCHA before submitting.');
+      setErrorDetail(t('account.becomeHost.captchaBeforeSubmitError'));
       setSubmitStatus('error');
       return;
     }
@@ -161,22 +192,22 @@ export default function BecomeHost() {
       : guestRange.every(n => guestTierPrices[n] && parseFloat(guestTierPrices[n]) > 0);
 
     const missing: string[] = [];
-    if (!formData.firstName) missing.push('First Name');
-    if (!formData.lastName) missing.push('Last Name');
-    if (!formData.email) missing.push('Email');
-    if (!formData.phone) missing.push('Phone');
-    if (!formData.propertyType) missing.push('Property Type (step 1)');
-    if (!formData.location) missing.push('Location (step 1)');
-    if (!formData.bedrooms) missing.push('Bedrooms (step 1)');
-    if (!formData.bathrooms) missing.push('Bathrooms (step 1)');
-    if (!formData.guests) missing.push('Guests (step 1)');
-    if (!formData.title) missing.push('Title (step 4)');
-    if (!formData.description) missing.push('Description (step 4)');
-    if (!priceValid) missing.push('Price (step 4)');
-    if (formData.photos.length < 3) missing.push(`Photos (step 3) — have ${formData.photos.length}, need 3`);
+    if (!formData.firstName) missing.push(t('account.becomeHost.missingFirstName'));
+    if (!formData.lastName) missing.push(t('account.becomeHost.missingLastName'));
+    if (!formData.email) missing.push(t('account.becomeHost.missingEmail'));
+    if (!formData.phone) missing.push(t('account.becomeHost.missingPhone'));
+    if (!formData.propertyType) missing.push(t('account.becomeHost.missingPropertyTypeStep1'));
+    if (!formData.location) missing.push(t('account.becomeHost.missingLocationStep1'));
+    if (!formData.bedrooms) missing.push(t('account.becomeHost.missingBedroomsStep1'));
+    if (!formData.bathrooms) missing.push(t('account.becomeHost.missingBathroomsStep1'));
+    if (!formData.guests) missing.push(t('account.becomeHost.missingGuestsStep1'));
+    if (!formData.title) missing.push(t('account.becomeHost.missingTitleStep4'));
+    if (!formData.description) missing.push(t('account.becomeHost.missingDescriptionStep4'));
+    if (!priceValid) missing.push(t('account.becomeHost.missingPriceStep4'));
+    if (formData.photos.length < 3) missing.push(t('account.becomeHost.missingPhotosStep3', { count: formData.photos.length }));
 
     if (missing.length > 0) {
-      setErrorDetail('Missing: ' + missing.join(', '));
+      setErrorDetail(t('account.becomeHost.missingPrefix', { fields: missing.join(', ') }));
       setSubmitStatus('error');
       return;
     }
@@ -273,14 +304,14 @@ export default function BecomeHost() {
           const txt = await response.text();
           try { serverMsg = (JSON.parse(txt).error as string) || txt; } catch { serverMsg = txt; }
         } catch { /* ignore */ }
-        setErrorDetail(`Server rejected the submission (HTTP ${response.status})${serverMsg ? ': ' + serverMsg : ''}`);
+        setErrorDetail(t('account.becomeHost.serverRejectedError', { status: response.status, detail: serverMsg ? ': ' + serverMsg : '' }));
         setSubmitStatus('error');
         hostCaptchaRef.current?.resetCaptcha();
         setHostCaptchaToken('');
       }
     } catch (error) {
       console.error('Submit error:', error);
-      setErrorDetail(`Network error: ${error instanceof Error ? error.message : String(error)}`);
+      setErrorDetail(t('account.becomeHost.networkError', { message: error instanceof Error ? error.message : String(error) }));
       setSubmitStatus('error');
       hostCaptchaRef.current?.resetCaptcha();
       setHostCaptchaToken('');
@@ -320,13 +351,13 @@ export default function BecomeHost() {
       >
         <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4">
           <h1 className="text-2xl md:text-[40px] font-extrabold text-white tracking-tight mb-3 md:mb-4">
-            Rent out your cottage and earn more
+            {t('account.becomeHost.heroTitle')}
           </h1>
           <p className="text-sm md:text-xl text-white/90 mb-5 md:mb-7 max-w-2xl">
-            List for free, get bookings directly, and pay a commission only on successful stays
+            {t('account.becomeHost.heroSub')}
           </p>
           <div className="hidden md:flex flex-wrap justify-center gap-3 text-[13.5px] font-semibold">
-            {['✓ Free listing', '✓ You set the price', '✓ Support in Georgian'].map((b) => (
+            {[t('account.becomeHost.badgeFreeListing'), t('account.becomeHost.badgeYouSetPrice'), t('account.becomeHost.badgeSupportGeorgian')].map((b) => (
               <span key={b} className="bg-white/15 border border-white/30 text-white px-3.5 py-1.5 rounded-full">{b}</span>
             ))}
           </div>
@@ -343,16 +374,16 @@ export default function BecomeHost() {
                   <i className="ri-check-line text-3xl text-green-600"></i>
                 </div>
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-green-800 mb-3">Application Submitted!</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-green-800 mb-3">{t('account.becomeHost.applicationSubmittedTitle')}</h2>
               <p className="text-green-700 text-sm md:text-base leading-relaxed mb-6">
-                Thank you for your interest in becoming a host. Our team will review your application and contact you within 24 hours.
+                {t('account.becomeHost.applicationSubmittedBody')}
               </p>
               <button
                 type="button"
                 onClick={() => setSubmitStatus('idle')}
                 className="px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 cursor-pointer whitespace-nowrap text-sm md:text-base"
               >
-                Submit Another Application
+                {t('account.becomeHost.submitAnotherApplication')}
               </button>
             </div>
           </div>
@@ -366,13 +397,13 @@ export default function BecomeHost() {
                 <i className="ri-error-warning-line text-red-500 text-lg"></i>
               </div>
               <div>
-                <h3 className="text-sm md:text-base font-semibold text-red-800 mb-1">Please Complete Required Fields</h3>
+                <h3 className="text-sm md:text-base font-semibold text-red-800 mb-1">{t('account.becomeHost.completeRequiredFieldsTitle')}</h3>
                 <p className="text-red-700 text-sm">
                   {errorDetail
                     ? errorDetail
                     : currentStep === 3 && formData.photos.length < 3
-                    ? 'Please upload at least 3 photos of your cottage to continue.'
-                    : 'All fields marked with * are required. Please fill out all required information to continue.'
+                    ? t('account.becomeHost.uploadThreePhotosError')
+                    : t('account.becomeHost.allFieldsRequiredError')
                   }
                 </p>
               </div>
@@ -402,11 +433,11 @@ export default function BecomeHost() {
         <form className="bg-white rounded-xl shadow-lg p-4 md:p-8">
           {currentStep === 1 && (
             <div>
-              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">Tell us about your property</h2>
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">{t('account.becomeHost.step1Title')}</h2>
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-707 mb-2">Property Type *</label>
+                  <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.propertyTypeLabel')}</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {['Cottage', 'Cabin', 'Farmhouse', 'Villa'].map((type) => (
                       <button
@@ -422,7 +453,7 @@ export default function BecomeHost() {
                             : 'border-gray-300 hover:border-gray-400'
                         }`}
                       >
-                        {type}
+                        {t(PROPERTY_TYPE_KEY[type])}
                       </button>
                     ))}
                   </div>
@@ -431,7 +462,7 @@ export default function BecomeHost() {
                 {/* Property Categories */}
                 <div>
                   <label className="block text-sm font-medium text-gray-707 mb-2">
-                    Property Categories <span className="text-gray-400 font-normal">(select all that apply)</span>
+                    {t('account.becomeHost.propertyCategoriesLabel')} <span className="text-gray-400 font-normal">{t('account.becomeHost.selectAllApply')}</span>
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {[
@@ -458,7 +489,7 @@ export default function BecomeHost() {
                         <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                           <i className={`${icon} text-base`}></i>
                         </div>
-                        <span className="text-sm font-medium whitespace-nowrap">{label}</span>
+                        <span className="text-sm font-medium whitespace-nowrap">{t(CATEGORY_KEY[label])}</span>
                         {formData.categories.includes(label) && (
                           <div className="ml-auto w-4 h-4 flex items-center justify-center flex-shrink-0">
                             <i className="ri-check-line text-red-500 text-sm"></i>
@@ -469,14 +500,14 @@ export default function BecomeHost() {
                   </div>
                   {formData.categories.length > 0 && (
                     <p className="text-xs text-red-600 mt-2 font-medium">
-                      Selected: {formData.categories.join(', ')}
+                      {t('account.becomeHost.selected', { list: formData.categories.map(c => t(CATEGORY_KEY[c] || c)).join(', ') })}
                     </p>
                   )}
                 </div>
 
                 <AutocompleteInput
-                  label="Location"
-                  placeholder="Start typing a city name (e.g., Tbilisi, Batumi...)"
+                  label={t('account.becomeHost.locationLabel')}
+                  placeholder={t('account.becomeHost.locationPlaceholder')}
                   value={formData.location}
                   onChange={(value) => handleInputChange('location', value)}
                   options={georgianCities}
@@ -485,42 +516,42 @@ export default function BecomeHost() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-707 mb-2">Bedrooms *</label>
+                    <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.bedroomsLabel')}</label>
                     <select
                       value={formData.bedrooms}
                       onChange={(e) => handleInputChange('bedrooms', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent pr-8"
                       required
                     >
-                      <option value="">Select</option>
+                      <option value="">{t('account.becomeHost.select')}</option>
                       {[1,2,3,4,5,6].map(num => (
                         <option key={num} value={num}>{num}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-707 mb-2">Bathrooms *</label>
+                    <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.bathroomsLabel')}</label>
                     <select
                       value={formData.bathrooms}
                       onChange={(e) => handleInputChange('bathrooms', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent pr-8"
                       required
                     >
-                      <option value="">Select</option>
+                      <option value="">{t('account.becomeHost.select')}</option>
                       {[1,2,3,4,5].map(num => (
                         <option key={num} value={num}>{num}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-707 mb-2">Max Guests *</label>
+                    <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.maxGuestsLabel')}</label>
                     <select
                       value={formData.guests}
                       onChange={(e) => handleInputChange('guests', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent pr-8"
                       required
                     >
-                      <option value="">Select</option>
+                      <option value="">{t('account.becomeHost.select')}</option>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(num => (
                         <option key={num} value={num}>{num}</option>
                       ))}
@@ -533,7 +564,7 @@ export default function BecomeHost() {
 
           {currentStep === 2 && (
             <div>
-              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">What amenities do you offer?</h2>
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">{t('account.becomeHost.step2Title')}</h2>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {[
@@ -566,7 +597,7 @@ export default function BecomeHost() {
                     <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
                       <i className={`${icon} text-sm`}></i>
                     </div>
-                    <span className="text-xs font-medium truncate leading-tight">{label}</span>
+                    <span className="text-xs font-medium truncate leading-tight">{t(AMENITY_KEY[label])}</span>
                   </button>
                 ))}
               </div>
@@ -575,7 +606,7 @@ export default function BecomeHost() {
 
           {currentStep === 3 && (
             <div>
-              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">Upload Photos of Your Cottage *</h2>
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">{t('account.becomeHost.step3Title')}</h2>
               
               <div className="space-y-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -584,12 +615,12 @@ export default function BecomeHost() {
                       <i className="ri-information-line text-blue-500"></i>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-blue-900 mb-1">Photo Guidelines</h3>
+                      <h3 className="font-semibold text-blue-900 mb-1">{t('account.becomeHost.photoGuidelinesTitle')}</h3>
                       <ul className="text-blue-800 text-sm space-y-1">
-                        <li>• Upload at least 3 photos (maximum 10)</li>
-                        <li>• Include exterior, interior, and key amenity photos</li>
-                        <li>• Use high-quality images (max 15MB each)</li>
-                        <li>• Show your cottage in the best light</li>
+                        <li>• {t('account.becomeHost.photoGuideline1')}</li>
+                        <li>• {t('account.becomeHost.photoGuideline2')}</li>
+                        <li>• {t('account.becomeHost.photoGuideline3')}</li>
+                        <li>• {t('account.becomeHost.photoGuideline4')}</li>
                       </ul>
                     </div>
                   </div>
@@ -597,7 +628,7 @@ export default function BecomeHost() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-707 mb-2">
-                    Cottage Photos * (Minimum 3 required)
+                    {t('account.becomeHost.cottagePhotosLabel')}
                   </label>
                   
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-red-400 transition-colors">
@@ -615,18 +646,18 @@ export default function BecomeHost() {
                           <i className="ri-camera-line text-2xl text-gray-400"></i>
                         </div>
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Photos</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">{t('account.becomeHost.uploadPhotosTitle')}</h3>
                       <p className="text-gray-600 mb-4">
-                        Drag and drop your photos here, or click to browse
+                        {t('account.becomeHost.dragDropHint')}
                       </p>
                       <span className="inline-block px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer whitespace-nowrap">
-                        Choose Files
+                        {t('account.becomeHost.chooseFiles')}
                       </span>
                     </label>
                   </div>
 
                   <p className="text-sm text-gray-500 mt-2">
-                    Supported formats: JPG, PNG, GIF. Maximum file size: 15MB per image.
+                    {t('account.becomeHost.supportedFormats')}
                   </p>
                 </div>
 
@@ -634,7 +665,7 @@ export default function BecomeHost() {
                 {formData.photos.length > 0 && (
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      Uploaded Photos ({formData.photos.length}/10)
+                      {t('account.becomeHost.uploadedPhotosCount', { count: formData.photos.length })}
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {formData.photos.map((photo, index) => (
@@ -642,7 +673,7 @@ export default function BecomeHost() {
                           <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                             <img
                               src={URL.createObjectURL(photo)}
-                              alt={`Cottage photo ${index + 1}`}
+                              alt={t('account.becomeHost.photoAlt', { count: index + 1 })}
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -654,7 +685,7 @@ export default function BecomeHost() {
                             <i className="ri-close-line text-sm"></i>
                           </button>
                           <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                            {index === 0 ? 'Main' : `${index + 1}`}
+                            {index === 0 ? t('account.becomeHost.mainPhotoLabel') : `${index + 1}`}
                           </div>
                         </div>
                       ))}
@@ -663,24 +694,24 @@ export default function BecomeHost() {
                 )}
 
                 <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="font-semibold text-gray-900 mb-4">Photo Tips for Better Bookings</h3>
+                  <h3 className="font-semibold text-gray-900 mb-4">{t('account.becomeHost.photoTipsTitle')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Must-Have Shots:</h4>
+                      <h4 className="font-medium text-gray-900 mb-2">{t('account.becomeHost.mustHaveShotsTitle')}</h4>
                       <ul className="space-y-1">
-                        <li>• Exterior front view</li>
-                        <li>• Living room/main area</li>
-                        <li>• All bedrooms</li>
-                        <li>• Kitchen and dining area</li>
+                        <li>• {t('account.becomeHost.mustHave1')}</li>
+                        <li>• {t('account.becomeHost.mustHave2')}</li>
+                        <li>• {t('account.becomeHost.mustHave3')}</li>
+                        <li>• {t('account.becomeHost.mustHave4')}</li>
                       </ul>
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Great Additions:</h4>
+                      <h4 className="font-medium text-gray-900 mb-2">{t('account.becomeHost.greatAdditionsTitle')}</h4>
                       <ul className="space-y-1">
-                        <li>• Bathroom(s)</li>
-                        <li>• Outdoor spaces/garden</li>
-                        <li>• Special amenities</li>
-                        <li>• Scenic views</li>
+                        <li>• {t('account.becomeHost.greatAddition1')}</li>
+                        <li>• {t('account.becomeHost.greatAddition2')}</li>
+                        <li>• {t('account.becomeHost.greatAddition3')}</li>
+                        <li>• {t('account.becomeHost.greatAddition4')}</li>
                       </ul>
                     </div>
                   </div>
@@ -691,16 +722,16 @@ export default function BecomeHost() {
 
           {currentStep === 4 && (
             <div>
-              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">Describe your property</h2>
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">{t('account.becomeHost.step4Title')}</h2>
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-707 mb-2 notranslate" translate="no">
-                    {currentLang === 'ka' ? 'საკუთრების სახელი' : 'Property Title'} *
+                  <label className="block text-sm font-medium text-gray-707 mb-2">
+                    {t('account.becomeHost.propertyTitleLabel')} *
                   </label>
                   <input
                     type="text"
-                    placeholder="Give your property a catchy title"
+                    placeholder={t('account.becomeHost.propertyTitlePlaceholder')}
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -709,10 +740,10 @@ export default function BecomeHost() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-707 mb-2">Description *</label>
+                  <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.descriptionLabel')}</label>
                   <textarea
                     rows={8}
-                    placeholder="Describe what makes your property special. Include details about the space, surroundings, nearby attractions, and what guests can expect..."
+                    placeholder={t('account.becomeHost.descriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
@@ -720,13 +751,13 @@ export default function BecomeHost() {
                     required
                   ></textarea>
                   <div className={`text-sm mt-2 ${formData.description.length > 1800 ? 'text-orange-500' : 'text-gray-500'}`}>
-                    {formData.description.length}/2000 characters
+                    {t('account.becomeHost.charactersCount', { count: formData.description.length })}
                   </div>
                 </div>
 
                 {/* Pricing Model */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Pricing Model *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">{t('account.becomeHost.pricingModelLabel')}</label>
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <button
                       type="button"
@@ -744,15 +775,15 @@ export default function BecomeHost() {
                           {pricingType === 'fixed' && <i className="ri-check-line text-white text-[10px]"></i>}
                         </div>
                         <span className={`text-sm font-semibold ${pricingType === 'fixed' ? 'text-red-700' : 'text-gray-700'}`}>
-                          Fixed Price
+                          {t('account.becomeHost.fixedPrice')}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 leading-relaxed">
-                        One nightly rate for all guests, regardless of group size.
+                        {t('account.becomeHost.fixedPriceDesc')}
                       </p>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         pricingType === 'fixed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
-                      }`}>Simple &amp; consistent</span>
+                      }`}>{t('account.becomeHost.simpleConsistent')}</span>
                     </button>
 
                     <button
@@ -772,15 +803,15 @@ export default function BecomeHost() {
                           {pricingType === 'per_guest' && <i className="ri-check-line text-white text-[10px]"></i>}
                         </div>
                         <span className={`text-sm font-semibold ${pricingType === 'per_guest' ? 'text-amber-800' : 'text-gray-700'}`}>
-                          By Guest Count
+                          {t('account.becomeHost.byGuestCount')}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 leading-relaxed">
-                        Set different nightly prices per number of guests.
+                        {t('account.becomeHost.byGuestCountDesc')}
                       </p>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         pricingType === 'per_guest' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                      }`}>Flexible pricing</span>
+                      }`}>{t('account.becomeHost.flexiblePricing')}</span>
                     </button>
                   </div>
 
@@ -788,20 +819,20 @@ export default function BecomeHost() {
                   {pricingType === 'fixed' && (
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Nightly Rate (₾) <span className="text-red-500">*</span>
+                        {t('account.becomeHost.nightlyRateLabel')} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₾</span>
                         <input
                           type="number"
-                          placeholder="e.g. 200"
+                          placeholder={t('account.becomeHost.nightlyRatePlaceholder')}
                           value={formData.price}
                           onChange={(e) => handleInputChange('price', e.target.value)}
                           className="w-full p-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           min="1"
                         />
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">This rate applies to all bookings regardless of guest count.</p>
+                      <p className="text-xs text-gray-400 mt-1">{t('account.becomeHost.fixedRateNote')}</p>
                     </div>
                   )}
 
@@ -811,14 +842,14 @@ export default function BecomeHost() {
                       {maxGuestsNum === 0 ? (
                         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                           <i className="ri-information-line text-amber-500 text-sm"></i>
-                          <p className="text-xs text-amber-700">Please select Max Guests in Step 1 first to set up per-guest pricing.</p>
+                          <p className="text-xs text-amber-700">{t('account.becomeHost.selectMaxGuestsFirst')}</p>
                         </div>
                       ) : (
                         <>
                           <div className="flex items-center gap-2 mb-3 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
                             <i className="ri-information-line text-amber-500 text-sm"></i>
                             <p className="text-xs text-amber-700 font-medium">
-                              Set a nightly price for each guest count. The system picks the right price automatically at booking.
+                              {t('account.becomeHost.perGuestNote')}
                             </p>
                           </div>
                           <div className="space-y-2">
@@ -827,7 +858,7 @@ export default function BecomeHost() {
                                 <div className="flex items-center gap-1.5 min-w-[80px]">
                                   <i className="ri-user-line text-gray-400 text-xs"></i>
                                   <span className="text-sm font-medium text-gray-700">
-                                    {n} guest{n > 1 ? 's' : ''}
+                                    {plural('account.becomeHost.guestCountLabel', n)}
                                   </span>
                                 </div>
                                 <div className="flex-1 relative">
@@ -838,11 +869,11 @@ export default function BecomeHost() {
                                     step="1"
                                     value={guestTierPrices[n] || ''}
                                     onChange={(e) => updateTierPrice(n, e.target.value)}
-                                    placeholder="Price per night"
+                                    placeholder={t('account.becomeHost.pricePerNightPlaceholder')}
                                     className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                                   />
                                 </div>
-                                <span className="text-xs text-gray-400 whitespace-nowrap">/ night</span>
+                                <span className="text-xs text-gray-400 whitespace-nowrap">{t('account.becomeHost.perNight')}</span>
                               </div>
                             ))}
                           </div>
@@ -853,13 +884,13 @@ export default function BecomeHost() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Accepted Payment Methods *</label>
-                  <p className="text-xs text-gray-500 mb-3">Choose how guests can pay for this cottage. You can change this later from your host dashboard.</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">{t('account.becomeHost.acceptedPaymentMethodsLabel')}</label>
+                  <p className="text-xs text-gray-500 mb-3">{t('account.becomeHost.acceptedPaymentMethodsHint')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {([
-                      { value: 'both', label: 'Both', desc: 'Guests choose online or pay at property.', icon: 'ri-bank-card-2-line' },
-                      { value: 'online_only', label: 'Online only', desc: 'Card payment only, guests pay when booking.', icon: 'ri-bank-card-line' },
-                      { value: 'pay_at_property_only', label: 'Pay at property only', desc: 'Guests pay you on arrival.', icon: 'ri-home-heart-line' },
+                      { value: 'both', label: t('account.becomeHost.paymentBoth'), desc: t('account.becomeHost.paymentBothDesc'), icon: 'ri-bank-card-2-line' },
+                      { value: 'online_only', label: t('account.becomeHost.paymentOnlineOnly'), desc: t('account.becomeHost.paymentOnlineOnlyDesc'), icon: 'ri-bank-card-line' },
+                      { value: 'pay_at_property_only', label: t('account.becomeHost.paymentAtPropertyOnly'), desc: t('account.becomeHost.paymentAtPropertyOnlyDesc'), icon: 'ri-home-heart-line' },
                     ] as const).map((opt) => {
                       const selected = formData.acceptedPaymentMethods === opt.value;
                       return (
@@ -890,15 +921,15 @@ export default function BecomeHost() {
 
           {currentStep === 5 && (
             <div>
-              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">Contact Information</h2>
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-6">{t('account.becomeHost.step5Title')}</h2>
               
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-707 mb-2">First Name *</label>
+                    <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.firstNameLabel')}</label>
                     <input
                       type="text"
-                      placeholder="Your first name"
+                      placeholder={t('account.becomeHost.firstNamePlaceholder')}
                       value={formData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -906,10 +937,10 @@ export default function BecomeHost() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-707 mb-2">Last Name *</label>
+                    <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.lastNameLabel')}</label>
                     <input
                       type="text"
-                      placeholder="Your last name"
+                      placeholder={t('account.becomeHost.lastNamePlaceholder')}
                       value={formData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -919,10 +950,10 @@ export default function BecomeHost() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-707 mb-2">Email Address *</label>
+                  <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.emailLabel')}</label>
                   <input
                     type="email"
-                    placeholder="your.email@example.com"
+                    placeholder={t('account.becomeHost.emailPlaceholder')}
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -931,10 +962,10 @@ export default function BecomeHost() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-707 mb-2">Phone Number *</label>
+                  <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.phoneLabel')}</label>
                   <input
                     type="tel"
-                    placeholder="+995 xxx xxx xxx"
+                    placeholder={t('account.becomeHost.phonePlaceholder')}
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -943,25 +974,25 @@ export default function BecomeHost() {
                 </div>
 
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 mb-4">What happens next?</h3>
+                  <h3 className="font-semibold text-gray-900 mb-4">{t('account.becomeHost.whatHappensNextTitle')}</h3>
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li className="flex items-start">
                       <div className="w-4 h-4 flex items-center justify-center mt-0.5 mr-3">
                         <i className="ri-check-line text-green-500"></i>
                       </div>
-                      Our team will review your application within 24 hours
+                      {t('account.becomeHost.nextStep1')}
                     </li>
                     <li className="flex items-start">
                       <div className="w-4 h-4 flex items-center justify-center mt-0.5 mr-3">
                         <i className="ri-check-line text-green-500"></i>
                       </div>
-                      We'll schedule a property inspection at your convenience
+                      {t('account.becomeHost.nextStep2')}
                     </li>
                     <li className="flex items-start">
                       <div className="w-4 h-4 flex items-center justify-center mt-0.5 mr-3">
                         <i className="ri-check-line text-green-500"></i>
                       </div>
-                      Once approved, your listing goes live and you start earning
+                      {t('account.becomeHost.nextStep3')}
                     </li>
                   </ul>
                 </div>
@@ -993,7 +1024,7 @@ export default function BecomeHost() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Previous
+              {t('account.becomeHost.previous')}
             </button>
             
             {currentStep < 5 ? (
@@ -1002,7 +1033,7 @@ export default function BecomeHost() {
                 onClick={nextStep}
                 className="px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 cursor-pointer whitespace-nowrap"
               >
-                Next Step
+                {t('account.becomeHost.nextStepBtn')}
               </button>
             ) : (
               <button
@@ -1015,7 +1046,7 @@ export default function BecomeHost() {
                     : 'bg-red-500 text-white hover:bg-red-600'
                 }`}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                {isSubmitting ? t('account.becomeHost.submittingEllipsis') : t('account.becomeHost.submitApplication')}
               </button>
             )}
           </div>
@@ -1025,13 +1056,13 @@ export default function BecomeHost() {
 
         {/* Benefits Section */}
         <section className="mt-6 md:mt-16 bg-gray-50 rounded-2xl p-4 md:p-8">
-          <h2 className="text-base md:text-3xl font-bold text-gray-900 text-center mb-4 md:mb-8">Why host with us?</h2>
+          <h2 className="text-base md:text-3xl font-bold text-gray-900 text-center mb-4 md:mb-8">{t('account.becomeHost.whyHostTitle')}</h2>
           
           <div className="flex flex-col md:grid md:grid-cols-3 gap-3 md:gap-8">
             {[
-              { icon: 'ri-money-dollar-circle-line', title: 'Earn Extra Income', desc: 'Turn your unused space into a profitable income stream with our competitive commission rates' },
-              { icon: 'ri-shield-check-line', title: 'Host Protection', desc: 'We provide a secure booking platform and user verification to support safe stays' },
-              { icon: 'ri-customer-service-2-line', title: 'Support Available All Week', desc: 'Our dedicated support team is always here to help you succeed as a host' },
+              { icon: 'ri-money-dollar-circle-line', title: t('account.becomeHost.benefit1Title'), desc: t('account.becomeHost.benefit1Desc') },
+              { icon: 'ri-shield-check-line', title: t('account.becomeHost.benefit2Title'), desc: t('account.becomeHost.benefit2Desc') },
+              { icon: 'ri-customer-service-2-line', title: t('account.becomeHost.benefit3Title'), desc: t('account.becomeHost.benefit3Desc') },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="flex items-start gap-3 md:flex-col md:items-center md:text-center">
                 <div className="w-9 h-9 md:w-16 md:h-16 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 md:mx-auto md:mb-4">
