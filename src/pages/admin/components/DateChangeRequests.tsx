@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../../../i18n';
 
 interface DateChangeRequest {
   id: string;
@@ -17,6 +18,12 @@ interface DateChangeRequest {
 }
 
 type DCFilter = 'pending' | 'all' | 'approved' | 'rejected';
+
+const DC_STATUS_LABEL_KEY: Record<string, string> = {
+  pending: 'admin.dateChangeRequests.tabPending',
+  approved: 'admin.dateChangeRequests.tabApproved',
+  rejected: 'admin.dateChangeRequests.tabRejected',
+};
 
 const SUPABASE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/booking-handler`;
 const ADMIN_HOST_ACTIONS_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
@@ -47,6 +54,7 @@ interface Props {
 }
 
 export default function DateChangeRequests({ refreshTrigger }: Props) {
+  const { t } = useT();
   const [requests, setRequests] = useState<DateChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<DCFilter>('pending');
@@ -96,15 +104,15 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
         setRequests((prev) => prev.map((r) => r.id === bookingId ? { ...r, date_change_status: newStatus } : r));
         showToast(
           action === 'admin-approve-dates'
-            ? 'Date change approved — customer notified.'
-            : 'Date change rejected — customer notified.',
+            ? t('admin.dateChangeRequests.approvedToast')
+            : t('admin.dateChangeRequests.rejectedToast'),
           'success'
         );
       } else {
-        showToast(data.error ?? 'Something went wrong. Please try again.', 'error');
+        showToast(data.error ?? t('admin.dateChangeRequests.somethingWrongError'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.dateChangeRequests.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -119,10 +127,10 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
   };
 
   const tabs: { key: DCFilter; label: string; color: string }[] = [
-    { key: 'pending', label: 'Pending', color: 'text-amber-600' },
-    { key: 'all', label: 'All', color: 'text-gray-600' },
-    { key: 'approved', label: 'Approved', color: 'text-green-600' },
-    { key: 'rejected', label: 'Rejected', color: 'text-red-500' },
+    { key: 'pending', label: t('admin.dateChangeRequests.tabPending'), color: 'text-amber-600' },
+    { key: 'all', label: t('admin.dateChangeRequests.tabAll'), color: 'text-gray-600' },
+    { key: 'approved', label: t('admin.dateChangeRequests.tabApproved'), color: 'text-green-600' },
+    { key: 'rejected', label: t('admin.dateChangeRequests.tabRejected'), color: 'text-red-500' },
   ];
 
   return (
@@ -134,29 +142,29 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
             <i className="ri-calendar-2-line text-amber-600 text-sm"></i>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Date Change Requests</h2>
-            <p className="text-xs text-gray-400">Customer-submitted requests to modify booking dates</p>
+            <h2 className="text-sm font-semibold text-gray-900">{t('admin.dateChangeRequests.title')}</h2>
+            <p className="text-xs text-gray-400">{t('admin.dateChangeRequests.subtitle')}</p>
           </div>
           {counts.pending > 0 && (
             <span className="ml-1 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              {counts.pending} pending
+              {t('admin.dateChangeRequests.pendingBadge', { count: counts.pending })}
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
           {/* Filter tabs */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-            {tabs.map((t) => (
+            {tabs.map((tab) => (
               <button
-                key={t.key}
-                onClick={() => setFilter(t.key)}
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                  filter === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                  filter === tab.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {t.label}
-                <span className={`text-xs font-semibold ${filter === t.key ? t.color : 'text-gray-400'}`}>
-                  {counts[t.key]}
+                {tab.label}
+                <span className={`text-xs font-semibold ${filter === tab.key ? tab.color : 'text-gray-400'}`}>
+                  {counts[tab.key]}
                 </span>
               </button>
             ))}
@@ -168,7 +176,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
             <div className="w-3 h-3 flex items-center justify-center">
               <i className="ri-refresh-line"></i>
             </div>
-            Refresh
+            {t('admin.dateChangeRequests.refresh')}
           </button>
         </div>
       </div>
@@ -180,7 +188,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
             <div className="w-4 h-4 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line"></i>
             </div>
-            <span className="text-sm">Loading requests…</span>
+            <span className="text-sm">{t('admin.dateChangeRequests.loadingRequests')}</span>
           </div>
         </div>
       ) : filtered.length === 0 ? (
@@ -188,16 +196,25 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
           <div className="w-10 h-10 flex items-center justify-center mb-3">
             <i className="ri-calendar-check-line text-3xl"></i>
           </div>
-          <p className="text-sm font-medium">No date change requests</p>
+          <p className="text-sm font-medium">{t('admin.dateChangeRequests.noRequestsTitle')}</p>
           <p className="text-xs mt-1">
-            {filter === 'pending' ? 'No pending requests right now.' : 'Nothing to show for this filter.'}
+            {filter === 'pending' ? t('admin.dateChangeRequests.noRequestsPending') : t('admin.dateChangeRequests.noRequestsOther')}
           </p>
         </div>
       ) : (
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {['Guest', 'Cottage', 'Current Dates', 'Requested Dates', 'Price', 'Requested At', 'Status', 'Actions'].map((h) => (
+              {[
+                t('admin.dateChangeRequests.colGuest'),
+                t('admin.dateChangeRequests.colCottage'),
+                t('admin.dateChangeRequests.colCurrentDates'),
+                t('admin.dateChangeRequests.colRequestedDates'),
+                t('admin.dateChangeRequests.colPrice'),
+                t('admin.dateChangeRequests.colRequestedAt'),
+                t('admin.dateChangeRequests.colStatus'),
+                t('admin.dateChangeRequests.colActions'),
+              ].map((h) => (
                 <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
@@ -255,7 +272,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                 <td className="px-5 py-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusBadge(r.date_change_status)}`}>
                     <i className={`${statusIcon(r.date_change_status)} text-xs`}></i>
-                    {r.date_change_status}
+                    {t(DC_STATUS_LABEL_KEY[r.date_change_status] ?? r.date_change_status)}
                   </span>
                 </td>
                 {/* Actions */}
@@ -276,7 +293,7 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                             <i className="ri-check-line"></i>
                           </div>
                         )}
-                        Approve
+                        {t('admin.dateChangeRequests.approve')}
                       </button>
                       <button
                         onClick={() => handleDateAction(r.id, 'admin-reject-dates')}
@@ -292,11 +309,11 @@ export default function DateChangeRequests({ refreshTrigger }: Props) {
                             <i className="ri-close-line"></i>
                           </div>
                         )}
-                        Reject
+                        {t('admin.dateChangeRequests.reject')}
                       </button>
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-400 italic">Processed</span>
+                    <span className="text-xs text-gray-400 italic">{t('admin.dateChangeRequests.processed')}</span>
                   )}
                 </td>
               </tr>

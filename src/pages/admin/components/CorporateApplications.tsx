@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useT } from '../../../i18n';
 
 const CORPORATE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/corporate-application-handler`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -20,6 +21,13 @@ interface CorporateApplication {
 
 type FilterTab = 'pending' | 'approved' | 'rejected' | 'all';
 
+const FILTER_TAB_LABEL_KEY: Record<FilterTab, string> = {
+  pending: 'admin.corporateApplications.tabPending',
+  approved: 'admin.corporateApplications.tabApproved',
+  rejected: 'admin.corporateApplications.tabRejected',
+  all: 'admin.corporateApplications.tabAll',
+};
+
 function statusBadge(status: string) {
   if (status === 'approved') return 'bg-green-100 text-green-700';
   if (status === 'rejected') return 'bg-red-100 text-red-600';
@@ -31,6 +39,7 @@ function formatDate(s: string) {
 }
 
 export default function CorporateApplications() {
+  const { t } = useT();
   const [apps, setApps] = useState<CorporateApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterTab>('pending');
@@ -84,16 +93,16 @@ export default function CorporateApplications() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        showToast(action === 'admin-approve' ? 'Agency approved.' : 'Application rejected.', 'success');
+        showToast(action === 'admin-approve' ? t('admin.corporateApplications.agencyApprovedToast') : t('admin.corporateApplications.applicationRejectedToast'), 'success');
         await load();
         setRejectTarget(null);
         setRejectNote('');
       } else {
-        showToast((data.error as string) ?? `Request failed (${res.status})`, 'error');
+        showToast((data.error as string) ?? t('admin.corporateApplications.requestFailedError', { status: res.status }), 'error');
       }
     } catch (err) {
       console.error(err);
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.corporateApplications.networkError'), 'error');
     }
     setActionLoading(null);
   };
@@ -110,44 +119,44 @@ export default function CorporateApplications() {
     <div className="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-gray-900">Corporate Applications</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Travel-agency partners earning 5% commission</p>
+          <h2 className="text-base font-bold text-gray-900">{t('admin.corporateApplications.title')}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{t('admin.corporateApplications.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {(['pending', 'approved', 'rejected', 'all'] as FilterTab[]).map((t) => (
+          {(['pending', 'approved', 'rejected', 'all'] as FilterTab[]).map((tab) => (
             <button
-              key={t}
-              onClick={() => setFilter(t)}
+              key={tab}
+              onClick={() => setFilter(tab)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors cursor-pointer ${
-                filter === t
+                filter === tab
                   ? 'bg-emerald-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {t} ({counts[t]})
+              {t(FILTER_TAB_LABEL_KEY[tab])} ({counts[tab]})
             </button>
           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="px-6 py-12 text-center text-sm text-gray-400">Loading…</div>
+        <div className="px-6 py-12 text-center text-sm text-gray-400">{t('admin.corporateApplications.loadingEllipsis')}</div>
       ) : filtered.length === 0 ? (
         <div className="px-6 py-12 text-center">
-          <p className="text-sm text-gray-500">No {filter !== 'all' ? filter : ''} corporate applications.</p>
+          <p className="text-sm text-gray-500">{t('admin.corporateApplications.noApplications', { filter: filter !== 'all' ? t(FILTER_TAB_LABEL_KEY[filter]) : '' })}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="px-5 py-3">Agency</th>
-                <th className="px-5 py-3">Tax ID</th>
-                <th className="px-5 py-3">Representative</th>
-                <th className="px-5 py-3">Contact</th>
-                <th className="px-5 py-3">Submitted</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+                <th className="px-5 py-3">{t('admin.corporateApplications.colAgency')}</th>
+                <th className="px-5 py-3">{t('admin.corporateApplications.colTaxId')}</th>
+                <th className="px-5 py-3">{t('admin.corporateApplications.colRepresentative')}</th>
+                <th className="px-5 py-3">{t('admin.corporateApplications.colContact')}</th>
+                <th className="px-5 py-3">{t('admin.corporateApplications.colSubmitted')}</th>
+                <th className="px-5 py-3">{t('admin.corporateApplications.colStatus')}</th>
+                <th className="px-5 py-3 text-right">{t('admin.corporateApplications.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -155,7 +164,7 @@ export default function CorporateApplications() {
                 <tr key={a.id} className="hover:bg-gray-50/60 transition-colors">
                   <td className="px-5 py-4">
                     <div className="font-semibold text-gray-900">{a.agency_name}</div>
-                    <div className="text-xs text-gray-400">{Number(a.commission_pct).toFixed(0)}% commission</div>
+                    <div className="text-xs text-gray-400">{Number(a.commission_pct).toFixed(0)}{t('admin.corporateApplications.commissionSuffix')}</div>
                   </td>
                   <td className="px-5 py-4 text-gray-700 font-mono text-xs">{a.tax_id}</td>
                   <td className="px-5 py-4 text-gray-700">{a.rep_first_name} {a.rep_last_name}</td>
@@ -166,7 +175,7 @@ export default function CorporateApplications() {
                   <td className="px-5 py-4 text-gray-500 text-xs">{formatDate(a.created_at)}</td>
                   <td className="px-5 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge(a.status)}`}>
-                      {a.status}
+                      {t(FILTER_TAB_LABEL_KEY[a.status as FilterTab] ?? a.status)}
                     </span>
                     {a.status === 'rejected' && a.rejection_note && (
                       <div className="text-xs text-red-500 mt-1 max-w-xs truncate" title={a.rejection_note}>
@@ -183,7 +192,7 @@ export default function CorporateApplications() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
                         >
                           <i className="ri-check-line"></i>
-                          Approve
+                          {t('admin.corporateApplications.approve')}
                         </button>
                         <button
                           onClick={() => { setRejectTarget(a); setRejectNote(''); }}
@@ -191,7 +200,7 @@ export default function CorporateApplications() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
                         >
                           <i className="ri-close-line"></i>
-                          Reject
+                          {t('admin.corporateApplications.reject')}
                         </button>
                       </div>
                     ) : (
@@ -209,14 +218,14 @@ export default function CorporateApplications() {
       {rejectTarget && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Reject application</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">{t('admin.corporateApplications.rejectApplicationTitle')}</h3>
             <p className="text-sm text-gray-500 mb-4">
-              You're rejecting <strong>{rejectTarget.agency_name}</strong>. The note below will be emailed to the applicant.
+              {t('admin.corporateApplications.rejectApplicationBody', { agency: rejectTarget.agency_name })}
             </p>
             <textarea
               value={rejectNote}
               onChange={(e) => setRejectNote(e.target.value)}
-              placeholder="Optional — explain the reason (e.g. missing documentation)…"
+              placeholder={t('admin.corporateApplications.rejectPlaceholder')}
               className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]"
             />
             <div className="flex gap-2 justify-end mt-4">
@@ -224,14 +233,14 @@ export default function CorporateApplications() {
                 onClick={() => setRejectTarget(null)}
                 className="px-4 py-2 bg-white border border-line hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg cursor-pointer transition-colors"
               >
-                Cancel
+                {t('admin.corporateApplications.cancel')}
               </button>
               <button
                 onClick={() => handleAction(rejectTarget.id, 'admin-reject', rejectNote)}
                 disabled={actionLoading === rejectTarget.id + 'admin-reject'}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white text-sm font-semibold rounded-lg cursor-pointer transition-colors"
               >
-                Confirm reject
+                {t('admin.corporateApplications.confirmReject')}
               </button>
             </div>
           </div>
