@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { sendPhoneOtp, verifyPhoneOtp, normalizeGeoPhone, formatGeoPhone } from '../../lib/otp';
+import { useT } from '../../i18n';
 
 interface Props {
   open: boolean;
@@ -23,11 +24,13 @@ export default function PhoneVerifyModal({
   open,
   userId,
   initialPhone = '',
-  title = 'Verify your phone',
+  title,
   reason,
   onVerified,
   onClose,
 }: Props) {
+  const { t, plural } = useT();
+  const displayTitle = title ?? t('account.phoneVerifyModal.defaultTitle');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = useState(initialPhone);
   const [sentTo, setSentTo] = useState('');
@@ -60,7 +63,7 @@ export default function PhoneVerifyModal({
   const doSend = async (target: string): Promise<void> => {
     const normalized = normalizeGeoPhone(target);
     if (!normalized) {
-      setError('Please enter a valid Georgian phone number (e.g. +995 555 12 34 56).');
+      setError(t('account.phoneVerifyModal.validPhoneError'));
       return;
     }
     setLoading(true);
@@ -68,7 +71,7 @@ export default function PhoneVerifyModal({
     try {
       const { ok, error: err } = await sendPhoneOtp(normalized);
       if (!ok) {
-        setError(err ?? 'Could not send the code. Please try again.');
+        setError(err ?? t('account.phoneVerifyModal.sendCodeFailedError'));
         return;
       }
       setSentTo(normalized);
@@ -93,7 +96,7 @@ export default function PhoneVerifyModal({
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.replace(/\D/g, '').length !== 6) {
-      setError('Enter the 6-digit code.');
+      setError(t('account.phoneVerifyModal.enterSixDigitError'));
       return;
     }
     setLoading(true);
@@ -101,7 +104,7 @@ export default function PhoneVerifyModal({
     try {
       const v = await verifyPhoneOtp(sentTo, code, userId);
       if (!v.ok) {
-        setError(v.remaining != null ? `${v.error} ${v.remaining} attempt${v.remaining === 1 ? '' : 's'} left.` : (v.error ?? 'Invalid code.'));
+        setError(v.remaining != null ? `${v.error} ${plural('account.phoneVerifyModal.attemptsLeftCount', v.remaining)}` : (v.error ?? t('account.phoneVerifyModal.invalidCodeError')));
         return;
       }
       onVerified(sentTo);
@@ -123,7 +126,7 @@ export default function PhoneVerifyModal({
                 <i className="ri-arrow-left-line text-lg"></i>
               </button>
             )}
-            <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+            <h2 className="text-xl font-bold text-gray-900">{displayTitle}</h2>
           </div>
           {onClose && (
             <button
@@ -148,7 +151,7 @@ export default function PhoneVerifyModal({
           <form onSubmit={handleSend} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone number <span className="text-red-500">*</span>
+                {t('account.phoneVerifyModal.phoneNumber')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -158,25 +161,25 @@ export default function PhoneVerifyModal({
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+995 555 12 34 56"
+                  placeholder={t('account.phoneVerifyModal.phonePlaceholder')}
                   autoFocus
                   className="w-full pl-9 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-1">We&apos;ll text you a 6-digit code.</p>
+              <p className="text-xs text-gray-400 mt-1">{t('account.phoneVerifyModal.weWillTextCode')}</p>
             </div>
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
             >
-              {loading ? 'Sending...' : 'Send code'}
+              {loading ? t('account.phoneVerifyModal.sendingEllipsis') : t('account.phoneVerifyModal.sendCode')}
             </button>
           </form>
         ) : (
           <form onSubmit={handleVerify} className="space-y-4">
             <p className="text-sm text-gray-500 text-center leading-relaxed">
-              Enter the 6-digit code sent to{' '}
+              {t('account.phoneVerifyModal.enterCodeSentTo')}{' '}
               <span className="font-medium text-gray-700">{formatGeoPhone(sentTo)}</span>.
             </p>
             <input
@@ -197,7 +200,7 @@ export default function PhoneVerifyModal({
                 disabled={resendIn > 0}
                 className="text-sm text-red-500 hover:text-red-600 cursor-pointer disabled:text-gray-400 disabled:cursor-default"
               >
-                {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+                {resendIn > 0 ? t('account.phoneVerifyModal.resendCodeIn', { seconds: resendIn }) : t('account.phoneVerifyModal.resendCode')}
               </button>
             </div>
             <button
@@ -205,7 +208,7 @@ export default function PhoneVerifyModal({
               disabled={loading || code.length !== 6}
               className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
             >
-              {loading ? 'Verifying...' : 'Verify & continue'}
+              {loading ? t('account.phoneVerifyModal.verifyingEllipsis') : t('account.phoneVerifyModal.verifyAndContinue')}
             </button>
           </form>
         )}

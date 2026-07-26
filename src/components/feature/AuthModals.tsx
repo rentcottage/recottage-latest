@@ -10,6 +10,7 @@ import {
 } from '../../hooks/useAuth';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { sendPhoneOtp, verifyPhoneOtp, normalizeGeoPhone, formatGeoPhone } from '../../lib/otp';
+import { useT } from '../../i18n';
 
 // Real hCaptcha sitekey for rentcottage.ge — public value, safe to commit.
 // Validated server-side by Supabase using the matching secret stored in
@@ -39,6 +40,7 @@ export default function AuthModals({
   onSuccess,
 }: AuthModalsProps) {
   const navigate = useNavigate();
+  const { t, plural } = useT();
 
   // Login / forgot state
   const [loginView, setLoginView] = useState<LoginView>('login');
@@ -119,7 +121,7 @@ export default function AuthModals({
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginCaptchaToken) {
-      setLoginError('Please complete the CAPTCHA verification.');
+      setLoginError(t('account.authModals.captchaRequiredError'));
       return;
     }
     setLoginError('');
@@ -146,11 +148,11 @@ export default function AuthModals({
     e.preventDefault();
     setForgotError('');
     if (!forgotEmail.trim()) {
-      setForgotError('Please enter your email address.');
+      setForgotError(t('account.authModals.enterEmailError'));
       return;
     }
     if (!forgotCaptchaToken) {
-      setForgotError('Please complete the CAPTCHA verification.');
+      setForgotError(t('account.authModals.captchaRequiredError'));
       return;
     }
     setForgotLoading(true);
@@ -174,28 +176,28 @@ export default function AuthModals({
     setSignupError('');
 
     if (!signupForm.firstName.trim() || !signupForm.lastName.trim()) {
-      setSignupError('Please enter your first and last name.');
+      setSignupError(t('account.authModals.enterFirstLastNameError'));
       return;
     }
     if (!signupForm.email.trim()) {
-      setSignupError('Please enter your email address.');
+      setSignupError(t('account.authModals.enterEmailAddressError'));
       return;
     }
     const normalized = normalizeGeoPhone(signupForm.phone);
     if (!normalized) {
-      setSignupError('Please enter a valid Georgian phone number (e.g. +995 555 12 34 56).');
+      setSignupError(t('account.authModals.validPhoneError'));
       return;
     }
     if (signupForm.password.length < 8) {
-      setSignupError('Password must be at least 8 characters.');
+      setSignupError(t('account.authModals.passwordLengthError'));
       return;
     }
     if (signupForm.password !== signupForm.confirmPassword) {
-      setSignupError('Passwords do not match.');
+      setSignupError(t('account.authModals.passwordMismatchError'));
       return;
     }
     if (!signupForm.acceptTerms) {
-      setSignupError('Please accept the Terms of Service to continue.');
+      setSignupError(t('account.authModals.acceptTermsError'));
       return;
     }
 
@@ -203,7 +205,7 @@ export default function AuthModals({
     try {
       const { ok, error } = await sendPhoneOtp(normalized);
       if (!ok) {
-        setSignupError(error ?? 'Could not send the verification code. Please try again.');
+        setSignupError(error ?? t('account.authModals.sendCodeFailedError'));
         return;
       }
       setOtpSentTo(normalized);
@@ -222,7 +224,7 @@ export default function AuthModals({
     setOtpError('');
     const { ok, error, cooldownSec } = await sendPhoneOtp(otpSentTo);
     if (!ok) {
-      setOtpError(error ?? 'Could not resend the code.');
+      setOtpError(error ?? t('account.authModals.resendFailedError'));
       if (cooldownSec) setResendIn(cooldownSec);
       return;
     }
@@ -236,7 +238,7 @@ export default function AuthModals({
     setSignupError('');
 
     if (!signupCaptchaToken) {
-      setOtpError('Please complete the CAPTCHA verification.');
+      setOtpError(t('account.authModals.captchaRequiredError'));
       return;
     }
 
@@ -246,15 +248,15 @@ export default function AuthModals({
       // expiry), we keep `otpVerified` so the user can retry without re-entering it.
       if (!otpVerified) {
         if (otpCode.replace(/\D/g, '').length !== 6) {
-          setOtpError('Enter the 6-digit code.');
+          setOtpError(t('account.authModals.enterSixDigitError'));
           return;
         }
         const v = await verifyPhoneOtp(otpSentTo, otpCode);
         if (!v.ok) {
           setOtpError(
             v.remaining != null
-              ? `${v.error} ${v.remaining} attempt${v.remaining === 1 ? '' : 's'} left.`
-              : (v.error ?? 'Invalid code.'),
+              ? `${v.error} ${plural('account.authModals.attemptsLeftCount', v.remaining)}`
+              : (v.error ?? t('account.authModals.invalidCodeError')),
           );
           return;
         }
@@ -277,7 +279,7 @@ export default function AuthModals({
         setSignupCaptchaToken('');
         setOtpError(
           error === 'User already registered'
-            ? 'An account with this email already exists. Try logging in instead.'
+            ? t('account.authModals.emailAlreadyRegisteredError')
             : error,
         );
         return;
@@ -295,7 +297,7 @@ export default function AuthModals({
         onSuccess?.();
         navigate('/profile');
       } else {
-        setOtpError('Something went wrong. Please try again.');
+        setOtpError(t('account.authModals.genericErrorRetry'));
       }
     } finally {
       setSignupLoading(false);
@@ -334,7 +336,7 @@ export default function AuthModals({
             <i className="ri-google-fill text-red-500"></i>
           </div>
         )}
-        Continue with Google
+        {t('account.authModals.continueWithGoogle')}
       </button>
       {FEATURE_FLAGS.ENABLE_FACEBOOK_LOGIN && (
         <button
@@ -349,7 +351,7 @@ export default function AuthModals({
               <i className="ri-facebook-fill text-blue-600"></i>
             </div>
           )}
-          Continue with Facebook
+          {t('account.authModals.continueWithFacebook')}
         </button>
       )}
     </div>
@@ -367,7 +369,7 @@ export default function AuthModals({
               {loginView === 'forgot-sent' && (
                 <>
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Check your email</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('account.authModals.checkYourEmail')}</h2>
                     <button
                       onClick={() => { onCloseLogin(); resetLoginState(); }}
                       className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -380,17 +382,17 @@ export default function AuthModals({
                       <i className="ri-mail-send-line text-green-500 text-2xl"></i>
                     </div>
                     <p className="text-gray-600 text-sm mb-1">
-                      We sent a password reset link to
+                      {t('account.authModals.resetLinkSentPre')}
                     </p>
                     <p className="font-semibold text-gray-900 mb-5">{forgotEmail}</p>
                     <p className="text-gray-400 text-xs mb-6">
-                      Click the link in the email to set a new password. Check your spam folder if you don&apos;t see it.
+                      {t('account.authModals.resetLinkInstructions')}
                     </p>
                     <button
                       onClick={() => setLoginView('login')}
                       className="text-sm text-red-500 hover:text-red-600 cursor-pointer"
                     >
-                      Back to log in
+                      {t('account.authModals.backToLogIn')}
                     </button>
                   </div>
                 </>
@@ -407,7 +409,7 @@ export default function AuthModals({
                       >
                         <i className="ri-arrow-left-line text-lg"></i>
                       </button>
-                      <h2 className="text-2xl font-bold text-gray-900">Reset password</h2>
+                      <h2 className="text-2xl font-bold text-gray-900">{t('account.authModals.resetPasswordTitle')}</h2>
                     </div>
                     <button
                       onClick={() => { onCloseLogin(); resetLoginState(); }}
@@ -418,7 +420,7 @@ export default function AuthModals({
                   </div>
 
                   <p className="text-sm text-gray-500 mb-5">
-                    Enter the email address linked to your account. We&apos;ll send you a link to reset your password.
+                    {t('account.authModals.resetPasswordInstructions')}
                   </p>
 
                   {forgotError && (
@@ -430,14 +432,14 @@ export default function AuthModals({
 
                   <form onSubmit={handleForgotSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.emailAddress')}</label>
                       <input
                         type="email"
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                        placeholder="Enter your email"
+                        placeholder={t('account.authModals.emailPlaceholder')}
                         autoFocus
                       />
                     </div>
@@ -459,17 +461,17 @@ export default function AuthModals({
                       disabled={forgotLoading || !forgotCaptchaToken}
                       className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                     >
-                      {forgotLoading ? 'Sending...' : 'Send reset link'}
+                      {forgotLoading ? t('account.authModals.sendingEllipsis') : t('account.authModals.sendResetLink')}
                     </button>
                   </form>
 
                   <p className="mt-4 text-center text-sm text-gray-500">
-                    Remember your password?{' '}
+                    {t('account.authModals.rememberPasswordPre')}{' '}
                     <button
                       onClick={() => { setLoginView('login'); setForgotError(''); setForgotCaptchaToken(''); forgotCaptchaRef.current?.resetCaptcha(); }}
                       className="text-red-500 hover:text-red-600 cursor-pointer"
                     >
-                      Log in
+                      {t('account.authModals.logIn')}
                     </button>
                   </p>
                 </>
@@ -479,7 +481,7 @@ export default function AuthModals({
               {loginView === 'login' && (
                 <>
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Log in</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('account.authModals.logIn')}</h2>
                     <button
                       onClick={() => { onCloseLogin(); resetLoginState(); }}
                       className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -490,15 +492,15 @@ export default function AuthModals({
 
                   {/* Pill tabs */}
                   <div className="flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 mb-6">
-                    <button type="button" className="flex-1 rounded-full py-2.5 text-sm font-bold bg-red-500 text-white">Log in</button>
-                    <button type="button" onClick={onSwitchToSignup} className="flex-1 rounded-full py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">Sign up</button>
+                    <button type="button" className="flex-1 rounded-full py-2.5 text-sm font-bold bg-red-500 text-white">{t('account.authModals.logIn')}</button>
+                    <button type="button" onClick={onSwitchToSignup} className="flex-1 rounded-full py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">{t('account.authModals.signUp')}</button>
                   </div>
 
                   <SocialButtons />
 
                   <div className="my-5 flex items-center gap-3">
                     <div className="flex-1 h-px bg-gray-200"></div>
-                    <span className="text-xs text-gray-400">or continue with email</span>
+                    <span className="text-xs text-gray-400">{t('account.authModals.orContinueWithEmail')}</span>
                     <div className="flex-1 h-px bg-gray-200"></div>
                   </div>
 
@@ -511,25 +513,25 @@ export default function AuthModals({
 
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.emailAddress')}</label>
                       <input
                         type="email"
                         required
                         value={loginForm.email}
                         onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
                         className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                        placeholder="Enter your email"
+                        placeholder={t('account.authModals.emailPlaceholder')}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.password')}</label>
                       <input
                         type="password"
                         required
                         value={loginForm.password}
                         onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
                         className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                        placeholder="Enter your password"
+                        placeholder={t('account.authModals.passwordPlaceholder')}
                       />
                     </div>
 
@@ -550,22 +552,22 @@ export default function AuthModals({
                       disabled={loginLoading || !loginCaptchaToken}
                       className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                     >
-                      {loginLoading ? 'Logging in...' : 'Log in'}
+                      {loginLoading ? t('account.authModals.loggingInEllipsis') : t('account.authModals.logIn')}
                     </button>
                   </form>
 
                   <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-gray-600">
-                      Don&apos;t have an account?{' '}
+                      {t('account.authModals.dontHaveAccountPre')}{' '}
                       <button onClick={onSwitchToSignup} className="text-red-500 hover:text-red-600 cursor-pointer">
-                        Sign up
+                        {t('account.authModals.signUp')}
                       </button>
                     </p>
                     <button
                       onClick={() => { setLoginView('forgot'); setLoginError(''); }}
                       className="text-sm text-red-500 hover:text-red-600 cursor-pointer whitespace-nowrap"
                     >
-                      Forgot password?
+                      {t('account.authModals.forgotPassword')}
                     </button>
                   </div>
                 </>
@@ -586,7 +588,7 @@ export default function AuthModals({
               {confirmationSent ? (
                 <>
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Check your email</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('account.authModals.checkYourEmail')}</h2>
                     <button
                       onClick={() => { onCloseSignup(); resetSignupState(); }}
                       className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -599,11 +601,11 @@ export default function AuthModals({
                       <i className="ri-mail-send-line text-green-500 text-2xl"></i>
                     </div>
                     <p className="text-gray-600 text-sm mb-1">
-                      We sent a confirmation link to
+                      {t('account.authModals.confirmationSentPre')}
                     </p>
                     <p className="font-semibold text-gray-900 mb-5">{confirmedEmail}</p>
                     <p className="text-gray-500 text-sm mb-6">
-                      Click the link in the email to activate your account. Check your spam folder if you don&apos;t see it within a minute.
+                      {t('account.authModals.confirmationInstructions')}
                     </p>
                     <button
                       onClick={() => {
@@ -613,7 +615,7 @@ export default function AuthModals({
                       }}
                       className="text-sm text-red-500 hover:text-red-600 cursor-pointer"
                     >
-                      Back to log in
+                      {t('account.authModals.backToLogIn')}
                     </button>
                   </div>
                 </>
@@ -637,7 +639,7 @@ export default function AuthModals({
                         </button>
                       )}
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {signupStep === 'verify' ? 'Verify your phone' : 'Create account'}
+                        {signupStep === 'verify' ? t('account.authModals.verifyYourPhone') : t('account.authModals.createAccount')}
                       </h2>
                     </div>
                     <button
@@ -653,15 +655,15 @@ export default function AuthModals({
                     <>
                       {/* Pill tabs */}
                       <div className="flex bg-[#fafafa] border-[1.5px] border-line rounded-full p-1.5 mb-6">
-                        <button type="button" onClick={onSwitchToLogin} className="flex-1 rounded-full py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">Log in</button>
-                        <button type="button" className="flex-1 rounded-full py-2.5 text-sm font-bold bg-red-500 text-white">Sign up</button>
+                        <button type="button" onClick={onSwitchToLogin} className="flex-1 rounded-full py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">{t('account.authModals.logIn')}</button>
+                        <button type="button" className="flex-1 rounded-full py-2.5 text-sm font-bold bg-red-500 text-white">{t('account.authModals.signUp')}</button>
                       </div>
 
                       <SocialButtons />
 
                       <div className="my-5 flex items-center gap-3">
                         <div className="flex-1 h-px bg-gray-200"></div>
-                        <span className="text-xs text-gray-400">or sign up with email</span>
+                        <span className="text-xs text-gray-400">{t('account.authModals.orSignUpWithEmail')}</span>
                         <div className="flex-1 h-px bg-gray-200"></div>
                       </div>
 
@@ -675,42 +677,42 @@ export default function AuthModals({
                       <form onSubmit={handleSignupDetails} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">First name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.firstName')}</label>
                             <input
                               type="text"
                               required
                               value={signupForm.firstName}
                               onChange={(e) => setSignupForm((p) => ({ ...p, firstName: e.target.value }))}
                               className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                              placeholder="First name"
+                              placeholder={t('account.authModals.firstNamePlaceholder')}
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.lastName')}</label>
                             <input
                               type="text"
                               required
                               value={signupForm.lastName}
                               onChange={(e) => setSignupForm((p) => ({ ...p, lastName: e.target.value }))}
                               className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                              placeholder="Last name"
+                              placeholder={t('account.authModals.lastNamePlaceholder')}
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.emailAddress')}</label>
                           <input
                             type="email"
                             required
                             value={signupForm.email}
                             onChange={(e) => setSignupForm((p) => ({ ...p, email: e.target.value }))}
                             className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                            placeholder="Enter your email"
+                            placeholder={t('account.authModals.emailPlaceholder')}
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Phone number <span className="text-red-500">*</span>
+                            {t('account.authModals.phoneNumber')} <span className="text-red-500">*</span>
                           </label>
                           <div className="relative">
                             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -725,10 +727,10 @@ export default function AuthModals({
                               placeholder="+995 555 12 34 56"
                             />
                           </div>
-                          <p className="text-xs text-gray-400 mt-1">We&apos;ll text a verification code to this number.</p>
+                          <p className="text-xs text-gray-400 mt-1">{t('account.authModals.phoneVerifyNote')}</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.password')}</label>
                           <input
                             type="password"
                             required
@@ -736,12 +738,12 @@ export default function AuthModals({
                             value={signupForm.password}
                             onChange={(e) => setSignupForm((p) => ({ ...p, password: e.target.value }))}
                             className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                            placeholder="Create a password"
+                            placeholder={t('account.authModals.createPasswordPlaceholder')}
                           />
-                          <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+                          <p className="text-xs text-gray-400 mt-1">{t('account.authModals.minEightChars')}</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Confirm password</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.confirmPassword')}</label>
                           <input
                             type="password"
                             required
@@ -749,7 +751,7 @@ export default function AuthModals({
                             value={signupForm.confirmPassword}
                             onChange={(e) => setSignupForm((p) => ({ ...p, confirmPassword: e.target.value }))}
                             className="w-full px-3.5 py-3 border-[1.5px] border-line rounded-xl outline-none text-[15px] focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-                            placeholder="Confirm your password"
+                            placeholder={t('account.authModals.confirmPasswordPlaceholder')}
                           />
                         </div>
                         <div className="flex items-start">
@@ -762,10 +764,10 @@ export default function AuthModals({
                             required
                           />
                           <label htmlFor="acceptTerms" className="ml-2 text-sm text-gray-600">
-                            I agree to the{' '}
-                            <span className="text-red-500 cursor-pointer">Terms of Service</span>
-                            {' '}and{' '}
-                            <span className="text-red-500 cursor-pointer">Privacy Policy</span>
+                            {t('account.authModals.acceptTermsPre')}{' '}
+                            <span className="text-red-500 cursor-pointer">{t('account.authModals.termsOfService')}</span>
+                            {' '}{t('account.authModals.and')}{' '}
+                            <span className="text-red-500 cursor-pointer">{t('account.authModals.privacyPolicy')}</span>
                           </label>
                         </div>
 
@@ -774,14 +776,14 @@ export default function AuthModals({
                           disabled={signupLoading}
                           className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                         >
-                          {signupLoading ? 'Sending code...' : 'Continue'}
+                          {signupLoading ? t('account.authModals.sendingCodeEllipsis') : t('account.authModals.continueBtn')}
                         </button>
                       </form>
 
                       <p className="mt-4 text-center text-sm text-gray-600">
-                        Already have an account?{' '}
+                        {t('account.authModals.alreadyHaveAccountPre')}{' '}
                         <button onClick={onSwitchToLogin} className="text-red-500 hover:text-red-600 cursor-pointer">
-                          Log in
+                          {t('account.authModals.logIn')}
                         </button>
                       </p>
                     </>
@@ -791,7 +793,7 @@ export default function AuthModals({
                   {signupStep === 'verify' && (
                     <form onSubmit={handleSignupVerify} className="space-y-4">
                       <p className="text-sm text-gray-500 text-center leading-relaxed">
-                        We sent a 6-digit code to{' '}
+                        {t('account.authModals.weSentSixDigitCodePre')}{' '}
                         <span className="font-medium text-gray-700">{formatGeoPhone(otpSentTo)}</span>.
                       </p>
 
@@ -805,7 +807,7 @@ export default function AuthModals({
                       {!otpVerified ? (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-                            Verification code
+                            {t('account.authModals.verificationCode')}
                           </label>
                           <input
                             type="text"
@@ -825,14 +827,14 @@ export default function AuthModals({
                               disabled={resendIn > 0}
                               className="text-sm text-red-500 hover:text-red-600 cursor-pointer disabled:text-gray-400 disabled:cursor-default"
                             >
-                              {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+                              {resendIn > 0 ? t('account.authModals.resendCodeIn', { seconds: resendIn }) : t('account.authModals.resendCode')}
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                           <i className="ri-checkbox-circle-line text-green-500"></i>
-                          <p className="text-sm text-green-700">Phone verified. Complete the captcha to finish.</p>
+                          <p className="text-sm text-green-700">{t('account.authModals.phoneVerifiedNote')}</p>
                         </div>
                       )}
 
@@ -853,7 +855,7 @@ export default function AuthModals({
                         disabled={signupLoading || !signupCaptchaToken || (!otpVerified && otpCode.length !== 6)}
                         className="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                       >
-                        {signupLoading ? 'Creating account...' : 'Create account'}
+                        {signupLoading ? t('account.authModals.creatingAccountEllipsis') : t('account.authModals.createAccountBtn')}
                       </button>
                     </form>
                   )}

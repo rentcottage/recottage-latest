@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import PhoneVerifyModal from './PhoneVerifyModal';
+import { useT } from '../../i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ interface MissingFields {
  * phone during registration.
  */
 export default function ProfileCompletionGate({ children }: Props) {
+  const { t } = useT();
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState<Step>('name');
   const [missing, setMissing] = useState<MissingFields>({ firstName: false, lastName: false, phone: false });
@@ -110,18 +112,18 @@ export default function ProfileCompletionGate({ children }: Props) {
     const ln = lastName.trim();
 
     if (missing.firstName && !fn) {
-      setError('First name is required.');
+      setError(t('account.profileCompletionGate.firstNameRequiredError'));
       return;
     }
     if (missing.lastName && !ln) {
-      setError('Last name is required.');
+      setError(t('account.profileCompletionGate.lastNameRequiredError'));
       return;
     }
 
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { setError('Session expired. Please log in again.'); return; }
+      if (!session?.user) { setError(t('account.profileCompletionGate.sessionExpiredError')); return; }
 
       const updatePayload: Record<string, string> = {};
       if (missing.firstName) updatePayload.first_name = fn;
@@ -141,7 +143,7 @@ export default function ProfileCompletionGate({ children }: Props) {
         .update(updatePayload)
         .eq('id', session.user.id);
 
-      if (dbErr) { setError('Could not save name. Please try again.'); return; }
+      if (dbErr) { setError(t('account.profileCompletionGate.saveNameFailedError')); return; }
 
       // If phone is also missing/unverified, move to the verification step; otherwise done.
       if (missing.phone) {
@@ -172,8 +174,8 @@ export default function ProfileCompletionGate({ children }: Props) {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="ri-check-line text-green-500 text-3xl"></i>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Profile complete!</h2>
-                <p className="text-sm text-gray-500">Your information has been saved. You can now make bookings.</p>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">{t('account.profileCompletionGate.profileCompleteTitle')}</h2>
+                <p className="text-sm text-gray-500">{t('account.profileCompletionGate.profileCompleteBody')}</p>
               </div>
             ) : (
               <>
@@ -203,16 +205,16 @@ export default function ProfileCompletionGate({ children }: Props) {
                   <i className="ri-user-line text-red-500 text-2xl"></i>
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
-                  Complete your profile
+                  {t('account.profileCompletionGate.completeProfileTitle')}
                 </h2>
                 <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">
-                  Your Google account didn&apos;t provide your{' '}
+                  {t('account.profileCompletionGate.googleMissingPre')}{' '}
                   {missing.firstName && missing.lastName
-                    ? 'first and last name'
+                    ? t('account.profileCompletionGate.firstAndLastName')
                     : missing.firstName
-                    ? 'first name'
-                    : 'last name'}
-                  . Please fill in the missing field{missing.firstName && missing.lastName ? 's' : ''} to continue.
+                    ? t('account.profileCompletionGate.firstNameOnly')
+                    : t('account.profileCompletionGate.lastNameOnly')}
+                  . {t('account.profileCompletionGate.fillMissingField', { plural: missing.firstName && missing.lastName ? 's' : '' })}
                 </p>
 
                 {error && (
@@ -228,13 +230,13 @@ export default function ProfileCompletionGate({ children }: Props) {
                   {missing.firstName && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First name <span className="text-red-500">*</span>
+                        {t('account.profileCompletionGate.firstNameLabel')} <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="Enter your first name"
+                        placeholder={t('account.profileCompletionGate.firstNamePlaceholder')}
                         autoFocus
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                       />
@@ -243,13 +245,13 @@ export default function ProfileCompletionGate({ children }: Props) {
                   {missing.lastName && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Last name <span className="text-red-500">*</span>
+                        {t('account.profileCompletionGate.lastNameLabel')} <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Enter your last name"
+                        placeholder={t('account.profileCompletionGate.lastNamePlaceholder')}
                         autoFocus={!missing.firstName}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                       />
@@ -261,7 +263,7 @@ export default function ProfileCompletionGate({ children }: Props) {
                     disabled={saving}
                     className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white py-3 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap"
                   >
-                    {saving ? 'Saving...' : missing.phone ? 'Continue' : 'Save'}
+                    {saving ? t('account.profileCompletionGate.savingEllipsis') : missing.phone ? t('account.profileCompletionGate.continueBtn') : t('account.profileCompletionGate.save')}
                   </button>
                 </form>
               </>
@@ -275,8 +277,8 @@ export default function ProfileCompletionGate({ children }: Props) {
         open={showModal && step === 'phone'}
         userId={userId}
         initialPhone={phone}
-        title="Verify your phone"
-        reason="Add and verify a phone number so hosts can reach you about your stay — and so you can book cottages. We'll text you a 6-digit code."
+        title={t('account.profileCompletionGate.verifyPhoneTitle')}
+        reason={t('account.profileCompletionGate.verifyPhoneReason')}
         onVerified={() => { setShowModal(false); }}
         onClose={() => { setShowModal(false); }}
       />
