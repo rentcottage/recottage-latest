@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
+import { useT } from '../../../i18n';
 
 interface Booking {
   id: string;
@@ -36,11 +37,11 @@ interface Props {
   loading: boolean;
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+const MONTH_KEYS = [
+  'monthJanuary', 'monthFebruary', 'monthMarch', 'monthApril', 'monthMay', 'monthJune',
+  'monthJuly', 'monthAugust', 'monthSeptember', 'monthOctober', 'monthNovember', 'monthDecember',
 ];
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_LABEL_KEYS = ['dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat', 'daySun'];
 
 function toDateStr(y: number, m: number, d: number): string {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -74,22 +75,26 @@ function canSeeGuestDetails(checkIn: string): boolean {
   return today >= checkIn;
 }
 
-function maskName(name: string | null): string {
-  if (!name || !name.trim()) return 'Guest';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase() + '.';
-  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
-}
-
-function statusColor(status: string): { bg: string; text: string; dot: string; label: string } {
-  if (status === 'confirmed') return { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500', label: 'Confirmed' };
-  if (status === 'pending') return { bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-500', label: 'Pending' };
-  if (status === 'cancelled') return { bg: 'bg-red-50', text: 'text-red-500', dot: 'bg-red-400', label: 'Cancelled' };
-  if (status === 'completed') return { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400', label: 'Completed' };
-  return { bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-300', label: status };
-}
-
 export default function HostCalendarSection({ properties, bookings, loading }: Props) {
+  const { t, plural } = useT();
+  const MONTHS = MONTH_KEYS.map((k) => t(`host.blockedDates.${k}`));
+  const DAY_LABELS = DAY_LABEL_KEYS.map((k) => t(`host.blockedDates.${k}`));
+
+  function maskName(name: string | null): string {
+    if (!name || !name.trim()) return t('host.calendar.guestFallback');
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase() + '.';
+    return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+  }
+
+  function statusColor(status: string): { bg: string; text: string; dot: string; label: string } {
+    if (status === 'confirmed') return { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500', label: t('host.calendar.statusConfirmedLabel') };
+    if (status === 'pending') return { bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-500', label: t('host.calendar.statusPendingLabel') };
+    if (status === 'cancelled') return { bg: 'bg-red-50', text: 'text-red-500', dot: 'bg-red-400', label: t('host.calendar.statusCancelledLabel') };
+    if (status === 'completed') return { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400', label: t('host.calendar.statusCompletedLabel') };
+    return { bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-300', label: status };
+  }
+
   const { user } = useAuth();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -201,8 +206,8 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
   return (
     <div>
       <div className="mb-5 md:mb-6">
-        <h2 className="text-base md:text-xl font-bold text-gray-900">Booking Calendar</h2>
-        <p className="text-xs md:text-sm text-gray-400 mt-0.5">Monthly overview of all bookings and blocked dates across your properties</p>
+        <h2 className="text-base md:text-xl font-bold text-gray-900">{t('host.calendar.title')}</h2>
+        <p className="text-xs md:text-sm text-gray-400 mt-0.5">{t('host.calendar.sub')}</p>
       </div>
 
       {loading || blockedLoading ? (
@@ -211,7 +216,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
             <div className="w-4 h-4 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line"></i>
             </div>
-            <span className="text-sm">Loading calendar…</span>
+            <span className="text-sm">{t('host.calendar.loadingCalendar')}</span>
           </div>
         </div>
       ) : (
@@ -228,7 +233,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                 onChange={(e) => setSelectedPropertyId(e.target.value)}
                 className="text-sm border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white min-w-48"
               >
-                <option value="all">All properties</option>
+                <option value="all">{t('host.calendar.allProperties')}</option>
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
@@ -258,7 +263,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                 onClick={goToday}
                 className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-line rounded-lg hover:bg-gray-50 cursor-pointer transition-colors whitespace-nowrap"
               >
-                Today
+                {t('host.calendar.today')}
               </button>
             </div>
           </div>
@@ -271,7 +276,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
               </div>
               <div>
                 <p className="text-base md:text-xl font-bold text-gray-900">{confirmedCount}</p>
-                <p className="text-[10px] md:text-xs text-gray-400 leading-tight">Confirmed</p>
+                <p className="text-[10px] md:text-xs text-gray-400 leading-tight">{t('host.calendar.statConfirmed')}</p>
               </div>
             </div>
             <div className="bg-white rounded-card border border-line shadow-card px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
@@ -280,7 +285,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
               </div>
               <div>
                 <p className="text-base md:text-xl font-bold text-gray-900">{pendingCount}</p>
-                <p className="text-[10px] md:text-xs text-gray-400 leading-tight">Pending</p>
+                <p className="text-[10px] md:text-xs text-gray-400 leading-tight">{t('host.calendar.statPending')}</p>
               </div>
             </div>
             <div className="bg-white rounded-card border border-line shadow-card px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3">
@@ -289,7 +294,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
               </div>
               <div>
                 <p className="text-base md:text-xl font-bold text-gray-900">{blockedDaysCount}</p>
-                <p className="text-[10px] md:text-xs text-gray-400 leading-tight">Blocked</p>
+                <p className="text-[10px] md:text-xs text-gray-400 leading-tight">{t('host.calendar.statBlocked')}</p>
               </div>
             </div>
           </div>
@@ -371,21 +376,21 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
               <div className="flex items-center gap-5 mt-5 pt-4 border-t border-gray-100 flex-wrap">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <div className="w-3.5 h-3.5 rounded bg-green-100 border border-green-200"></div>
-                  <span>Confirmed</span>
+                  <span>{t('host.calendar.legendConfirmed')}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <div className="w-3.5 h-3.5 rounded bg-amber-100 border border-amber-200"></div>
-                  <span>Pending</span>
+                  <span>{t('host.calendar.legendPending')}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <div className="w-3.5 h-3.5 rounded bg-red-100 border border-red-200"></div>
-                  <span>Blocked</span>
+                  <span>{t('host.calendar.legendBlocked')}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <div className="w-3.5 h-3.5 rounded bg-gray-100 border border-line"></div>
-                  <span>Completed</span>
+                  <span>{t('host.calendar.legendCompleted')}</span>
                 </div>
-                <span className="text-xs text-gray-400 ml-auto">Click a day to see details</span>
+                <span className="text-xs text-gray-400 ml-auto">{t('host.calendar.clickDayHint')}</span>
               </div>
             </div>
 
@@ -397,8 +402,8 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                     <div>
                       <p className="text-sm font-bold text-gray-900">{fmt(selectedDay)}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {selectedDayData.bookings.length} booking{selectedDayData.bookings.length !== 1 ? 's' : ''}
-                        {selectedDayData.blocked ? ' · Blocked' : ''}
+                        {plural('host.calendar.bookingsCount', selectedDayData.bookings.length)}
+                        {selectedDayData.blocked ? t('host.calendar.blockedSuffix') : ''}
                       </p>
                     </div>
                     <button
@@ -416,7 +421,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                           <i className="ri-calendar-close-line text-red-500 text-xs"></i>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-red-700">Blocked date</p>
+                          <p className="text-xs font-semibold text-red-700">{t('host.calendar.blockedDateLabel')}</p>
                           {selectedDayData.blockedReason && (
                             <p className="text-xs text-red-500 mt-0.5">{selectedDayData.blockedReason}</p>
                           )}
@@ -429,7 +434,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                         <div className="w-8 h-8 flex items-center justify-center mb-2">
                           <i className="ri-calendar-line text-2xl"></i>
                         </div>
-                        <p className="text-xs text-center">No bookings on this date</p>
+                        <p className="text-xs text-center">{t('host.calendar.noBookingsOnDate')}</p>
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-50">
@@ -444,17 +449,17 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                                 </span>
                                 {b.payment_status === 'paid' && (
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">
-                                    Paid
+                                    {t('host.calendar.paid')}
                                   </span>
                                 )}
                               </div>
                               {canSeeGuestDetails(b.check_in) ? (
                                 <div className="mb-1.5">
                                   <div className="flex items-center gap-1.5">
-                                    <p className="text-sm font-semibold text-gray-900">{b.user_name || 'Guest'}</p>
+                                    <p className="text-sm font-semibold text-gray-900">{b.user_name || t('host.calendar.guestFallback')}</p>
                                     <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
                                       <i className="ri-eye-line text-[10px]"></i>
-                                      Visible
+                                      {t('host.calendar.visible')}
                                     </span>
                                   </div>
                                   <p className="text-xs text-gray-500 mt-0.5">{b.user_email}</p>
@@ -464,7 +469,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                                   <p className="text-sm font-semibold text-gray-700">{maskName(b.user_name)}</p>
                                   <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
                                     <i className="ri-lock-line text-[10px]"></i>
-                                    Details revealed on check-in
+                                    {t('host.calendar.detailsRevealedHint')}
                                   </p>
                                 </div>
                               )}
@@ -484,7 +489,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                               <div className="flex items-center justify-between mt-1.5">
                                 <span className="text-xs text-gray-400">
                                   <i className="ri-group-line mr-1"></i>
-                                  {b.guests} guest{b.guests !== 1 ? 's' : ''}
+                                  {plural('host.calendar.guestsCount', b.guests)}
                                 </span>
                                 {b.total_price && (
                                   <span className="text-sm font-bold text-gray-900">₾{b.total_price.toLocaleString()}</span>
@@ -501,8 +506,8 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                 /* Upcoming bookings list */
                 <div className="flex flex-col h-full">
                   <div className="px-5 py-4 border-b border-gray-100">
-                    <p className="text-sm font-bold text-gray-900">Upcoming Bookings</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Next stays across your properties</p>
+                    <p className="text-sm font-bold text-gray-900">{t('host.calendar.upcomingBookingsTitle')}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t('host.calendar.upcomingBookingsSub')}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto">
                     {(() => {
@@ -522,7 +527,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                             <div className="w-9 h-9 flex items-center justify-center mb-2">
                               <i className="ri-calendar-check-line text-3xl"></i>
                             </div>
-                            <p className="text-xs text-center">No upcoming bookings yet</p>
+                            <p className="text-xs text-center">{t('host.calendar.noUpcomingBookings')}</p>
                           </div>
                         );
                       }
@@ -542,7 +547,7 @@ export default function HostCalendarSection({ properties, bookings, loading }: P
                                   )}
                                 </div>
                                 {canSeeGuestDetails(b.check_in) ? (
-                                  <p className="text-xs font-semibold text-gray-800">{b.user_name || 'Guest'}</p>
+                                  <p className="text-xs font-semibold text-gray-800">{b.user_name || t('host.calendar.guestFallback')}</p>
                                 ) : (
                                   <div className="flex items-center gap-1">
                                     <p className="text-xs font-semibold text-gray-600">{maskName(b.user_name)}</p>
