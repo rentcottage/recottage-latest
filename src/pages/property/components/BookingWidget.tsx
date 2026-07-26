@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
-import { useLang } from '@/i18n';
+import { useT } from '@/i18n';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
@@ -45,6 +45,7 @@ interface BookingWidgetProps {
   isSubmitting: boolean;
   submitStatus: 'idle' | 'success' | 'error' | 'unauthenticated';
   bookingError: string;
+  bookingErrorCode?: 'phone_required' | null;
   paymentMethod: 'pay_now' | 'pay_at_property';
   onPaymentMethodChange: (v: 'pay_now' | 'pay_at_property') => void;
   onBook: () => void;
@@ -86,6 +87,7 @@ interface BookingFormProps {
   isSubmitting: boolean;
   submitStatus: BookingWidgetProps['submitStatus'];
   bookingError: string;
+  bookingErrorCode?: 'phone_required' | null;
   paymentMethod: BookingWidgetProps['paymentMethod'];
   onPaymentMethodChange: (v: 'pay_now' | 'pay_at_property') => void;
   onBook: () => void;
@@ -99,8 +101,8 @@ interface BookingFormProps {
   onCaptchaExpire: () => void;
   captchaToken: string;
   captchaRef: React.RefObject<HCaptchaLib | null>;
-  /** 'ka' for Georgian, 'en' for English, etc. */
-  lang: string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  plural: (key: string, count: number, vars?: Record<string, string | number>) => string;
   corporateMode?: boolean;
   corporateClientName?: string;
   onCorporateClientNameChange?: (v: string) => void;
@@ -118,6 +120,7 @@ function BookingForm({
   isSubmitting,
   submitStatus,
   bookingError,
+  bookingErrorCode,
   paymentMethod,
   onPaymentMethodChange,
   onBook,
@@ -131,7 +134,8 @@ function BookingForm({
   onCaptchaExpire,
   captchaToken,
   captchaRef,
-  lang,
+  t,
+  plural,
   corporateMode,
   corporateClientName,
   onCorporateClientNameChange,
@@ -146,12 +150,11 @@ function BookingForm({
     (p) => !p.toLowerCase().includes('airbnb') && !p.toLowerCase().includes('booking'),
   );
 
-  // Button label: always use the correct Georgian word, never rely on Google Translate
-  const bookBtnLabel = lang === 'ka' ? 'დაჯავშნე' : 'Book';
+  const bookBtnLabel = t('property.booking.bookBtn');
   const submittingLabel =
     paymentMethod === 'pay_at_property'
-      ? lang === 'ka' ? 'იგზავნება...' : 'Submitting booking...'
-      : lang === 'ka' ? 'გადამისამართება...' : 'Redirecting to Bank of Georgia...';
+      ? t('property.booking.submittingBooking')
+      : t('property.booking.redirectingToBog');
 
   return (
     <form data-readdy-form id="cottage-booking">
@@ -163,18 +166,18 @@ function BookingForm({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-emerald-900 font-semibold text-xs leading-tight mb-0.5">
-                Booking on behalf of your client
+                {t('property.booking.bookOnBehalf')}
               </p>
               <p className="text-emerald-700 text-[11px] leading-snug">
-                5% commission will be credited to your agency dashboard.
+                {t('property.booking.commissionNote')}
               </p>
               <div className="mt-2.5">
-                <label className="block text-[11px] font-semibold text-emerald-900 mb-1">Client name (optional)</label>
+                <label className="block text-[11px] font-semibold text-emerald-900 mb-1">{t('property.booking.clientNameLabel')}</label>
                 <input
                   type="text"
                   value={corporateClientName ?? ''}
                   onChange={(e) => onCorporateClientNameChange?.(e.target.value)}
-                  placeholder="e.g. John Smith"
+                  placeholder={t('property.booking.clientNamePlaceholder')}
                   className="w-full px-2.5 py-1.5 text-xs border border-emerald-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                 />
               </div>
@@ -191,11 +194,11 @@ function BookingForm({
               <i className="ri-checkbox-circle-line text-green-500"></i>
             </div>
             <div>
-              <p className="text-green-800 font-medium text-sm">Booking request sent!</p>
+              <p className="text-green-800 font-medium text-sm">{t('property.booking.requestSentTitle')}</p>
               <p className="text-green-700 text-xs mt-0.5">
                 {paymentMethod === 'pay_at_property'
-                  ? "You'll pay at the property. The host will review your request shortly."
-                  : 'The host will respond shortly.'}
+                  ? t('property.booking.requestSentPayAtProperty')
+                  : t('property.booking.requestSentPayNow')}
               </p>
             </div>
           </div>
@@ -208,7 +211,7 @@ function BookingForm({
             <div className="w-5 h-5 flex items-center justify-center">
               <i className="ri-lock-line text-yellow-500"></i>
             </div>
-            <p className="text-yellow-800 font-medium text-sm">Please log in to request a booking.</p>
+            <p className="text-yellow-800 font-medium text-sm">{t('property.booking.loginRequired')}</p>
           </div>
         </div>
       )}
@@ -221,18 +224,18 @@ function BookingForm({
             </div>
             <div>
               <p className="text-red-800 font-medium text-sm">
-                {bookingError?.includes('phone number') ? 'Phone number required' : 'Booking failed'}
+                {bookingErrorCode === 'phone_required' ? t('property.booking.phoneNumberRequiredTitle') : t('property.booking.bookingFailedTitle')}
               </p>
               <p className="text-red-700 text-xs mt-0.5 leading-relaxed">
-                {bookingError || 'An unexpected error occurred. Please try again.'}
+                {bookingError || t('property.booking.unexpectedError')}
               </p>
-              {bookingError?.includes('phone number') && (
+              {bookingErrorCode === 'phone_required' && (
                 <a
                   href="/profile"
                   className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-red-600 hover:text-red-700 underline underline-offset-2"
                 >
                   <i className="ri-user-line text-xs"></i>
-                  Go to My Profile
+                  {t('property.booking.goToProfile')}
                 </a>
               )}
             </div>
@@ -244,7 +247,7 @@ function BookingForm({
       <div className="border-[1.5px] border-line rounded-xl overflow-hidden mb-4">
         <div className="grid grid-cols-2">
           <div className="p-3 border-b border-r border-line">
-            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink mb-0.5">Check-in</label>
+            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink mb-0.5">{t('property.booking.checkIn')}</label>
             <input
               type="date"
               name="checkInDate"
@@ -255,7 +258,7 @@ function BookingForm({
             />
           </div>
           <div className="p-3 border-b border-line">
-            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink mb-0.5">Check-out</label>
+            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink mb-0.5">{t('property.booking.checkOut')}</label>
             <input
               type="date"
               name="checkOutDate"
@@ -268,9 +271,9 @@ function BookingForm({
         </div>
         <div className="p-3">
           <div className="flex items-center justify-between">
-            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink">Guests</label>
+            <label className="block text-[10.5px] font-bold uppercase tracking-wide text-ink">{t('property.booking.guests')}</label>
             {property.maxGuests && (
-              <span className="text-[11px] text-soft">Max {property.maxGuests}</span>
+              <span className="text-[11px] text-soft">{t('property.booking.maxGuests', { count: property.maxGuests })}</span>
             )}
           </div>
           <select
@@ -281,7 +284,7 @@ function BookingForm({
           >
             {Array.from({ length: property.maxGuests ?? 20 }, (_, i) => i + 1).map((num) => (
               <option key={num} value={num}>
-                {num} guest{num > 1 ? 's' : ''}
+                {plural('property.booking.guestOption', num)}
               </option>
             ))}
           </select>
@@ -295,46 +298,44 @@ function BookingForm({
             <i className="ri-error-warning-line text-amber-500 text-sm"></i>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-amber-800">These dates are already booked</p>
+            <p className="text-xs font-semibold text-amber-800">{t('property.booking.datesBookedTitle')}</p>
             <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
               {conflictPlatforms.length > 0 ? (
-                <>
-                  Unavailable due to bookings on{' '}
-                  {[
-                    hasAirbnb && 'Airbnb',
-                    hasBookingCom && 'Booking.com',
-                    hasOtherExternal && 'an external platform',
-                    isManualBlock && 'host block',
+                t('property.booking.unavailableAirbnbBooking', {
+                  platforms: [
+                    hasAirbnb && t('property.booking.platformAirbnb'),
+                    hasBookingCom && t('property.booking.platformBookingCom'),
+                    hasOtherExternal && t('property.booking.platformExternal'),
+                    isManualBlock && t('property.booking.platformHostBlock'),
                   ]
                     .filter(Boolean)
-                    .join(' and ')}
-                  .
-                </>
+                    .join(' & '),
+                })
               ) : (
-                'The host has blocked part of your selected period.'
+                t('property.booking.unavailableGeneric')
               )}
-              {' '}Please choose different dates.
+              {' '}{t('property.booking.chooseDifferentDates')}
             </p>
             {conflictPlatforms.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {hasAirbnb && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
-                    <i className="ri-home-4-line text-xs"></i>Airbnb
+                    <i className="ri-home-4-line text-xs"></i>{t('property.booking.platformAirbnb')}
                   </span>
                 )}
                 {hasBookingCom && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-xs font-medium">
-                    <i className="ri-global-line text-xs"></i>Booking.com
+                    <i className="ri-global-line text-xs"></i>{t('property.booking.platformBookingCom')}
                   </span>
                 )}
                 {hasOtherExternal && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
-                    <i className="ri-calendar-close-line text-xs"></i>External
+                    <i className="ri-calendar-close-line text-xs"></i>{t('property.booking.badgeExternal')}
                   </span>
                 )}
                 {isManualBlock && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-medium">
-                    <i className="ri-lock-line text-xs"></i>Host blocked
+                    <i className="ri-lock-line text-xs"></i>{t('property.booking.badgeHostBlocked')}
                   </span>
                 )}
               </div>
@@ -346,7 +347,7 @@ function BookingForm({
       {/* Unavailable periods */}
       {blockedRanges.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs text-gray-500 mb-1.5 font-medium">Unavailable periods:</p>
+          <p className="text-xs text-gray-500 mb-1.5 font-medium">{t('property.booking.unavailablePeriods')}</p>
           <div className="space-y-1">
             {blockedRanges.slice(0, 3).map((r) => (
               <div key={r.id} className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -368,7 +369,7 @@ function BookingForm({
               </div>
             ))}
             {blockedRanges.length > 3 && (
-              <p className="text-xs text-gray-400">+{blockedRanges.length - 3} more unavailable periods</p>
+              <p className="text-xs text-gray-400">{t('property.booking.morePeriods', { count: blockedRanges.length - 3 })}</p>
             )}
           </div>
         </div>
@@ -383,7 +384,7 @@ function BookingForm({
         const optionCount = (showOnline ? 1 : 0) + (showAtProperty ? 1 : 0);
         return (
           <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Payment Method</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-2">{t('property.booking.paymentMethodLabel')}</label>
             <div className={`grid gap-2 ${optionCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {showOnline && (
                 <button
@@ -398,8 +399,8 @@ function BookingForm({
                   <div className={`w-5 h-5 flex items-center justify-center ${paymentMethod === 'pay_now' ? 'text-red-500' : 'text-gray-400'}`}>
                     <i className="ri-bank-card-line text-base"></i>
                   </div>
-                  <span className={`text-xs font-semibold ${paymentMethod === 'pay_now' ? 'text-red-600' : 'text-gray-600'}`}>Pay Now</span>
-                  <span className={`text-xs leading-tight text-center ${paymentMethod === 'pay_now' ? 'text-red-400' : 'text-gray-400'}`}>Online payment</span>
+                  <span className={`text-xs font-semibold ${paymentMethod === 'pay_now' ? 'text-red-600' : 'text-gray-600'}`}>{t('property.booking.payNow')}</span>
+                  <span className={`text-xs leading-tight text-center ${paymentMethod === 'pay_now' ? 'text-red-400' : 'text-gray-400'}`}>{t('property.booking.payNowSub')}</span>
                 </button>
               )}
               {showAtProperty && (
@@ -415,8 +416,8 @@ function BookingForm({
                   <div className={`w-5 h-5 flex items-center justify-center ${paymentMethod === 'pay_at_property' ? 'text-red-500' : 'text-gray-400'}`}>
                     <i className="ri-home-heart-line text-base"></i>
                   </div>
-                  <span className={`text-xs font-semibold ${paymentMethod === 'pay_at_property' ? 'text-red-600' : 'text-gray-600'}`}>Pay at Property</span>
-                  <span className={`text-xs leading-tight text-center ${paymentMethod === 'pay_at_property' ? 'text-red-400' : 'text-gray-400'}`}>Pay on arrival</span>
+                  <span className={`text-xs font-semibold ${paymentMethod === 'pay_at_property' ? 'text-red-600' : 'text-gray-600'}`}>{t('property.booking.payAtProperty')}</span>
+                  <span className={`text-xs leading-tight text-center ${paymentMethod === 'pay_at_property' ? 'text-red-400' : 'text-gray-400'}`}>{t('property.booking.payAtPropertySub')}</span>
                 </button>
               )}
             </div>
@@ -429,7 +430,7 @@ function BookingForm({
         <div className="border-t border-gray-200 pt-4 mb-5 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-700">
-              ₾{currentPricePerNight} × {nights} nights
+              {t('property.booking.nightsLine', { price: currentPricePerNight, nights })}
             </span>
             {/* Value spans are notranslate: Google Translate wraps text nodes in
                 <font> tags which blocks React from updating them (e.g. when the
@@ -440,7 +441,7 @@ function BookingForm({
             <div className="flex justify-between text-sm">
               <span className="flex items-center gap-1.5 text-green-600 font-medium min-w-0">
                 <i className="ri-price-tag-3-line text-sm flex-shrink-0"></i>
-                <span className="truncate">Promo <span className="notranslate" translate="no">−{activePromo.discount_percent}%</span></span>
+                <span className="truncate">{t('property.booking.promoLabel')} <span className="notranslate" translate="no">−{activePromo.discount_percent}%</span></span>
               </span>
               <span className="text-green-600 font-medium whitespace-nowrap notranslate" translate="no">
                 −₾{formatGel(currentPricePerNight * nights - getTotalPrice())}
@@ -449,11 +450,11 @@ function BookingForm({
           )}
           {/* Service fee — always ₾0 (matches the reference's itemized breakdown). */}
           <div className="flex justify-between text-sm">
-            <span className="text-gray-700">Service fee</span>
+            <span className="text-gray-700">{t('property.booking.serviceFee')}</span>
             <span className="text-gray-900 notranslate" translate="no">₾0</span>
           </div>
           <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold">
-            <span className="text-gray-900">Total</span>
+            <span className="text-gray-900">{t('property.booking.total')}</span>
             <span className="text-gray-900 notranslate" translate="no">₾{formatGel(getTotalPrice())}</span>
           </div>
         </div>
@@ -491,7 +492,7 @@ function BookingForm({
           "you pay nothing now" would be inaccurate there. */}
       {paymentMethod === 'pay_at_property' && (
         <p className="text-center text-[12.5px] text-gray-500 mt-3">
-          You pay nothing now — booking is free
+          {t('property.booking.payNothingNow')}
         </p>
       )}
 
@@ -505,8 +506,8 @@ function BookingForm({
         </div>
         <p className="text-xs text-gray-400 text-center">
           {paymentMethod === 'pay_at_property'
-            ? 'You will pay cash or card when you arrive'
-            : 'Secure payment via Bank of Georgia'}
+            ? t('property.booking.payAtArrivalNote')
+            : t('property.booking.securePaymentNote')}
         </p>
       </div>
     </form>
@@ -528,6 +529,7 @@ export default function BookingWidget({
   isSubmitting,
   submitStatus,
   bookingError,
+  bookingErrorCode,
   paymentMethod,
   onPaymentMethodChange,
   onBook,
@@ -546,7 +548,7 @@ export default function BookingWidget({
 }: BookingWidgetProps) {
   const captchaRef = useRef<HCaptchaLib>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const { lang } = useLang();
+  const { t, plural } = useT();
 
   // Lock body scroll when sheet is open
   useEffect(() => {
@@ -577,6 +579,7 @@ export default function BookingWidget({
     isSubmitting,
     submitStatus,
     bookingError,
+    bookingErrorCode,
     paymentMethod,
     onPaymentMethodChange,
     onBook,
@@ -590,14 +593,15 @@ export default function BookingWidget({
     onCaptchaExpire,
     captchaToken,
     captchaRef,
-    lang,
+    t,
+    plural,
     corporateMode,
     corporateClientName,
     onCorporateClientNameChange,
   };
 
   // "Reserve" sticky bar label
-  const reserveLabel = lang === 'ka' ? 'დაჯავშნე' : 'Book';
+  const reserveLabel = t('property.booking.bookBtn');
 
   const handleOpenSheet = useCallback(() => setSheetOpen(true), []);
   const handleCloseSheet = useCallback(() => setSheetOpen(false), []);
@@ -610,9 +614,9 @@ export default function BookingWidget({
           <div className="flex items-baseline justify-between gap-3 mb-5">
             <div className="min-w-0">
               <span className="text-[26px] font-extrabold text-ink" translate="no">₾{currentPricePerNight}</span>
-              <span className="text-soft text-sm ml-1">/ night</span>
+              <span className="text-soft text-sm ml-1">{t('property.booking.perNight')}</span>
               {pricingType === 'per_guest' && (
-                <p className="text-gray-700 mt-0.5 font-medium text-sm">Price varies by guest count</p>
+                <p className="text-gray-700 mt-0.5 font-medium text-sm">{t('property.booking.priceVariesByGuests')}</p>
               )}
             </div>
             <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
@@ -632,11 +636,11 @@ export default function BookingWidget({
           <div className="min-w-0">
             <div className="flex items-baseline gap-1">
               <span className="text-lg font-bold text-gray-900">₾{currentPricePerNight}</span>
-              <span className="text-xs text-gray-500">/ night</span>
+              <span className="text-xs text-gray-500">{t('property.booking.perNight')}</span>
             </div>
             {checkIn && checkOut && nights > 0 ? (
               <p className="text-xs text-gray-500 truncate">
-                <span className="notranslate" translate="no">₾{formatGel(getTotalPrice())}</span> total · {nights} night{nights !== 1 ? 's' : ''}
+                <span className="notranslate" translate="no">₾{formatGel(getTotalPrice())}</span> {t('property.booking.total').toLowerCase()} · {plural('property.booking.nightsTotal', nights)}
                 {activePromo && (
                   <span className="text-green-600 font-semibold notranslate" translate="no"> · −{activePromo.discount_percent}%</span>
                 )}
@@ -647,7 +651,7 @@ export default function BookingWidget({
                   <i className="ri-star-fill text-yellow-400 text-xs"></i>
                 </div>
                 <span className="text-xs text-gray-500">
-                  {property.rating} ({property.reviews} reviews)
+                  {property.rating} {t('property.detail.reviewsCount', { count: property.reviews })}
                 </span>
               </div>
             )}
@@ -685,7 +689,7 @@ export default function BookingWidget({
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <div>
               <span className="text-lg font-bold text-gray-900">₾{currentPricePerNight}</span>
-              <span className="text-gray-500 text-sm ml-1">/ night</span>
+              <span className="text-gray-500 text-sm ml-1">{t('property.booking.perNight')}</span>
             </div>
             <button
               onClick={handleCloseSheet}

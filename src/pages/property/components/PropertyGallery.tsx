@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { optimizedImageUrl, IMG_HERO, IMG_THUMB, IMG_CARD } from '../../../lib/imageUrl';
+import { useT } from '../../../i18n';
 
 interface PropertyGalleryProps {
   images: string[];
@@ -7,6 +8,7 @@ interface PropertyGalleryProps {
 }
 
 export default function PropertyGallery({ images, title }: PropertyGalleryProps) {
+  const { t } = useT();
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
@@ -82,7 +84,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                 className="absolute bottom-3.5 right-3.5 bg-white text-gray-800 text-[13px] font-bold px-4 py-2 rounded-[10px] flex items-center gap-1.5 hover:bg-gray-50 transition-colors shadow-card whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-image-2-line"></i>
-                All photos ({safeImages.length})
+                {t('property.gallery.allPhotos', { count: safeImages.length })}
               </button>
             )}
           </div>

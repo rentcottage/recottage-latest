@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
 import AuthModals from '../../../components/feature/AuthModals';
+import { useT } from '../../../i18n';
 
 interface Props {
   experienceType: string;
@@ -21,6 +22,7 @@ function todayISO() {
 }
 
 export default function ExperienceBookingForm({ experienceType, experienceLabel }: Props) {
+  const { t } = useT();
   const { isLoggedIn, loading: authLoading } = useAuth();
   const [form, setForm] = useState({
     customer_name: '',
@@ -44,16 +46,16 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
     e.preventDefault();
     setError(null);
 
-    if (!form.customer_name.trim()) { setError('Please enter your full name.'); return; }
-    if (!form.customer_phone.trim()) { setError('Please enter a phone number.'); return; }
-    if (!form.preferred_date) { setError('Please select a preferred date.'); return; }
-    if (parseInt(form.guests, 10) < 1) { setError('Guests must be at least 1.'); return; }
+    if (!form.customer_name.trim()) { setError(t('property.experienceForm.nameRequired')); return; }
+    if (!form.customer_phone.trim()) { setError(t('property.experienceForm.phoneRequired')); return; }
+    if (!form.preferred_date) { setError(t('property.experienceForm.dateRequired')); return; }
+    if (parseInt(form.guests, 10) < 1) { setError(t('property.experienceForm.guestsMin')); return; }
 
     // Final auth check — short-circuit before hitting Supabase if the session
     // disappeared while the form was open.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      setError('Please log in to book this experience.');
+      setError(t('property.experienceForm.loginRequired'));
       return;
     }
 
@@ -88,7 +90,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
     setSubmitting(false);
 
     if (sbErr) {
-      setError('Something went wrong. Please try again.');
+      setError(t('property.experienceForm.genericError'));
       return;
     }
 
@@ -122,7 +124,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
   if (authLoading) {
     return (
       <div className="bg-white rounded-xl md:rounded-2xl border border-gray-100 p-6 md:p-8 text-center text-sm text-gray-400">
-        Loading…
+        {t('property.experienceForm.loading')}
       </div>
     );
   }
@@ -135,23 +137,23 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
             <i className="ri-lock-line text-yellow-500 text-2xl"></i>
           </div>
           <h3 className="text-base md:text-lg font-bold text-gray-900 mb-2">
-            Sign in to book this experience
+            {t('property.experienceForm.signInTitle')}
           </h3>
           <p className="text-xs md:text-sm text-gray-500 max-w-sm mx-auto mb-5">
-            We need a verified account so we can confirm your booking and stay in touch.
+            {t('property.experienceForm.signInSub')}
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <button
               onClick={() => setShowLogin(true)}
               className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg cursor-pointer whitespace-nowrap"
             >
-              Log in
+              {t('property.experienceForm.logIn')}
             </button>
             <button
               onClick={() => setShowSignup(true)}
               className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-medium rounded-lg cursor-pointer whitespace-nowrap"
             >
-              Create account
+              {t('property.experienceForm.createAccount')}
             </button>
           </div>
         </div>
@@ -173,18 +175,16 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
         <div className="w-12 h-12 md:w-16 md:h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 md:mb-5">
           <i className="ri-checkbox-circle-line text-green-500 text-2xl md:text-3xl"></i>
         </div>
-        <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Request Sent!</h3>
+        <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">{t('property.experienceForm.requestSentTitle')}</h3>
         <p className="text-xs md:text-sm text-gray-500 leading-relaxed max-w-sm mb-5 md:mb-6">
-          We received your booking request for the{' '}
-          <strong>
-            {experienceLabel ??
+          {t('property.experienceForm.requestSentBody', {
+            experience: experienceLabel ??
               (experienceType === 'wine'
-                ? 'Wine Tasting'
+                ? t('property.experienceForm.wineTasting')
                 : experienceType === 'cooking'
-                ? 'Cooking Class'
-                : 'experience')}
-          </strong>.
-          Our team will contact you within 24 hours to confirm.
+                ? t('property.experienceForm.cookingClass')
+                : t('property.experienceForm.genericExperience')),
+          })}
         </p>
         <button
           onClick={() => {
@@ -193,7 +193,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
           }}
           className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg cursor-pointer hover:bg-gray-700 transition-colors whitespace-nowrap"
         >
-          Book Another Experience
+          {t('property.experienceForm.bookAnother')}
         </button>
       </div>
     );
@@ -204,28 +204,28 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       <div>
         <h2 className="text-base md:text-xl font-bold text-gray-900">
           {experienceLabel
-            ? `Book ${experienceLabel}`
+            ? t('property.experienceForm.bookTitle', { experience: experienceLabel })
             : experienceType === 'wine'
-            ? 'Book Wine Tasting'
+            ? t('property.experienceForm.bookWineTasting')
             : experienceType === 'cooking'
-            ? 'Book Cooking Class'
-            : 'Book Experience'}
+            ? t('property.experienceForm.bookCookingClass')
+            : t('property.experienceForm.bookGeneric')}
         </h2>
         <p className="text-xs md:text-sm text-gray-400 mt-0.5 md:mt-1">
-          Fill in your details and we&apos;ll confirm within 24 hours.
+          {t('property.experienceForm.confirmWithin24h')}
         </p>
       </div>
 
       {/* Name */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-          Full Name <span className="text-red-400">*</span>
+          {t('property.experienceForm.fullName')} <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
           value={form.customer_name}
           onChange={(e) => set('customer_name', e.target.value)}
-          placeholder="e.g. Ana Beridze"
+          placeholder={t('property.experienceForm.fullNamePlaceholder')}
           className="w-full px-3 md:px-4 py-2 md:py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
         />
       </div>
@@ -233,14 +233,14 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       {/* Email */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-          Email Address <span className="text-gray-400 font-normal">(optional)</span>
+          {t('property.experienceForm.emailAddress')} <span className="text-gray-400 font-normal">{t('property.experienceForm.optional')}</span>
         </label>
         <input
           type="email"
           name="email"
           value={form.customer_email}
           onChange={(e) => set('customer_email', e.target.value)}
-          placeholder="you@example.com"
+          placeholder={t('property.experienceForm.emailPlaceholder')}
           className="w-full px-3 md:px-4 py-2 md:py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
         />
       </div>
@@ -248,13 +248,13 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       {/* Phone */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-          Phone Number <span className="text-red-400">*</span>
+          {t('property.experienceForm.phoneNumber')} <span className="text-red-400">*</span>
         </label>
         <input
           type="tel"
           value={form.customer_phone}
           onChange={(e) => set('customer_phone', e.target.value)}
-          placeholder="+995 5XX XXX XXX"
+          placeholder={t('property.experienceForm.phonePlaceholder')}
           className="w-full px-3 md:px-4 py-2 md:py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
         />
       </div>
@@ -263,7 +263,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       <div className="grid grid-cols-2 gap-3 md:gap-4">
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-            Preferred Date <span className="text-red-400">*</span>
+            {t('property.experienceForm.preferredDate')} <span className="text-red-400">*</span>
           </label>
           <input
             type="date"
@@ -275,16 +275,16 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-            Time <span className="text-gray-400 font-normal">(optional)</span>
+            {t('property.experienceForm.time')} <span className="text-gray-400 font-normal">{t('property.experienceForm.optional')}</span>
           </label>
           <select
             value={form.preferred_time}
             onChange={(e) => set('preferred_time', e.target.value)}
             className="w-full px-2 md:px-4 py-2 md:py-2.5 text-xs md:text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 bg-white"
           >
-            <option value="">Any time</option>
-            {TIME_OPTIONS.map((t) => (
-              <option key={t} value={t}>{t}</option>
+            <option value="">{t('property.experienceForm.anyTime')}</option>
+            {TIME_OPTIONS.map((time) => (
+              <option key={time} value={time}>{time}</option>
             ))}
           </select>
         </div>
@@ -293,7 +293,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
       {/* Guests */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-          Number of Guests <span className="text-red-400">*</span>
+          {t('property.experienceForm.numberOfGuests')} <span className="text-red-400">*</span>
         </label>
         <div className="flex items-center gap-2 md:gap-3">
           <button
@@ -311,14 +311,14 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
           >
             <i className="ri-add-line text-sm"></i>
           </button>
-          <span className="text-xs text-gray-400 ml-1">Max 12</span>
+          <span className="text-xs text-gray-400 ml-1">{t('property.experienceForm.maxGuestsNote')}</span>
         </div>
       </div>
 
       {/* Notes */}
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1 md:mb-1.5">
-          Special Requests <span className="text-gray-400 font-normal">(optional)</span>
+          {t('property.experienceForm.specialRequests')} <span className="text-gray-400 font-normal">{t('property.experienceForm.optional')}</span>
         </label>
         <textarea
           value={form.message}
@@ -326,7 +326,7 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
             if (e.target.value.length <= 500) set('message', e.target.value);
           }}
           rows={2}
-          placeholder="Dietary restrictions, special occasions…"
+          placeholder={t('property.experienceForm.specialRequestsPlaceholder')}
           className="w-full px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
         />
         <p className="text-xs text-gray-400 mt-0.5 text-right">{form.message.length}/500</p>
@@ -351,20 +351,20 @@ export default function ExperienceBookingForm({ experienceType, experienceLabel 
             <div className="w-4 h-4 flex items-center justify-center animate-spin">
               <i className="ri-loader-4-line"></i>
             </div>
-            Sending Request…
+            {t('property.experienceForm.sendingRequest')}
           </>
         ) : (
           <>
             <div className="w-4 h-4 flex items-center justify-center">
               <i className="ri-calendar-check-line"></i>
             </div>
-            Send Booking Request
+            {t('property.experienceForm.sendBookingRequest')}
           </>
         )}
       </button>
 
       <p className="text-center text-xs text-gray-400">
-        Free cancellation · Confirmed within 24 hours
+        {t('property.experienceForm.freeCancellationNote')}
       </p>
     </form>
   );

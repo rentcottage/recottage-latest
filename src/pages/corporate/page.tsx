@@ -4,6 +4,7 @@ import Header from '../../components/feature/Header';
 import SEO from '../../components/feature/SEO';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useT } from '../../i18n';
 
 const CORPORATE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/corporate-application-handler`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -20,6 +21,7 @@ interface CorporateApplication {
 type Mode = 'apply' | 'signin';
 
 export default function CorporatePage() {
+  const { t } = useT();
   const { user, isLoggedIn, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -85,15 +87,15 @@ export default function CorporatePage() {
     e.preventDefault();
     setSubmitError('');
     if (!form.agency_name || !form.tax_id || !form.rep_first_name || !form.rep_last_name || !form.email || !form.phone.trim() || !form.password) {
-      setSubmitError('Please fill in all required fields.');
+      setSubmitError(t('corporate.landing.errorFillRequired'));
       return;
     }
     if (form.password.length < 8) {
-      setSubmitError('Password must be at least 8 characters.');
+      setSubmitError(t('corporate.landing.errorPasswordLength'));
       return;
     }
     if (form.password !== form.confirm_password) {
-      setSubmitError('Passwords do not match.');
+      setSubmitError(t('corporate.landing.errorPasswordMismatch'));
       return;
     }
     setSubmitting(true);
@@ -117,7 +119,7 @@ export default function CorporatePage() {
       }
     } catch (err) {
       console.error(err);
-      setSubmitError('Network error. Please try again.');
+      setSubmitError(t('corporate.landing.errorNetwork'));
     }
     setSubmitting(false);
   };
@@ -126,7 +128,7 @@ export default function CorporatePage() {
     e.preventDefault();
     setSigninError('');
     if (!signin.tax_id.trim() || !signin.password) {
-      setSigninError('Please enter your tax ID and password.');
+      setSigninError(t('corporate.landing.errorFillTaxIdPassword'));
       return;
     }
     setSigninLoading(true);
@@ -164,7 +166,7 @@ export default function CorporatePage() {
       }
     } catch (err) {
       console.error(err);
-      setSigninError('Network error. Please try again.');
+      setSigninError(t('corporate.landing.errorNetwork'));
     }
   };
 
@@ -186,20 +188,19 @@ export default function CorporatePage() {
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-24 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold mb-6">
             <i className="ri-briefcase-line"></i>
-            For Travel Agencies
+            {t('corporate.landing.badge')}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-5 tracking-tight">
-            Book cottages for your clients.<br />
-            <span className="text-emerald-700">Earn 5% on every booking.</span>
+            {t('corporate.landing.heroTitleLine1')}<br />
+            <span className="text-emerald-700">{t('corporate.landing.heroTitleLine2')}</span>
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8 leading-relaxed">
-            Register your agency, get approved within 24 hours, and start booking any cottage on RentCottage.Ge on behalf of your clients —
-            with a clean dashboard, full booking history, and automatic <strong>5% commission</strong> on the rent paid.
+            {t('corporate.landing.heroSubPre')}<strong>{t('corporate.landing.heroSubBold')}</strong>{t('corporate.landing.heroSubPost')}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600">
-            <div className="flex items-center gap-2"><i className="ri-check-line text-emerald-600 text-base"></i>5% commission per booking</div>
-            <div className="flex items-center gap-2"><i className="ri-check-line text-emerald-600 text-base"></i>Full rental history</div>
-            <div className="flex items-center gap-2"><i className="ri-check-line text-emerald-600 text-base"></i>Dedicated dashboard</div>
+            <div className="flex items-center gap-2"><i className="ri-check-line text-emerald-600 text-base"></i>{t('corporate.landing.bullet1')}</div>
+            <div className="flex items-center gap-2"><i className="ri-check-line text-emerald-600 text-base"></i>{t('corporate.landing.bullet2')}</div>
+            <div className="flex items-center gap-2"><i className="ri-check-line text-emerald-600 text-base"></i>{t('corporate.landing.bullet3')}</div>
           </div>
         </div>
       </section>
@@ -209,28 +210,32 @@ export default function CorporatePage() {
         {authLoading || appLoading ? (
           <div className="flex items-center justify-center py-16 text-gray-400">
             <div className="w-5 h-5 animate-spin"><i className="ri-loader-4-line text-xl"></i></div>
-            <span className="ml-3 text-sm">Loading…</span>
+            <span className="ml-3 text-sm">{t('common.loading')}</span>
           </div>
         ) : existing && existing.status === 'pending' ? (
           <StatusCard
             color="amber"
             icon="ri-time-line"
-            title="Your application is under review"
-            message={`We're reviewing your application for ${existing.agency_name}. You'll get an email as soon as a decision is made — usually within 24 hours.`}
+            title={t('corporate.landing.statusPendingTitle')}
+            message={t('corporate.landing.statusPendingMessage', { agency: existing.agency_name })}
           />
         ) : existing && existing.status === 'rejected' ? (
           <StatusCard
             color="red"
             icon="ri-close-circle-line"
-            title="Application not approved"
-            message={`Your application for ${existing.agency_name} was not approved.${existing.rejection_note ? ` Reason: ${existing.rejection_note}` : ''} Contact us if you'd like to discuss next steps.`}
+            title={t('corporate.landing.statusRejectedTitle')}
+            message={
+              t('corporate.landing.statusRejectedMessageBase', { agency: existing.agency_name }) +
+              (existing.rejection_note ? t('corporate.landing.statusRejectedReason', { reason: existing.rejection_note }) : '') +
+              t('corporate.landing.statusRejectedContact')
+            }
           />
         ) : submitSuccess ? (
           <StatusCard
             color="emerald"
             icon="ri-checkbox-circle-line"
-            title="Application received"
-            message="Thanks for applying. We'll review your details and email you within 24 hours. You can now sign in with your tax ID and password to check your status."
+            title={t('corporate.landing.statusSuccessTitle')}
+            message={t('corporate.landing.statusSuccessMessage')}
           />
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-sm">
@@ -241,31 +246,31 @@ export default function CorporatePage() {
                 onClick={() => setMode('apply')}
                 className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${mode === 'apply' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                Apply as an agency
+                {t('corporate.landing.tabApply')}
               </button>
               <button
                 type="button"
                 onClick={() => setMode('signin')}
                 className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${mode === 'signin' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                Sign in
+                {t('corporate.landing.tabSignin')}
               </button>
             </div>
 
             {mode === 'apply' ? (
               <form onSubmit={handleSubmit} className="space-y-5">
-                <p className="text-sm text-gray-500">All fields marked with <span className="text-red-500">*</span> are required.</p>
-                <Field label="Agency name *" value={form.agency_name} onChange={update('agency_name')} placeholder="e.g. Tbilisi Travel LLC" />
-                <Field label="Tax / company ID number *" value={form.tax_id} onChange={update('tax_id')} placeholder="e.g. 405123456" />
+                <p className="text-sm text-gray-500">{t('corporate.landing.requiredNote').split('*')[0]}<span className="text-red-500">*</span>{t('corporate.landing.requiredNote').split('*')[1]}</p>
+                <Field label={t('corporate.landing.fieldAgencyName')} value={form.agency_name} onChange={update('agency_name')} placeholder={t('corporate.landing.fieldAgencyNamePlaceholder')} />
+                <Field label={t('corporate.landing.fieldTaxId')} value={form.tax_id} onChange={update('tax_id')} placeholder={t('corporate.landing.fieldTaxIdPlaceholder')} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Representative first name *" value={form.rep_first_name} onChange={update('rep_first_name')} placeholder="First name" />
-                  <Field label="Representative last name *" value={form.rep_last_name} onChange={update('rep_last_name')} placeholder="Last name" />
+                  <Field label={t('corporate.landing.fieldRepFirstName')} value={form.rep_first_name} onChange={update('rep_first_name')} placeholder={t('corporate.landing.fieldFirstNamePlaceholder')} />
+                  <Field label={t('corporate.landing.fieldRepLastName')} value={form.rep_last_name} onChange={update('rep_last_name')} placeholder={t('corporate.landing.fieldLastNamePlaceholder')} />
                 </div>
-                <Field label="Email *" type="email" value={form.email} onChange={update('email')} placeholder="agency@example.com" />
-                <Field label="Phone *" type="tel" value={form.phone} onChange={update('phone')} placeholder="+995 555 12 34 56" />
+                <Field label={t('corporate.landing.fieldEmail')} type="email" value={form.email} onChange={update('email')} placeholder="agency@example.com" />
+                <Field label={t('corporate.landing.fieldPhone')} type="tel" value={form.phone} onChange={update('phone')} placeholder="+995 555 12 34 56" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Password * (min. 8 chars)" type="password" value={form.password} onChange={update('password')} placeholder="••••••••" />
-                  <Field label="Confirm password *" type="password" value={form.confirm_password} onChange={update('confirm_password')} placeholder="••••••••" />
+                  <Field label={t('corporate.landing.fieldPassword')} type="password" value={form.password} onChange={update('password')} placeholder="••••••••" />
+                  <Field label={t('corporate.landing.fieldConfirmPassword')} type="password" value={form.confirm_password} onChange={update('confirm_password')} placeholder="••••••••" />
                 </div>
 
                 {submitError && (
@@ -282,37 +287,37 @@ export default function CorporatePage() {
                   {submitting ? (
                     <>
                       <div className="w-4 h-4 animate-spin"><i className="ri-loader-4-line"></i></div>
-                      Submitting…
+                      {t('corporate.landing.submitting')}
                     </>
                   ) : (
                     <>
                       <i className="ri-send-plane-line"></i>
-                      Submit application
+                      {t('corporate.landing.submitApplication')}
                     </>
                   )}
                 </button>
 
                 <p className="text-xs text-gray-400 text-center">
-                  Already have an account?{' '}
+                  {t('corporate.landing.alreadyHaveAccount')}{' '}
                   <button type="button" onClick={() => setMode('signin')} className="text-emerald-700 hover:underline cursor-pointer">
-                    Sign in with your tax ID
+                    {t('corporate.landing.signInWithTaxId')}
                   </button>
                 </p>
               </form>
             ) : (
               <form onSubmit={handleSignin} className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">Sign in as an agency</h2>
-                  <p className="text-sm text-gray-500">Use the tax ID and password you registered with.</p>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">{t('corporate.landing.signinTitle')}</h2>
+                  <p className="text-sm text-gray-500">{t('corporate.landing.signinSub')}</p>
                 </div>
                 <Field
-                  label="Tax ID *"
+                  label={t('corporate.landing.fieldTaxIdOnly')}
                   value={signin.tax_id}
                   onChange={(e) => setSignin((s) => ({ ...s, tax_id: e.target.value }))}
                   placeholder="e.g. 405123456"
                 />
                 <Field
-                  label="Password *"
+                  label={t('corporate.landing.fieldPasswordOnly')}
                   type="password"
                   value={signin.password}
                   onChange={(e) => setSignin((s) => ({ ...s, password: e.target.value }))}
@@ -333,20 +338,20 @@ export default function CorporatePage() {
                   {signinLoading ? (
                     <>
                       <div className="w-4 h-4 animate-spin"><i className="ri-loader-4-line"></i></div>
-                      Signing in…
+                      {t('corporate.landing.signingIn')}
                     </>
                   ) : (
                     <>
                       <i className="ri-login-circle-line"></i>
-                      Sign in
+                      {t('corporate.landing.tabSignin')}
                     </>
                   )}
                 </button>
 
                 <p className="text-xs text-gray-400 text-center">
-                  New here?{' '}
+                  {t('corporate.landing.newHere')}{' '}
                   <button type="button" onClick={() => setMode('apply')} className="text-emerald-700 hover:underline cursor-pointer">
-                    Apply as an agency
+                    {t('corporate.landing.tabApply')}
                   </button>
                 </p>
               </form>
