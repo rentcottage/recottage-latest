@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../../../i18n';
 
 const USER_MGMT_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-user-management`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -54,6 +55,7 @@ function formatDateTime(str: string | null) {
 }
 
 export default function UserManagementPanel() {
+  const { t } = useT();
   const [activeTab, setActiveTab] = useState<'users' | 'blocked'>('users');
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [blockedEmails, setBlockedEmails] = useState<BlockedEmail[]>([]);
@@ -81,12 +83,12 @@ export default function UserManagementPanel() {
       });
       const data = await res.json();
       if (data.success) setUsers(data.users ?? []);
-      else showToast('Failed to load users', 'error');
+      else showToast(t('admin.userManagement.failedToLoadUsers'), 'error');
     } catch {
-      showToast('Network error loading users', 'error');
+      showToast(t('admin.userManagement.networkErrorLoadUsers'), 'error');
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   const fetchBlocked = useCallback(async () => {
     setLoading(true);
@@ -98,12 +100,12 @@ export default function UserManagementPanel() {
       });
       const data = await res.json();
       if (data.success) setBlockedEmails(data.blocked ?? []);
-      else showToast('Failed to load blocked emails', 'error');
+      else showToast(t('admin.userManagement.failedToLoadBlocked'), 'error');
     } catch {
-      showToast('Network error loading blocked emails', 'error');
+      showToast(t('admin.userManagement.networkErrorLoadBlocked'), 'error');
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
@@ -127,13 +129,13 @@ export default function UserManagementPanel() {
       const data = await res.json();
       if (data.success) {
         setUsers((prev) => prev.filter((u) => u.id !== deleteModal.user.id));
-        showToast(`User deleted and email blocked successfully.`, 'success');
+        showToast(t('admin.userManagement.userDeletedToast'), 'success');
         setDeleteModal(null);
       } else {
-        showToast(data.error ?? 'Failed to delete user', 'error');
+        showToast(data.error ?? t('admin.userManagement.failedDeleteUser'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.userManagement.networkErrorGeneric'), 'error');
     }
     setActionLoading(null);
   };
@@ -149,12 +151,12 @@ export default function UserManagementPanel() {
       const data = await res.json();
       if (data.success) {
         setBlockedEmails((prev) => prev.filter((b) => b.email !== email));
-        showToast('Email unblocked successfully.', 'success');
+        showToast(t('admin.userManagement.emailUnblockedToast'), 'success');
       } else {
-        showToast(data.error ?? 'Failed to unblock', 'error');
+        showToast(data.error ?? t('admin.userManagement.failedUnblock'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.userManagement.networkErrorGeneric'), 'error');
     }
     setActionLoading(null);
   };
@@ -175,15 +177,15 @@ export default function UserManagementPanel() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`${blockEmailInput.trim()} has been blocked.`, 'success');
+        showToast(t('admin.userManagement.emailBlockedToast', { email: blockEmailInput.trim() }), 'success');
         setBlockEmailInput('');
         setBlockReasonInput('');
         fetchBlocked();
       } else {
-        showToast(data.error ?? 'Failed to block email', 'error');
+        showToast(data.error ?? t('admin.userManagement.failedBlockEmail'), 'error');
       }
     } catch {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('admin.userManagement.networkErrorGeneric'), 'error');
     }
     setBlockLoading(false);
   };
@@ -207,8 +209,8 @@ export default function UserManagementPanel() {
             <i className="ri-user-settings-line text-gray-600 text-lg"></i>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">User Management</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Delete users and manage blocked emails</p>
+            <h2 className="text-base font-bold text-gray-900">{t('admin.userManagement.title')}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{t('admin.userManagement.subtitle')}</p>
           </div>
         </div>
         <button
@@ -216,7 +218,7 @@ export default function UserManagementPanel() {
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap"
         >
           <i className="ri-refresh-line text-sm"></i>
-          Refresh
+          {t('admin.userManagement.refresh')}
         </button>
       </div>
 
@@ -230,7 +232,7 @@ export default function UserManagementPanel() {
             }`}
           >
             <i className="ri-user-line text-xs"></i>
-            All Users
+            {t('admin.userManagement.allUsers')}
             <span className={`text-xs font-semibold ${activeTab === 'users' ? 'text-gray-600' : 'text-gray-400'}`}>
               {users.length}
             </span>
@@ -242,7 +244,7 @@ export default function UserManagementPanel() {
             }`}
           >
             <i className="ri-forbid-2-line text-xs"></i>
-            Blocked Emails
+            {t('admin.userManagement.blockedEmails')}
             <span className={`text-xs font-semibold ${activeTab === 'blocked' ? 'text-red-500' : 'text-gray-400'}`}>
               {blockedEmails.length}
             </span>
@@ -262,14 +264,14 @@ export default function UserManagementPanel() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email or phone…"
+              placeholder={t('admin.userManagement.searchPlaceholder')}
               className="w-full pl-9 pr-4 py-2.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
             />
           </div>
 
           {!loading && users.length > 0 && (
             <p className="text-xs text-gray-400 mb-3">
-              <span className="font-semibold text-green-600">{users.filter((u) => u.phone_verified).length}</span> of {users.length} users have a verified phone
+              {t('admin.userManagement.verifiedPhoneStat', { verified: users.filter((u) => u.phone_verified).length, total: users.length })}
             </p>
           )}
 
@@ -278,21 +280,30 @@ export default function UserManagementPanel() {
               <div className="w-5 h-5 flex items-center justify-center animate-spin mr-2">
                 <i className="ri-loader-4-line text-xl"></i>
               </div>
-              <span className="text-sm">Loading users…</span>
+              <span className="text-sm">{t('admin.userManagement.loadingUsers')}</span>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <div className="w-10 h-10 flex items-center justify-center mb-2">
                 <i className="ri-user-search-line text-3xl"></i>
               </div>
-              <p className="text-sm">No users found</p>
+              <p className="text-sm">{t('admin.userManagement.noUsersFound')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    {['Name', 'Email', 'Phone', 'Role', 'Provider', 'Registered', 'Last Sign In', 'Actions'].map((h) => (
+                    {[
+                      t('admin.userManagement.colName'),
+                      t('admin.userManagement.colEmail'),
+                      t('admin.userManagement.colPhone'),
+                      t('admin.userManagement.colRole'),
+                      t('admin.userManagement.colProvider'),
+                      t('admin.userManagement.colRegistered'),
+                      t('admin.userManagement.colLastSignIn'),
+                      t('admin.userManagement.colActions'),
+                    ].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {h}
                       </th>
@@ -309,7 +320,7 @@ export default function UserManagementPanel() {
                         <p className="text-sm text-gray-700">{u.email}</p>
                         {!u.confirmed && (
                           <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                            Unconfirmed
+                            {t('admin.userManagement.unconfirmed')}
                           </span>
                         )}
                       </td>
@@ -320,7 +331,7 @@ export default function UserManagementPanel() {
                             u.phone_verified ? 'text-green-700 bg-green-50' : 'text-amber-600 bg-amber-50'
                           }`}>
                             <i className={u.phone_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}></i>
-                            {u.phone_verified ? 'Verified' : 'Not verified'}
+                            {u.phone_verified ? t('admin.userManagement.verified') : t('admin.userManagement.notVerified')}
                           </span>
                         )}
                       </td>
@@ -355,7 +366,7 @@ export default function UserManagementPanel() {
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
                         >
                           <i className="ri-delete-bin-line text-xs"></i>
-                          Delete &amp; Block
+                          {t('admin.userManagement.deleteAndBlock')}
                         </button>
                       </td>
                     </tr>
@@ -374,7 +385,7 @@ export default function UserManagementPanel() {
           <div className="bg-gray-50 rounded-xl border border-line p-5 mb-6">
             <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <i className="ri-forbid-2-line text-red-500"></i>
-              Manually Block an Email
+              {t('admin.userManagement.manuallyBlockEmailTitle')}
             </h3>
             <form onSubmit={handleManualBlock} className="flex flex-col sm:flex-row gap-3">
               <input
@@ -382,14 +393,14 @@ export default function UserManagementPanel() {
                 required
                 value={blockEmailInput}
                 onChange={(e) => setBlockEmailInput(e.target.value)}
-                placeholder="email@example.com"
+                placeholder={t('admin.userManagement.emailPlaceholder')}
                 className="flex-1 px-3 py-2.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
               />
               <input
                 type="text"
                 value={blockReasonInput}
                 onChange={(e) => setBlockReasonInput(e.target.value)}
-                placeholder="Reason (optional)"
+                placeholder={t('admin.userManagement.reasonOptionalPlaceholder')}
                 className="flex-1 px-3 py-2.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
               />
               <button
@@ -404,7 +415,7 @@ export default function UserManagementPanel() {
                 ) : (
                   <i className="ri-forbid-2-line text-sm"></i>
                 )}
-                Block Email
+                {t('admin.userManagement.blockEmail')}
               </button>
             </form>
           </div>
@@ -414,22 +425,28 @@ export default function UserManagementPanel() {
               <div className="w-5 h-5 flex items-center justify-center animate-spin mr-2">
                 <i className="ri-loader-4-line text-xl"></i>
               </div>
-              <span className="text-sm">Loading blocked emails…</span>
+              <span className="text-sm">{t('admin.userManagement.loadingBlockedEmails')}</span>
             </div>
           ) : blockedEmails.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <div className="w-10 h-10 flex items-center justify-center mb-2">
                 <i className="ri-shield-check-line text-3xl text-green-400"></i>
               </div>
-              <p className="text-sm font-medium text-gray-500">No blocked emails</p>
-              <p className="text-xs mt-1">All emails are currently allowed to register.</p>
+              <p className="text-sm font-medium text-gray-500">{t('admin.userManagement.noBlockedEmails')}</p>
+              <p className="text-xs mt-1">{t('admin.userManagement.allEmailsAllowed')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    {['Email', 'Reason', 'Source', 'Blocked At', 'Actions'].map((h) => (
+                    {[
+                      t('admin.userManagement.colEmail'),
+                      t('admin.userManagement.colReason'),
+                      t('admin.userManagement.colSource'),
+                      t('admin.userManagement.colBlockedAt'),
+                      t('admin.userManagement.colActions'),
+                    ].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {h}
                       </th>
@@ -453,7 +470,7 @@ export default function UserManagementPanel() {
                             ? 'bg-red-100 text-red-700'
                             : 'bg-gray-100 text-gray-600'
                         }`}>
-                          {b.source === 'deleted_from_supabase' ? 'User Deleted' : b.source}
+                          {b.source === 'deleted_from_supabase' ? t('admin.userManagement.userDeletedSource') : b.source}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -472,7 +489,7 @@ export default function UserManagementPanel() {
                           ) : (
                             <i className="ri-shield-check-line text-xs"></i>
                           )}
-                          Unblock
+                          {t('admin.userManagement.unblock')}
                         </button>
                       </td>
                     </tr>
@@ -494,8 +511,8 @@ export default function UserManagementPanel() {
                   <i className="ri-delete-bin-line text-red-500 text-lg"></i>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">Delete User &amp; Block Email</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">This action cannot be undone</p>
+                  <h3 className="text-base font-bold text-gray-900">{t('admin.userManagement.deleteUserBlockEmailTitle')}</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{t('admin.userManagement.actionCannotBeUndone')}</p>
                 </div>
               </div>
               <button
@@ -508,24 +525,24 @@ export default function UserManagementPanel() {
 
             <div className="px-6 py-5">
               <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-5">
-                <p className="text-sm font-semibold text-red-800 mb-1">{deleteModal.user.full_name || 'User'}</p>
+                <p className="text-sm font-semibold text-red-800 mb-1">{deleteModal.user.full_name || t('admin.userManagement.userFallback')}</p>
                 <p className="text-sm text-red-600">{deleteModal.user.email}</p>
               </div>
 
               <p className="text-sm text-gray-600 mb-4">
-                This will permanently delete the user from Supabase Auth and add their email to the blocked list. They will never be able to register again with this email.
+                {t('admin.userManagement.deleteWarningBody')}
               </p>
 
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-                  Reason for deletion (optional)
+                  {t('admin.userManagement.reasonForDeletionLabel')}
                 </label>
                 <textarea
                   value={deleteModal.reason}
                   onChange={(e) => setDeleteModal((prev) => prev ? { ...prev, reason: e.target.value } : null)}
                   maxLength={300}
                   rows={3}
-                  placeholder="e.g. Violated terms of service, fraudulent activity…"
+                  placeholder={t('admin.userManagement.reasonPlaceholder')}
                   className="w-full text-sm border border-line rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-800 placeholder-gray-400"
                 />
               </div>
@@ -537,7 +554,7 @@ export default function UserManagementPanel() {
                 disabled={!!actionLoading}
                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 cursor-pointer whitespace-nowrap transition-colors"
               >
-                Cancel
+                {t('admin.userManagement.cancel')}
               </button>
               <button
                 onClick={handleDeleteUser}
@@ -551,7 +568,7 @@ export default function UserManagementPanel() {
                 ) : (
                   <i className="ri-delete-bin-line text-sm"></i>
                 )}
-                Delete &amp; Block Email
+                {t('admin.userManagement.deleteAndBlockEmail')}
               </button>
             </div>
           </div>
