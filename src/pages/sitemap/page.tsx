@@ -2,9 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
+import { useT } from '../../i18n';
 
 export default function SiteMap() {
   const navigate = useNavigate();
+  const { t } = useT();
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
 
   const jsonLd = {
@@ -20,30 +22,30 @@ export default function SiteMap() {
   // (Gated surfaces like the admin panel are intentionally not exposed here.)
   const columns = [
     {
-      title: '🏠 For guests',
+      title: t('siteMap.forGuests'),
       links: [
-        { label: 'Home', path: '/' },
-        { label: 'Search cottages', path: '/search' },
-        { label: 'Cottage page (sample)', path: '/property/1' },
-        { label: 'Experiences', path: '/book-experience' },
-        { label: 'Where to stay in Georgia', path: '/about-georgia' },
-        { label: 'How it works', path: '/how-it-works' },
+        { label: t('siteMap.home'), path: '/' },
+        { label: t('siteMap.search'), path: '/search' },
+        { label: t('siteMap.sample'), path: '/property/1' },
+        { label: t('siteMap.experiences'), path: '/book-experience' },
+        { label: t('siteMap.whereToStay'), path: '/about-georgia' },
+        { label: t('siteMap.howItWorks'), path: '/how-it-works' },
       ],
     },
     {
-      title: '🏡 For hosts',
+      title: t('siteMap.forHosts'),
       links: [
-        { label: 'Become a host', path: '/become-host' },
-        { label: 'Host guide', path: '/host-resources' },
-        { label: 'Host dashboard', path: '/host-dashboard' },
+        { label: t('siteMap.becomeHost'), path: '/become-host' },
+        { label: t('siteMap.hostGuide'), path: '/host-resources' },
+        { label: t('siteMap.hostDashboard'), path: '/host-dashboard' },
       ],
     },
     {
-      title: '👤 Account & more',
+      title: t('siteMap.account'),
       links: [
-        { label: 'My profile', path: '/profile' },
-        { label: 'Terms & Conditions', path: '/terms' },
-        { label: 'Privacy Policy', path: '/privacy' },
+        { label: t('siteMap.myProfile'), path: '/profile' },
+        { label: t('siteMap.terms'), path: '/terms' },
+        { label: t('siteMap.privacy'), path: '/privacy' },
       ],
     },
   ];
@@ -62,8 +64,8 @@ export default function SiteMap() {
       {/* Hero — white band, centered */}
       <section className="bg-white border-b border-line py-10 text-center">
         <div className="max-w-4xl mx-auto px-5">
-          <h1 className="text-[22px] md:text-[30px] font-extrabold text-ink tracking-tight">Site Map</h1>
-          <p className="text-soft text-sm mt-1.5">All pages in one place</p>
+          <h1 className="text-[22px] md:text-[30px] font-extrabold text-ink tracking-tight">{t('siteMap.title')}</h1>
+          <p className="text-soft text-sm mt-1.5">{t('siteMap.subtitle')}</p>
         </div>
       </section>
 
