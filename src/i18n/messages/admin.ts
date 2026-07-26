@@ -163,6 +163,9 @@ export const adminEn = {
     colCompletedOn: 'Completed On',
     unknown: 'Unknown',
     completed: 'Completed',
+    paymentStatusPaid: 'Paid',
+    paymentStatusPending: 'Pending',
+    paymentStatusFailed: 'Failed',
     showingCompletedBookingsCount: {
       one: 'Showing {count} completed booking',
       few: 'Showing {count} completed bookings',
@@ -874,6 +877,9 @@ export const adminKa: AdminNs = {
     colCompletedOn: 'დასრულდა',
     unknown: 'უცნობი',
     completed: 'დასრულებული',
+    paymentStatusPaid: 'გადახდილია',
+    paymentStatusPending: 'მოლოდინში',
+    paymentStatusFailed: 'ვერ შესრულდა',
     showingCompletedBookingsCount: {
       one: 'ნაჩვენებია {count} დასრულებული ჯავშანი',
       few: 'ნაჩვენებია {count} დასრულებული ჯავშანი',
@@ -1583,6 +1589,9 @@ export const adminRu: AdminNs = {
     colCompletedOn: 'Завершено',
     unknown: 'Неизвестно',
     completed: 'Завершено',
+    paymentStatusPaid: 'Оплачено',
+    paymentStatusPending: 'В ожидании',
+    paymentStatusFailed: 'Не удалось',
     showingCompletedBookingsCount: {
       one: 'Показано {count} завершённое бронирование',
       few: 'Показано {count} завершённых бронирования',
