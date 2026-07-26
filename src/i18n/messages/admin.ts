@@ -236,6 +236,7 @@ export const adminEn = {
     typeCookingClass: 'Cooking Class',
     typeExperienceFallback: 'Experience',
     statusAll: 'All',
+    statusUnknownFallback: 'Unknown',
   },
 
   experiences: {
@@ -950,6 +951,7 @@ export const adminKa: AdminNs = {
     typeCookingClass: 'კულინარიული გაკვეთილი',
     typeExperienceFallback: 'გამოცდილება',
     statusAll: 'ყველა',
+    statusUnknownFallback: 'უცნობი',
   },
 
   experiences: {
@@ -1662,6 +1664,7 @@ export const adminRu: AdminNs = {
     typeCookingClass: 'Кулинарный класс',
     typeExperienceFallback: 'Впечатление',
     statusAll: 'Все',
+    statusUnknownFallback: 'Неизвестно',
   },
 
   experiences: {
