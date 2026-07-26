@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useT } from '../../../i18n';
 
 const ADMIN_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-user-management`;
 const PW_KEY = 'rc_admin_pw';
@@ -16,6 +17,7 @@ function isAuthed() {
 }
 
 export default function AdminGate({ children }: Props) {
+  const { t, plural } = useT();
   const [authed, setAuthed] = useState(isAuthed);
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -77,15 +79,15 @@ export default function AdminGate({ children }: Props) {
           const until = Date.now() + LOCKOUT_MS;
           setLockedUntil(until);
           setRemaining(Math.ceil(LOCKOUT_MS / 1000));
-          setError('Too many failed attempts. Access locked for 2 minutes.');
+          setError(t('admin.gate.tooManyAttempts'));
         } else {
-          setError(`Incorrect password. ${MAX_ATTEMPTS - next} attempt${MAX_ATTEMPTS - next === 1 ? '' : 's'} remaining.`);
+          setError(`${t('admin.gate.incorrectPasswordPrefix')} ${plural('admin.gate.attemptsRemainingCount', MAX_ATTEMPTS - next)}`);
         }
       } else {
-        setError('Could not verify right now. Please try again.');
+        setError(t('admin.gate.verifyFailedError'));
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError(t('admin.gate.networkError'));
     } finally {
       setVerifying(false);
     }
@@ -108,7 +110,7 @@ export default function AdminGate({ children }: Props) {
           <div className="w-3 h-3 flex items-center justify-center">
             <i className="ri-logout-box-r-line"></i>
           </div>
-          Lock Admin
+          {t('admin.gate.lockAdmin')}
         </button>
       </>
     );
@@ -124,7 +126,7 @@ export default function AdminGate({ children }: Props) {
               <i className="ri-lock-2-line text-white text-2xl"></i>
             </div>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Admin Access</h1>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('admin.gate.adminAccess')}</h1>
           <p className="text-sm text-gray-400 mt-1">RentCottage.Ge</p>
         </div>
 
@@ -133,7 +135,7 @@ export default function AdminGate({ children }: Props) {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Password
+                {t('admin.gate.password')}
               </label>
               <div className="relative">
                 <input
@@ -145,7 +147,7 @@ export default function AdminGate({ children }: Props) {
                     if (error && !lockedUntil) setError('');
                   }}
                   disabled={!!lockedUntil}
-                  placeholder="Enter admin password"
+                  placeholder={t('admin.gate.enterAdminPassword')}
                   className={`w-full px-4 py-3 pr-11 text-sm border rounded-xl focus:outline-none focus:ring-2 transition-colors ${
                     error
                       ? 'border-red-300 focus:ring-red-200'
@@ -174,7 +176,7 @@ export default function AdminGate({ children }: Props) {
                 </div>
                 <span>
                   {lockedUntil
-                    ? `Too many failed attempts. Try again in ${remaining}s.`
+                    ? t('admin.gate.tooManyAttemptsRetry', { seconds: remaining })
                     : error}
                 </span>
               </div>
@@ -188,13 +190,13 @@ export default function AdminGate({ children }: Props) {
               <div className="w-4 h-4 flex items-center justify-center">
                 <i className={verifying ? 'ri-loader-4-line animate-spin' : 'ri-shield-check-line'}></i>
               </div>
-              {verifying ? 'Verifying…' : 'Unlock Admin Panel'}
+              {verifying ? t('admin.gate.verifyingEllipsis') : t('admin.gate.unlockAdminPanel')}
             </button>
           </form>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-5">
-          Access is session-scoped and expires when the tab is closed.
+          {t('admin.gate.sessionScopedNote')}
         </p>
       </div>
     </div>

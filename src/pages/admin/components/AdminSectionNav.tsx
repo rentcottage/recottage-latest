@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useT } from '../../../i18n';
 
 /**
  * Jump navigation for the admin page sections.
@@ -15,19 +16,36 @@ import { useState, useEffect, useRef } from 'react';
  * (which also needs `scroll-mt-*` so the sticky header doesn't cover it).
  */
 export const ADMIN_SECTIONS = [
-  { id: 'overview',            label: 'Overview',            icon: 'ri-dashboard-line' },
-  { id: 'bookings',            label: 'Bookings',            icon: 'ri-calendar-check-line' },
-  { id: 'date-changes',        label: 'Date Changes',        icon: 'ri-calendar-2-line' },
-  { id: 'host-applications',   label: 'Host Applications',   icon: 'ri-home-smile-line' },
-  { id: 'corporate',           label: 'Travel Agencies',     icon: 'ri-briefcase-line' },
-  { id: 'experiences',         label: 'Experiences',         icon: 'ri-goblet-line' },
-  { id: 'promos',              label: 'Offers & Promos',     icon: 'ri-price-tag-3-line' },
-  { id: 'experience-bookings', label: 'Experience Bookings', icon: 'ri-ticket-2-line' },
-  { id: 'completed-bookings',  label: 'Completed Stays',     icon: 'ri-medal-line' },
-  { id: 'users',               label: 'Users',               icon: 'ri-user-settings-line' },
-  { id: 'host-news',           label: 'Host News',           icon: 'ri-megaphone-line' },
-  { id: 'payment-logs',        label: 'Payment Logs',        icon: 'ri-file-shield-2-line' },
+  { id: 'overview',            icon: 'ri-dashboard-line' },
+  { id: 'bookings',            icon: 'ri-calendar-check-line' },
+  { id: 'date-changes',        icon: 'ri-calendar-2-line' },
+  { id: 'host-applications',   icon: 'ri-home-smile-line' },
+  { id: 'corporate',           icon: 'ri-briefcase-line' },
+  { id: 'experiences',         icon: 'ri-goblet-line' },
+  { id: 'promos',              icon: 'ri-price-tag-3-line' },
+  { id: 'experience-bookings', icon: 'ri-ticket-2-line' },
+  { id: 'completed-bookings',  icon: 'ri-medal-line' },
+  { id: 'users',               icon: 'ri-user-settings-line' },
+  { id: 'host-news',           icon: 'ri-megaphone-line' },
+  { id: 'payment-logs',        icon: 'ri-file-shield-2-line' },
 ] as const;
+
+// Display labels for each section — translated at render time so the ids
+// above stay stable (used as DOM element ids and scroll targets).
+const SECTION_LABEL_KEY: Record<string, string> = {
+  'overview': 'admin.sectionNav.overview',
+  'bookings': 'admin.sectionNav.bookings',
+  'date-changes': 'admin.sectionNav.dateChanges',
+  'host-applications': 'admin.sectionNav.hostApplications',
+  'corporate': 'admin.sectionNav.travelAgencies',
+  'experiences': 'admin.sectionNav.experiences',
+  'promos': 'admin.sectionNav.offersPromos',
+  'experience-bookings': 'admin.sectionNav.experienceBookings',
+  'completed-bookings': 'admin.sectionNav.completedStays',
+  'users': 'admin.sectionNav.users',
+  'host-news': 'admin.sectionNav.hostNews',
+  'payment-logs': 'admin.sectionNav.paymentLogs',
+};
 
 type SectionId = (typeof ADMIN_SECTIONS)[number]['id'];
 
@@ -41,6 +59,7 @@ interface AdminSectionNavProps {
 const PIN_TOP = 96;
 
 export default function AdminSectionNav({ variant, badges = {} }: AdminSectionNavProps) {
+  const { t } = useT();
   const [active, setActive] = useState<SectionId>(ADMIN_SECTIONS[0].id);
   // Sidebar pinning is done in JS with position:fixed instead of CSS sticky:
   // Google Translate (active for most Georgian admin sessions) injects
@@ -97,7 +116,7 @@ export default function AdminSectionNav({ variant, badges = {} }: AdminSectionNa
 
   if (variant === 'chips') {
     return (
-      <nav aria-label="Admin sections" className="flex gap-1.5 overflow-x-auto pb-0.5">
+      <nav aria-label={t('admin.sectionNav.adminSectionsLabel')} className="flex gap-1.5 overflow-x-auto pb-0.5">
         {ADMIN_SECTIONS.map((s) => {
           const badge = badges[s.id] ?? 0;
           const isActive = active === s.id;
@@ -110,7 +129,7 @@ export default function AdminSectionNav({ variant, badges = {} }: AdminSectionNa
               }`}
             >
               <i className={`${s.icon} text-sm`}></i>
-              {s.label}
+              {t(SECTION_LABEL_KEY[s.id])}
               {badge > 0 && (
                 <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
                   isActive ? 'bg-white text-gray-900' : 'bg-amber-400 text-amber-950'
@@ -128,7 +147,7 @@ export default function AdminSectionNav({ variant, badges = {} }: AdminSectionNa
   return (
     <div ref={wrapRef}>
       <nav
-        aria-label="Admin sections"
+        aria-label={t('admin.sectionNav.adminSectionsLabel')}
         className="bg-white rounded-card border border-line shadow-card p-2"
         style={pinned ? {
           position: 'fixed',
@@ -154,7 +173,7 @@ export default function AdminSectionNav({ variant, badges = {} }: AdminSectionNa
             }`}
           >
             <i className={`${s.icon} text-base flex-shrink-0 ${isActive ? 'text-red-500' : 'text-gray-400'}`}></i>
-            <span className="flex-1 truncate">{s.label}</span>
+            <span className="flex-1 truncate">{t(SECTION_LABEL_KEY[s.id])}</span>
             {badge > 0 && (
               <span className="min-w-[20px] h-5 px-1.5 bg-amber-100 text-amber-700 rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                 {badge}
