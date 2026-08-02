@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useT } from '../../../i18n';
+import PhotoManager from './PhotoManager';
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -16,6 +17,8 @@ interface HostApplication {
   max_guests: number;
   amenities: string[];
   photo_urls: string[];
+  cover_photo_url?: string | null;
+  cover_photo_position?: 'top' | 'center' | 'bottom' | null;
   title: string;
   description: string;
   price_per_night: number;
@@ -33,8 +36,13 @@ interface HostApplication {
 
 type AgreementStatus = 'not_sent' | 'pending' | 'received';
 
-const ADMIN_HOST_ACTIONS_URL =
-  `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-host-actions`;
+// VITE_ADMIN_FN_BASE lets us point at `supabase functions serve` during local
+// testing without touching the deployed function. Falls back to production.
+const ADMIN_FN_BASE =
+  (import.meta.env.VITE_ADMIN_FN_BASE as string | undefined) ??
+  (import.meta.env.VITE_PUBLIC_SUPABASE_URL as string);
+
+const ADMIN_HOST_ACTIONS_URL = `${ADMIN_FN_BASE}/functions/v1/admin-host-actions`;
 
 const RESEND_APPROVAL_EMAIL_URL =
   `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/resend-approval-email`;
@@ -363,11 +371,15 @@ interface DetailModalProps {
   onUpdateAgreementStatus: (id: string, status: AgreementStatus) => void;
   onResendApprovalEmail: (id: string) => void;
   actionLoading: string | null;
+  callAdmin: (body: Record<string, unknown>) => Promise<{ ok: boolean; data: Record<string, unknown> }>;
+  onPhotosSaved: (id: string, next: { photo_urls: string[]; cover_photo_url: string; cover_photo_position: 'top' | 'center' | 'bottom' }) => void;
+  onToast: (msg: string, kind: 'success' | 'error') => void;
 }
 
 function DetailModal({
   app, onClose, onApprove, onRejectRequest, onHide, onUnhide, onDeleteRequest,
   onSendAgreementReminder, onUpdateAgreementStatus, onResendApprovalEmail, actionLoading,
+  callAdmin, onPhotosSaved, onToast,
 }: DetailModalProps) {
   const { t } = useT();
   const [activePhoto, setActivePhoto] = useState<string | null>(
@@ -532,6 +544,18 @@ function DetailModal({
               {t('admin.hostApplications.noPhotosSubmitted')}
             </div>
           )}
+
+          {/* Admin photo management — upload / reorder / cover. Saving photos is
+              deliberately separate from approving. */}
+          <PhotoManager
+            applicationId={app.id}
+            photoUrls={app.photo_urls}
+            coverPhotoUrl={app.cover_photo_url}
+            coverPhotoPosition={app.cover_photo_position ?? undefined}
+            callAdmin={callAdmin}
+            onSaved={(next) => onPhotosSaved(app.id, next)}
+            onToast={onToast}
+          />
 
           {/* Host Info */}
           <div>
@@ -807,6 +831,39 @@ export default function HostApplications({ onPendingCountChange }: Props) {
   const [rejectLoading, setRejectLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [fetchError, setFetchError] = useState('');
+
+  // Single place that attaches the admin secret. Used by the photo manager so
+  // the password handling doesn't get duplicated per feature.
+  const callAdmin = async (body: Record<string, unknown>) => {
+    try {
+      const res = await fetch(ADMIN_HOST_ACTIONS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
+        },
+        body: JSON.stringify(body),
+      });
+      let data: Record<string, unknown> = {};
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      return { ok: res.ok, data };
+    } catch (err) {
+      console.error('[callAdmin] Network error:', err);
+      return { ok: false, data: { error: 'Network error' } };
+    }
+  };
+
+  // Reflect a photo save into local state so the list and the open modal update
+  // without a full refetch. Status is untouched — approving stays separate.
+  const handlePhotosSaved = (
+    id: string,
+    next: { photo_urls: string[]; cover_photo_url: string; cover_photo_position: 'top' | 'center' | 'bottom' },
+  ) => {
+    setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, ...next } : a)));
+    setSelectedApp((prev) => (prev && prev.id === id ? { ...prev, ...next } : prev));
+  };
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -1457,6 +1514,9 @@ export default function HostApplications({ onPendingCountChange }: Props) {
           onUpdateAgreementStatus={handleUpdateAgreementStatus}
           onResendApprovalEmail={handleResendApprovalEmail}
           actionLoading={actionLoading}
+          callAdmin={callAdmin}
+          onPhotosSaved={handlePhotosSaved}
+          onToast={showToast}
         />
       )}
 
