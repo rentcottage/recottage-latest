@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -126,7 +125,7 @@
     to { height: 0; }
   }
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', 'Noto Sans Georgian', system-ui, sans-serif;
+  --font-sans: 'Noto Sans Georgian', system-ui, sans-serif;
 
   /* ── Redesign "new look" shared tokens (from the mockups) ──
      Accent red intentionally omitted: the mockup's #fb2c36 / #e7000b already
@@ -181,11 +180,11 @@
 }
 
 body {
-  background-color: #fdfbf7;
+  background-color: #fafafa;
 }
 
 #root {
-  background-color: #fdfbf7;
+  background-color: #fafafa;
   min-height: 100vh;
 }
 
