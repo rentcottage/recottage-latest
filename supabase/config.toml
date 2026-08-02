@@ -24,6 +24,13 @@ verify_jwt = false
 [functions.admin-user-management]
 verify_jwt = false
 
+# Called only by the admin panel, which sends the `sb_publishable_*` key as its
+# bearer token — not a JWT, so gateway verification would reject it with
+# INVALID_JWT_FORMAT. Every action inside self-authorizes against the
+# server-side ADMIN_PANEL_PASSWORD secret before doing anything.
+[functions.admin-host-actions]
+verify_jwt = false
+
 # Serves anonymous email one-click links (approve/reject/confirm) AND the host &
 # admin dashboards, which send no user JWT — the host dashboard sends no auth
 # header and the admin panel sends the `sb_publishable_*` key. With the default

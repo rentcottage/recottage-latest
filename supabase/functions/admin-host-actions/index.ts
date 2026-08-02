@@ -389,6 +389,162 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // ── Photo management (admin) ──────────────────────────────────────────────
+  // Admins fix up listing photos from the Host Applications screen. Two steps:
+  //   1. `create-photo-upload-url` mints a single-use signed upload URL so the
+  //      browser can PUT bytes straight to Storage. The service-role key never
+  //      leaves this function.
+  //   2. `update-photos` writes the resulting ordered URL list back to the row.
+  // Neither action touches `status` or `approved_at` — approving stays its own
+  // deliberate step, because it emails the host.
+
+  const PHOTO_BUCKET = 'property-photos';
+  const PUBLIC_PREFIX =
+    `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${PHOTO_BUCKET}/`;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const MAX_PHOTOS = 30;
+
+  if (action === 'create-photo-upload-url') {
+    const filename = (body.filename as string | undefined) ?? '';
+    if (!applicationId || !UUID_RE.test(applicationId)) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or malformed applicationId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // Same sanitising rule as the public become-host form, so bucket paths stay
+    // uniform. A name that sanitises away entirely still gets a usable path.
+    const safeName = filename.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
+    const path = `${Date.now()}-${safeName || 'photo.webp'}`;
+
+    const { data, error } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .createSignedUploadUrl(path);
+
+    if (error || !data) {
+      console.error('[create-photo-upload-url] Error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create upload URL' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: pub } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    return new Response(
+      JSON.stringify({
+        success: true,
+        path,
+        token: data.token,
+        signedUrl: data.signedUrl,
+        publicUrl: pub.publicUrl,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (action === 'update-photos') {
+    if (!applicationId || !UUID_RE.test(applicationId)) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or malformed applicationId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const rawUrls = body.photoUrls;
+    if (!Array.isArray(rawUrls) || rawUrls.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'photoUrls must be a non-empty array' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (rawUrls.length > MAX_PHOTOS) {
+      return new Response(
+        JSON.stringify({ error: `At most ${MAX_PHOTOS} photos are allowed` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Every URL must live in our own public bucket. Without this the admin
+    // password would be enough to point a listing at arbitrary third-party
+    // content (or a tracking pixel).
+    const photoUrls: string[] = [];
+    for (const u of rawUrls) {
+      if (typeof u !== 'string' || !u.startsWith(PUBLIC_PREFIX)) {
+        return new Response(
+          JSON.stringify({ error: 'Every photo URL must be in the property-photos bucket' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!photoUrls.includes(u)) photoUrls.push(u); // order-preserving dedupe
+    }
+
+    const coverRaw = body.coverPhotoUrl as string | undefined;
+    const cover = coverRaw ?? photoUrls[0];
+    if (!photoUrls.includes(cover)) {
+      return new Response(
+        JSON.stringify({ error: 'coverPhotoUrl must be one of photoUrls' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const posRaw = body.coverPhotoPosition as string | undefined;
+    if (posRaw !== undefined && !['top', 'center', 'bottom'].includes(posRaw)) {
+      return new Response(
+        JSON.stringify({ error: 'coverPhotoPosition must be top, center or bottom' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: existing, error: findErr } = await supabase
+      .from('property_applications')
+      .select('id, photo_urls, cover_photo_url, cover_photo_position')
+      .eq('id', applicationId)
+      .maybeSingle();
+
+    if (findErr || !existing) {
+      return new Response(
+        JSON.stringify({ error: 'Application not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      photo_urls: photoUrls,
+      cover_photo_url: cover,
+    };
+    if (posRaw !== undefined) updatePayload.cover_photo_position = posRaw;
+
+    const { error: updErr } = await supabase
+      .from('property_applications')
+      .update(updatePayload)
+      .eq('id', applicationId);
+
+    if (updErr) {
+      console.error('[update-photos] Update error:', updErr);
+      return new Response(
+        JSON.stringify({ error: 'Failed to update photos' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        before: {
+          photo_urls: existing.photo_urls,
+          cover_photo_url: existing.cover_photo_url,
+          cover_photo_position: existing.cover_photo_position,
+        },
+        after: {
+          photo_urls: photoUrls,
+          cover_photo_url: cover,
+          cover_photo_position: posRaw ?? existing.cover_photo_position,
+        },
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   // ── Hide a property ───────────────────────────────────────────────────────
   if (action === 'hide') {
     if (!applicationId) {
