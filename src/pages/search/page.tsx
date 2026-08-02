@@ -681,8 +681,9 @@ export default function SearchResults() {
             </div>
           </div>
 
-          {/* Results Section */}
-          <div className="flex-1 min-w-0">
+          {/* Results Section — pulled up on desktop so the sort control lines up
+              with the guests / available-cottages line above the filter panel. */}
+          <div className="flex-1 min-w-0 lg:-mt-16">
             {/* Sort and View Options */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
