@@ -464,7 +464,7 @@ export default function SearchResults() {
           </div>
 
           {/* Quick-filter chips — mockup's curated set (10px gap, 7px/15px padding) */}
-          <div className="flex flex-wrap gap-2.5 mt-3 pb-0.5">
+          <div className="flex flex-wrap justify-center gap-2.5 mt-3 pb-0.5">
             {QUICK_FILTERS.map((f) => {
               const on = f.type
                 ? selectedPropertyTypes.includes(f.type)
