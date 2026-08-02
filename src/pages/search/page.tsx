@@ -4,6 +4,7 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import PropertyCard from '../../components/feature/PropertyCard';
 import SearchBar from '../../components/feature/SearchBar';
+import MapModal from '../../components/feature/MapModal';
 import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
@@ -98,6 +99,7 @@ export default function SearchResults() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
   const [activePromos, setActivePromos] = useState<Promo[]>([]);
 
@@ -699,6 +701,13 @@ export default function SearchResults() {
               </div>
 
               <div className="flex items-center space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setShowMap(true)}
+                  className="hidden lg:inline-flex items-center px-3.5 py-2 border-[1.5px] border-ink rounded-[10px] font-bold text-[13.5px] text-ink hover:bg-ink hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  {t('search.viewOnMap')}
+                </button>
                 <span className="text-sm text-soft hidden sm:inline">{t('search.sortByLabel')}</span>
                 <select
                   value={sortBy}
@@ -791,6 +800,10 @@ export default function SearchResults() {
           </div>
         </div>
       </div>
+
+      {showMap && (
+        <MapModal listings={sortedFilteredProperties} onClose={() => setShowMap(false)} />
+      )}
 
       {/* Mobile Search Modal */}
       {showSearchModal && (
