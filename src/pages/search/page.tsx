@@ -44,21 +44,20 @@ const REGION_LABEL_KEY: Record<string, string> = {
   'Tbilisi': 'search.regionTbilisi',
 };
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 9;
 
-// Quick-filter chips — each maps to a real value in `amenitiesList` so a chip
-// toggle drives the existing amenity filter state (no new filter logic). The
-// `amenity` value stays in English (matched against stored listing data);
-// only the rendered `labelKey` is translated.
-const QUICK_FILTERS: { labelKey: string; amenity: string }[] = [
-  { labelKey: 'search.amenityHotTub', amenity: 'Hot Tub' },
-  { labelKey: 'search.amenityFireplace', amenity: 'Fireplace' },
-  { labelKey: 'search.amenitySwimmingPool', amenity: 'Swimming Pool' },
-  { labelKey: 'search.amenityPetFriendly', amenity: 'Pet Friendly' },
-  { labelKey: 'search.amenityWifi', amenity: 'WiFi' },
-  { labelKey: 'search.amenityKitchen', amenity: 'Kitchen' },
-  { labelKey: 'search.amenityBbqGrill', amenity: 'BBQ Grill' },
-  { labelKey: 'search.amenityMountainView', amenity: 'Mountain View' },
+// Quick-filter chips — curated set mirroring the "new look" mockup.
+//
+// `amenity`  → drives the existing amenity filter (real data).
+// `type`     → drives the existing property-type filter (real data).
+// Every chip drives a real filter — nothing here is decorative.
+type QuickFilter = { labelKey: string; amenity?: string; type?: string };
+const QUICK_FILTERS: QuickFilter[] = [
+  { labelKey: 'search.chipHotTub', amenity: 'Hot Tub' },
+  { labelKey: 'search.chipFireplace', amenity: 'Fireplace' },
+  { labelKey: 'search.chipPool', amenity: 'Swimming Pool' },
+  { labelKey: 'search.chipPets', amenity: 'Pet Friendly' },
+  { labelKey: 'search.chipWinery', type: 'Winery' },
 ];
 
 // Amenity + property-type filter VALUES stay in English (matched against
@@ -95,7 +94,7 @@ export default function SearchResults() {
   // Full sorted+filtered result set (all matching items)
   const [sortedFilteredProperties, setSortedFilteredProperties] = useState<typeof dbProperties>([]);
   // How many items are currently visible (display-slice pagination)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [showFilters, setShowFilters] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -138,9 +137,10 @@ export default function SearchResults() {
   };
 
   // Derived: the slice currently shown on screen
-  const filteredProperties = sortedFilteredProperties.slice(0, visibleCount);
-  const hasMore = visibleCount < sortedFilteredProperties.length;
   const totalCount = sortedFilteredProperties.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const filteredProperties = sortedFilteredProperties.slice(pageStart, pageStart + PAGE_SIZE);
 
   // Update max price dynamically when properties load
   useEffect(() => {
@@ -173,9 +173,11 @@ export default function SearchResults() {
   }, [checkIn, checkOut, guests, location]);
 
   // Values stay in English (matched against stored listing data); AMENITY_LABEL_KEY translates the display.
+  // Order mirrors the mockup so the first six (the un-collapsed rows) read:
+  // Wi-Fi, Kitchen, Hot Tub, Fireplace, Pool, Parking.
   const amenitiesList = [
-    'WiFi', 'Kitchen', 'Fireplace', 'Mountain View', 'Lake Access', 
-    'Pet Friendly', 'BBQ Grill', 'Hot Tub', 'Parking', 'Swimming Pool'
+    'WiFi', 'Kitchen', 'Hot Tub', 'Fireplace', 'Swimming Pool', 'Parking',
+    'Mountain View', 'Lake Access', 'Pet Friendly', 'BBQ Grill'
   ];
 
   useEffect(() => {
@@ -266,8 +268,58 @@ export default function SearchResults() {
 
     // Store the full sorted+filtered set; reset display slice to first page
     setSortedFilteredProperties(filtered);
-    setVisibleCount(PAGE_SIZE);
+    setCurrentPage(1);
   }, [location, guests, category, priceRange, maxPrice, selectedAmenities, selectedPropertyTypes, selectedRegions, sortBy, dbProperties]);
+
+  // ── Facet counts (REAL data) ──────────────────────────────────────────────
+  // How many listings each option would match, using the same predicates the
+  // filters themselves use. Counted over the whole approved set, so a count
+  // doesn't shrink as you tick other boxes.
+  const facetCounts = useMemo(() => {
+    const amenity: Record<string, number> = {};
+    const type: Record<string, number> = {};
+    const region: Record<string, number> = {};
+    amenitiesList.forEach((a) => {
+      amenity[a] = dbProperties.filter((p) =>
+        p.amenities.some((pa) => pa.toLowerCase().includes(a.toLowerCase()))
+      ).length;
+    });
+    PROPERTY_TYPES.forEach((ty) => {
+      type[ty] = dbProperties.filter((p) => p.propertyType === ty).length;
+    });
+    GEORGIAN_REGIONS.forEach((r) => {
+      region[r] = dbProperties.filter((p) => regionMatches(p.location, r)).length;
+    });
+    return { amenity, type, region };
+  }, [dbProperties]);
+
+  // Mockup collapses long filter lists to six rows behind a "show more" link.
+  const FILTER_COLLAPSE_AT = 6;
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [showAllRegions, setShowAllRegions] = useState(false);
+
+  // Pager: jump to a page and scroll the results back into view.
+  const goToPage = (page: number) => {
+    const next = Math.min(Math.max(1, page), totalPages);
+    if (next === currentPage) return;
+    setCurrentPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Page buttons with ellipsis: 1 … n-1 [n] n+1 … last (mockup's "1 2 3 … 15").
+  const pageItems = useMemo<(number | 'gap')[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const set = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+    if (currentPage <= 3) [2, 3, 4].forEach((n) => set.add(n));
+    if (currentPage >= totalPages - 2) [totalPages - 3, totalPages - 2, totalPages - 1].forEach((n) => set.add(n));
+    const pages = [...set].filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+    const out: (number | 'gap')[] = [];
+    pages.forEach((n, i) => {
+      if (i > 0 && n - pages[i - 1] > 1) out.push('gap');
+      out.push(n);
+    });
+    return out;
+  }, [currentPage, totalPages]);
 
   const handleAmenityToggle = (amenity: string) => {
     updateFilterParam(
@@ -362,7 +414,7 @@ export default function SearchResults() {
       
       {/* Search zone — white compact bar + quick-filter chips (mockup "new look") */}
       <section className="bg-white border-b border-line">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
           {/* Desktop: full SearchBar */}
           <div className="hidden md:block">
             <SearchBar />
@@ -409,15 +461,20 @@ export default function SearchResults() {
             </button>
           </div>
 
-          {/* Quick-filter chips — wired to the existing amenity filter */}
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5 -mx-1 px-1">
+          {/* Quick-filter chips — mockup's curated set (10px gap, 7px/15px padding) */}
+          <div className="flex flex-wrap justify-center gap-2.5 mt-3 pb-0.5">
             {QUICK_FILTERS.map((f) => {
-              const on = selectedAmenities.includes(f.amenity);
+              const on = f.type
+                ? selectedPropertyTypes.includes(f.type)
+                : selectedAmenities.includes(f.amenity!);
               return (
                 <button
-                  key={f.amenity}
-                  onClick={() => handleAmenityToggle(f.amenity)}
-                  className={`shrink-0 border-[1.5px] rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  key={f.labelKey}
+                  onClick={() => {
+                    if (f.type) handlePropertyTypeToggle(f.type);
+                    else handleAmenityToggle(f.amenity!);
+                  }}
+                  className={`shrink-0 border-[1.5px] rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                     on
                       ? 'bg-red-50 border-red-500 text-red-500'
                       : 'bg-white border-line text-gray-700 hover:border-red-500 hover:text-red-500'
@@ -431,7 +488,7 @@ export default function SearchResults() {
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-[1280px] mx-auto px-6 py-8">
         {/* Search Summary */}
         <div className="mb-8">
           <h1 className="text-xl md:text-[26px] font-extrabold text-ink tracking-tight mb-2">
@@ -548,59 +605,79 @@ export default function SearchResults() {
                 </div>
               </div>
 
-              {/* Amenities */}
+              {/* Amenities — collapsed to 6 rows (mockup) */}
               <div className="border-t border-line pt-4 pb-1">
                 <h4 className="text-sm font-bold text-ink mb-3">{t('search.amenitiesTitle')}</h4>
-                <div className="space-y-3">
-                  {amenitiesList.map((amenity) => (
+                <div className="space-y-2.5">
+                  {(showAllAmenities ? amenitiesList : amenitiesList.slice(0, FILTER_COLLAPSE_AT)).map((amenity) => (
                     <label key={amenity} className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedAmenities.includes(amenity)}
                         onChange={() => handleAmenityToggle(amenity)}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                        className="w-[17px] h-[17px] accent-red-500 text-red-500 border-gray-300 rounded focus:ring-red-500"
                       />
-                      <span className="ml-3 text-sm text-gray-700">{t(AMENITY_LABEL_KEY[amenity] || amenity)}</span>
+                      <span className="ml-2.5 text-sm text-gray-700">{t(AMENITY_LABEL_KEY[amenity] || amenity)}</span>
+                      <span className="ml-auto text-xs text-soft" translate="no">{facetCounts.amenity[amenity] ?? 0}</span>
                     </label>
                   ))}
                 </div>
+                {amenitiesList.length > FILTER_COLLAPSE_AT && (
+                  <button
+                    onClick={() => setShowAllAmenities((v) => !v)}
+                    className="mt-3 text-[13px] font-bold text-red-500 hover:text-red-600 cursor-pointer"
+                  >
+                    {showAllAmenities ? t('search.showLess') : t('search.showMore')}
+                  </button>
+                )}
               </div>
 
               {/* Property Type */}
               <div className="border-t border-line pt-4 pb-1">
                 <h4 className="text-sm font-bold text-ink mb-3">{t('search.propertyTypeTitle')}</h4>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {PROPERTY_TYPES.map((type) => (
                     <label key={type} className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedPropertyTypes.includes(type)}
                         onChange={() => handlePropertyTypeToggle(type)}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                        className="w-[17px] h-[17px] accent-red-500 text-red-500 border-gray-300 rounded focus:ring-red-500"
                       />
-                      <span className="ml-3 text-sm text-gray-700">{t(TYPE_LABEL_KEY[type] || type)}</span>
+                      <span className="ml-2.5 text-sm text-gray-700">{t(TYPE_LABEL_KEY[type] || type)}</span>
+                      <span className="ml-auto text-xs text-soft" translate="no">{facetCounts.type[type] ?? 0}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              {/* Region */}
-              <div className="border-t border-line pt-4">
+              {/* Region — collapsed to 6 rows (mockup) */}
+              <div className="border-t border-line pt-4 pb-1">
                 <h4 className="text-sm font-bold text-ink mb-3">{t('search.regionTitle')}</h4>
-                <div className="space-y-3">
-                  {GEORGIAN_REGIONS.map((region) => (
+                <div className="space-y-2.5">
+                  {(showAllRegions ? GEORGIAN_REGIONS : GEORGIAN_REGIONS.slice(0, FILTER_COLLAPSE_AT)).map((region) => (
                     <label key={region} className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedRegions.includes(region)}
                         onChange={() => handleRegionToggle(region)}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                        className="w-[17px] h-[17px] accent-red-500 text-red-500 border-gray-300 rounded focus:ring-red-500"
                       />
-                      <span className="ml-3 text-sm text-gray-700">{t(REGION_LABEL_KEY[region] || region)}</span>
+                      <span className="ml-2.5 text-sm text-gray-700">{t(REGION_LABEL_KEY[region] || region)}</span>
+                      <span className="ml-auto text-xs text-soft" translate="no">{facetCounts.region[region] ?? 0}</span>
                     </label>
                   ))}
                 </div>
+                {GEORGIAN_REGIONS.length > FILTER_COLLAPSE_AT && (
+                  <button
+                    onClick={() => setShowAllRegions((v) => !v)}
+                    className="mt-3 text-[13px] font-bold text-red-500 hover:text-red-600 cursor-pointer"
+                  >
+                    {showAllRegions ? t('search.showLess') : t('search.showAllRegions')}
+                  </button>
+                )}
               </div>
+
             </div>
           </div>
 
@@ -639,7 +716,7 @@ export default function SearchResults() {
 
             {/* Results Grid */}
             {filteredProperties.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[22px]">
                 {filteredProperties.map((property) => (
                   <PropertyCard key={property.id} {...property} />
                 ))}
@@ -668,18 +745,48 @@ export default function SearchResults() {
               </div>
             )}
 
-            {hasMore && (
-              <div className="text-center mt-12">
+            {/* Numbered pager (mockup) — real pagination over the result set */}
+            {totalPages > 1 && (
+              <nav className="flex justify-center gap-2 mt-[38px]" aria-label="Pagination">
                 <button
-                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                  className="bg-white border-[1.5px] border-line text-ink px-8 py-3 rounded-[10px] font-bold hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer whitespace-nowrap inline-flex items-center gap-2"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  aria-label={t('search.pagerPrev')}
+                  className="w-10 h-10 rounded-[10px] border-[1.5px] border-line bg-white text-sm font-bold text-gray-700 cursor-pointer transition-colors hover:border-red-500 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-line disabled:hover:text-gray-700"
                 >
-                  {t('search.loadMore')}
+                  ‹
                 </button>
-              </div>
-            )}
-            {!hasMore && filteredProperties.length > 0 && sortedFilteredProperties.length > PAGE_SIZE && (
-              <p className="text-center mt-10 text-sm text-gray-400">{t('search.allLoaded')}</p>
+
+                {pageItems.map((item, i) =>
+                  item === 'gap' ? (
+                    <span key={`gap-${i}`} className="w-10 h-10 flex items-center justify-center text-sm font-bold text-gray-400 select-none">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => goToPage(item)}
+                      aria-current={item === currentPage ? 'page' : undefined}
+                      className={`w-10 h-10 rounded-[10px] border-[1.5px] text-sm font-bold cursor-pointer transition-colors ${
+                        item === currentPage
+                          ? 'bg-red-500 border-red-500 text-white'
+                          : 'bg-white border-line text-gray-700 hover:border-red-500 hover:text-red-500'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  aria-label={t('search.pagerNext')}
+                  className="w-10 h-10 rounded-[10px] border-[1.5px] border-line bg-white text-sm font-bold text-gray-700 cursor-pointer transition-colors hover:border-red-500 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-line disabled:hover:text-gray-700"
+                >
+                  ›
+                </button>
+              </nav>
             )}
           </div>
         </div>

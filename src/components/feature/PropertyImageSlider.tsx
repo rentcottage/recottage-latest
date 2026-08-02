@@ -84,7 +84,7 @@ export default function PropertyImageSlider({
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-gray-100 select-none"
+      className="relative w-full overflow-hidden bg-gray-100 select-none md:h-[195px]"
       style={{ aspectRatio: '16/11', minHeight: '180px' }}
       onMouseEnter={() => { setIsHovered(true); setWantsNeighbors(true); }}
       onMouseLeave={() => setIsHovered(false)}

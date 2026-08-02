@@ -118,7 +118,7 @@ export default function BookExperiencePage() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-16">
+      <section className="max-w-[1280px] mx-auto px-4 md:px-6 py-6 md:py-16">
         {loading ? (
           <div className="text-center py-16 text-gray-400 text-sm">{t('property.bookExperience.loadingExperiences')}</div>
         ) : experiences.length === 0 ? (

@@ -125,7 +125,7 @@ export default function HomePage() {
       <CinematicHero />
 
       {/* Popular destinations — region cards */}
-      <section className="py-12 md:py-16 px-4 md:px-6 max-w-6xl mx-auto">
+      <section className="py-12 md:py-16 px-4 md:px-6 max-w-[1280px] mx-auto">
         <div className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
           <div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.popularDestinations')}</h2>
@@ -162,7 +162,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured cottages (+ dormant promos, flag-gated) */}
-      <section className="pt-0 pb-12 md:pb-16 px-4 md:px-6 max-w-6xl mx-auto">
+      <section className="pt-0 pb-12 md:pb-16 px-4 md:px-6 max-w-[1280px] mx-auto">
         {/* Offers & Promos — hidden entirely when there are no active promos */}
         {FEATURE_FLAGS.ENABLE_PROMOS && promos.length > 0 && (
           <div className="mb-8 md:mb-12">
@@ -252,7 +252,7 @@ export default function HomePage() {
 
       {/* Trust band — why choose us (4 static items, mockup) */}
       <section className="bg-[#222222] text-white py-14 md:py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl md:text-3xl font-extrabold text-center tracking-tight">{t('home.why')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-[26px] mt-8 md:mt-[34px]">
             {[
@@ -272,7 +272,7 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-14 md:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <section className="py-14 md:py-16 px-4 sm:px-6 lg:px-8 max-w-[1280px] mx-auto">
         <div className="mb-8 md:mb-10">
           <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.howTitle')}</h2>
           <p className="text-soft mt-1">{t('home.howSub')}</p>
@@ -295,7 +295,7 @@ export default function HomePage() {
       </section>
 
       {/* Host CTA */}
-      <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <section className="pb-14 md:pb-16 px-4 sm:px-6 lg:px-8 max-w-[1280px] mx-auto">
         <div
           className="relative rounded-[20px] overflow-hidden text-center text-white px-6 py-14 md:px-10 md:py-16"
           style={{

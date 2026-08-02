@@ -71,9 +71,9 @@ export default function PropertyCard({
           onFavoriteClick={(e) => e.stopPropagation()}
         />
         {isRealListing && (
-          <span className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 bg-[#222] text-white text-[11px] md:text-xs font-bold px-2.5 py-1 rounded-full pointer-events-none">
+          <span className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 bg-[#222] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-full pointer-events-none">
             <i className="ri-verified-badge-fill text-[12px] leading-none"></i>
-            Verified
+            {t('search.badgeVerified')}
           </span>
         )}
       </div>
@@ -90,11 +90,15 @@ export default function PropertyCard({
           >
             {title}
           </h3>
-          <div className="flex items-center flex-shrink-0 mt-0.5 text-red-500 font-bold text-xs md:text-[13.5px] whitespace-nowrap">
-            <i className="ri-star-fill text-[11px] md:text-xs mr-0.5"></i>
-            <span translate="no">{rating}</span>
-            {reviews > 0 && <span className="hidden md:inline ml-0.5 font-semibold">({reviews})</span>}
-          </div>
+          {/* Only shown once a listing has real reviews. `rating` is hardcoded to
+              5.0 in the data layer, so with zero reviews there is nothing real to show. */}
+          {reviews > 0 && (
+            <div className="flex items-center flex-shrink-0 mt-0.5 text-red-500 font-bold text-xs md:text-[13.5px] whitespace-nowrap">
+              <i className="ri-star-fill text-[11px] md:text-xs mr-0.5"></i>
+              <span translate="no">{rating}</span>
+              <span className="ml-0.5 font-semibold" translate="no">({reviews})</span>
+            </div>
+          )}
         </div>
 
         {/* Location — single line, truncated */}
@@ -108,7 +112,7 @@ export default function PropertyCard({
           {desktopAmenities.map((amenity, index) => (
             <span
               key={index}
-              className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0 max-w-[120px] truncate"
+              className="text-xs bg-[#fafafa] border border-line text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0 max-w-[120px] truncate"
             >
               {amenity}
             </span>
@@ -125,7 +129,7 @@ export default function PropertyCard({
           {mobileAmenities.map((amenity, index) => (
             <span
               key={index}
-              className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 max-w-[100px] truncate"
+              className="text-xs bg-[#fafafa] border border-line text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 max-w-[100px] truncate"
             >
               {amenity}
             </span>
@@ -141,8 +145,8 @@ export default function PropertyCard({
         <div className="flex-1" />
 
         {/* Price row */}
-        <div className="flex items-baseline gap-1 pt-2.5 border-t border-line">
-          <span className="text-base md:text-[18px] font-extrabold text-red-500 whitespace-nowrap" translate="no">₾{price}</span>
+        <div className="flex items-baseline gap-1 pt-2.5">
+          <span className="text-base md:text-[18px] font-extrabold text-ink whitespace-nowrap" translate="no">₾{price}</span>
           <span className="text-xs text-soft whitespace-nowrap">/ night</span>
         </div>
       </div>

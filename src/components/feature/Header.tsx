@@ -82,16 +82,16 @@ export default function Header({ overlay = false }: HeaderProps) {
         className={`${overlay ? 'fixed' : 'sticky'} top-0 inset-x-0 z-50 border-b transition-colors duration-300 ${
           dark
             ? 'bg-transparent border-transparent'
-            : 'bg-[rgba(255,255,255,0.94)] border-line backdrop-blur-md'
+            : 'bg-[rgba(255,255,255,0.96)] border-line backdrop-blur-[8px]'
         }`}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16 md:h-[68px] gap-4">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-16 md:h-16 gap-4">
 
             {/* Logo */}
             <h1
               translate="no"
-              className={`notranslate text-lg md:text-[21px] font-extrabold cursor-pointer whitespace-nowrap tracking-tight transition-colors ${
+              className={`notranslate text-lg md:text-[20px] font-extrabold cursor-pointer whitespace-nowrap tracking-tight transition-colors ${
                 dark ? 'text-white' : 'text-ink'
               }`}
               style={{ fontFamily: '"Futura", "Arial", sans-serif', fontWeight: 800 }}

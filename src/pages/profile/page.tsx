@@ -426,7 +426,7 @@ export default function Profile() {
         {/* Gradient fade at bottom */}
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-gray-50/20 to-transparent" />
 
-        <div className="relative max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="relative max-w-[1280px] mx-auto px-4 md:px-6 py-6 md:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 md:gap-6">
 
             {/* Avatar */}
@@ -534,7 +534,7 @@ export default function Profile() {
       </div>
       {/* ──────────────────────────────────────────────────────────────────── */}
 
-      <div className="max-w-6xl mx-auto px-3 md:px-4 py-5 md:py-8">
+      <div className="max-w-[1280px] mx-auto px-3 md:px-4 py-5 md:py-8">
 
         {/* Profile Tabs */}
         <div className="bg-white rounded-card shadow-card border border-line">

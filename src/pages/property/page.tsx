@@ -475,7 +475,7 @@ export default function PropertyDetail() {
       />
       <Header />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 md:py-6 pb-24 lg:pb-8">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-4 md:py-6 pb-24 lg:pb-8">
         {/* Breadcrumb — back to results */}
         <button
           onClick={handleBackClick}

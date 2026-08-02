@@ -262,7 +262,7 @@ export default function SearchBar() {
       </div>
 
       {/* ── DESKTOP LAYOUT (hidden below md) ── */}
-      <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] bg-white rounded-card shadow-card">
+      <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] max-w-[920px] mx-auto bg-white border-[1.5px] border-line rounded-full overflow-hidden shadow-card">
         {/* Where */}
         <div className="relative px-5 py-3.5 border-r border-line text-left">
           <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('searchBar.where')}</div>
@@ -426,10 +426,10 @@ export default function SearchBar() {
         {/* Search Button */}
         <button
           onClick={handleSearch}
-          className="bg-red-500 hover:bg-red-600 text-white font-bold text-base px-7 rounded-r-[16px] flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap"
+          aria-label={t('searchBar.search')}
+          className="bg-red-500 hover:bg-red-600 text-white font-bold text-base w-[52px] flex items-center justify-center cursor-pointer transition-colors whitespace-nowrap"
         >
           <i className="ri-search-line text-lg"></i>
-          {t('searchBar.search')}
         </button>
       </div>
     </>
