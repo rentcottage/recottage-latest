@@ -19,6 +19,9 @@ export interface NormalizedProperty {
   bathrooms?: number;
   maxGuests?: number;
   coverPosition?: 'top' | 'center' | 'bottom';
+  /** Present on very few listings today — see src/lib/geocode.ts */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
@@ -59,6 +62,8 @@ function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
     bedrooms: app.bedrooms as number | undefined,
     bathrooms: app.bathrooms as number | undefined,
     maxGuests: app.max_guests as number | undefined,
+    latitude: app.latitude === null || app.latitude === undefined ? null : Number(app.latitude),
+    longitude: app.longitude === null || app.longitude === undefined ? null : Number(app.longitude),
     coverPosition,
   };
 }
@@ -84,7 +89,7 @@ export function useApprovedProperties() {
         const { data, error: fetchError } = await supabase
           .from('property_applications')
           .select(
-            'id, title, location, price_per_night, host_first_name, host_last_name, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position'
+            'id, title, location, price_per_night, host_first_name, host_last_name, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position, latitude, longitude'
           )
           .eq('status', 'approved')
           .order('created_at', { ascending: false });
