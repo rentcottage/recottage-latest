@@ -2,6 +2,7 @@
 // POST (no action)              → new agency registration
 // POST action=admin-approve     → admin approves an application
 // POST action=admin-reject      → admin rejects with a note
+// POST action=admin-commissions → agency-tagged bookings + rates (payout report)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -201,6 +202,36 @@ Deno.serve(async (req: Request) => {
       .order('created_at', { ascending: false });
     if (error) return jsonResponse({ error: error.message }, 500);
     return jsonResponse({ applications: data ?? [] });
+  }
+
+  // ── Admin commissions (what we owe each agency) ────────────────────
+  // Returns every agency-tagged booking plus the agency's rate, so the panel
+  // can total commission per agency over any date range. Bookings RLS hides
+  // these from the anon client, hence the service-role read here.
+  if (action === 'admin-commissions') {
+    const { data: agencies, error: agErr } = await supabase
+      .from('corporate_applications')
+      .select('id, agency_name, tax_id, email, phone, commission_pct, status')
+      .eq('status', 'approved')
+      .order('agency_name');
+    if (agErr) return jsonResponse({ error: agErr.message }, 500);
+
+    let q = supabase
+      .from('bookings')
+      .select('id, corporate_id, property_title, user_name, check_in, check_out, total_price, status, payment_status, created_at')
+      .not('corporate_id', 'is', null)
+      .order('created_at', { ascending: false });
+
+    // Optional range, applied on the booking's creation date.
+    const from = body.from as string | undefined;
+    const to = body.to as string | undefined;
+    if (from) q = q.gte('created_at', `${from}T00:00:00.000Z`);
+    if (to) q = q.lte('created_at', `${to}T23:59:59.999Z`);
+
+    const { data: bookings, error: bkErr } = await q;
+    if (bkErr) return jsonResponse({ error: bkErr.message }, 500);
+
+    return jsonResponse({ agencies: agencies ?? [], bookings: bookings ?? [] });
   }
 
   // ── Admin approve ──────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import AdminGate from './components/AdminGate';
 import DateChangeRequests from './components/DateChangeRequests';
 import HostApplications from './components/HostApplications';
 import CorporateApplications from './components/CorporateApplications';
+import AgencyCommissions from './components/AgencyCommissions';
 import ExperienceBookingsPanel from './components/ExperienceBookingsPanel';
 import CompletedBookingsPanel from './components/CompletedBookingsPanel';
 import UserManagementPanel from './components/UserManagementPanel';
@@ -696,8 +697,9 @@ export default function AdminBookings() {
           </div>
 
           {/* Corporate / Travel-Agency Applications section */}
-          <div id="corporate" className="mt-8 scroll-mt-36 lg:scroll-mt-24">
+          <div id="corporate" className="mt-8 scroll-mt-36 lg:scroll-mt-24 space-y-6">
             <CorporateApplications />
+            <AgencyCommissions />
           </div>
 
           {/* Experiences (homepage cards) management */}
