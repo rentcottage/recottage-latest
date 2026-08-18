@@ -25,6 +25,7 @@ const en = {
     howItWorks: 'How It Works',
     aboutGeorgia: 'About Georgia',
     becomeHost: 'Become a Host',
+    forAgencies: 'For Agencies',
     login: 'Log in',
     myAccount: 'My Account',
     loggedIn: 'Logged in',

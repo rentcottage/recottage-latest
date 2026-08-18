@@ -106,17 +106,14 @@ export default function Header({ overlay = false }: HeaderProps) {
                 dark ? 'text-white/90' : 'text-gray-700'
               }`}
             >
-              <button onClick={() => navigate('/search')} className={navLinkCls}>
-                {t('nav.search')}
-              </button>
-              <button onClick={() => navigate('/how-it-works')} className={navLinkCls}>
-                {t('nav.howItWorks')}
-              </button>
               <button onClick={() => navigate('/about-georgia')} className={navLinkCls}>
                 {t('nav.aboutGeorgia')}
               </button>
               <button onClick={() => navigate('/become-host')} className={navLinkCls}>
                 {t('nav.becomeHost')}
+              </button>
+              <button onClick={() => navigate('/corporate')} className={navLinkCls}>
+                {t('nav.forAgencies')}
               </button>
             </nav>
 
@@ -284,9 +281,8 @@ export default function Header({ overlay = false }: HeaderProps) {
             )}
 
             <MobileMenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => mobileNavTo('/become-host')} />
-            <MobileMenuItem icon="ri-search-line" label={t('nav.searchCottages')} onClick={() => mobileNavTo('/search')} />
             <MobileMenuItem icon="ri-map-pin-line" label={t('nav.aboutGeorgia')} onClick={() => mobileNavTo('/about-georgia')} />
-            <MobileMenuItem icon="ri-information-line" label={t('nav.howItWorks')} onClick={() => mobileNavTo('/how-it-works')} />
+            <MobileMenuItem icon="ri-briefcase-line" label={t('nav.forAgencies')} onClick={() => mobileNavTo('/corporate')} />
 
             <div className="border-t border-gray-100 my-2" />
 

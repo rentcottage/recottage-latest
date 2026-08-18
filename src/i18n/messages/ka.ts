@@ -24,6 +24,7 @@ const ka: Messages = {
     howItWorks: 'როგორ მუშაობს',
     aboutGeorgia: 'საქართველოს შესახებ',
     becomeHost: 'გახდი მასპინძელი',
+    forAgencies: 'სააგენტოებისთვის',
     login: 'შესვლა',
     myAccount: 'ჩემი ანგარიში',
     loggedIn: 'შესული ხართ',

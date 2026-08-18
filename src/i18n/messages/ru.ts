@@ -24,6 +24,7 @@ const ru: Messages = {
     howItWorks: 'Как это работает',
     aboutGeorgia: 'О Грузии',
     becomeHost: 'Стать хозяином',
+    forAgencies: 'Для агентств',
     login: 'Войти',
     myAccount: 'Мой аккаунт',
     loggedIn: 'Вы вошли',
