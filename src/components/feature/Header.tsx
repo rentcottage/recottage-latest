@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, signOutUser } from '../../hooks/useAuth';
+import { useIsAgency } from '../../hooks/useIsAgency';
 import LanguageSelector from './LanguageSelector';
 import CancellationModal from './CancellationModal';
 import { useT } from '../../i18n';
@@ -22,7 +23,14 @@ export default function Header({ overlay = false }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, loading } = useAuth();
+  // Agencies book for clients and never host, so the host-facing menu entries
+  // are hidden for them and "My Profile" opens their agency dashboard.
+  const { isAgency, loading: agencyLoading } = useIsAgency();
   const { t } = useT();
+
+  const profilePath = isAgency ? '/corporate/dashboard' : '/profile';
+  // Only hide host entries once we know the answer — never flash them at an agency.
+  const showHostLinks = !isAgency && !agencyLoading;
 
   const handleLogout = () => {
     // Close menus and navigate immediately — no waiting on network
@@ -109,9 +117,11 @@ export default function Header({ overlay = false }: HeaderProps) {
               <button onClick={() => navigate('/about-georgia')} className={navLinkCls}>
                 {t('nav.aboutGeorgia')}
               </button>
-              <button onClick={() => navigate('/become-host')} className={navLinkCls}>
-                {t('nav.becomeHost')}
-              </button>
+              {showHostLinks && (
+                <button onClick={() => navigate('/become-host')} className={navLinkCls}>
+                  {t('nav.becomeHost')}
+                </button>
+              )}
               <button onClick={() => navigate('/corporate')} className={navLinkCls}>
                 {t('nav.forAgencies')}
               </button>
@@ -160,9 +170,13 @@ export default function Header({ overlay = false }: HeaderProps) {
                   <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                     {isLoggedIn ? (
                       <>
-                        <MenuItem icon="ri-user-line" label={t('nav.myProfile')} onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); }} />
-                        <MenuItem icon="ri-layout-line" label={t('nav.hostDashboard')} onClick={() => { navigate('/host-dashboard'); setIsUserMenuOpen(false); }} />
-                        <MenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
+                        <MenuItem icon="ri-user-line" label={t('nav.myProfile')} onClick={() => { navigate(profilePath); setIsUserMenuOpen(false); }} />
+                        {showHostLinks && (
+                          <>
+                            <MenuItem icon="ri-layout-line" label={t('nav.hostDashboard')} onClick={() => { navigate('/host-dashboard'); setIsUserMenuOpen(false); }} />
+                            <MenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => { navigate('/become-host'); setIsUserMenuOpen(false); }} />
+                          </>
+                        )}
                         <div className="border-t border-gray-100 my-2" />
                         <MenuItem icon="ri-logout-box-line" label={t('nav.logOut')} onClick={handleLogout} />
                         <div className="border-t border-gray-100 my-2" />
@@ -274,13 +288,17 @@ export default function Header({ overlay = false }: HeaderProps) {
           <div className="flex-1 overflow-y-auto px-3 py-3">
             {isLoggedIn && (
               <>
-                <MobileMenuItem icon="ri-user-line" label={t('nav.myProfile')} onClick={() => mobileNavTo('/profile')} />
-                <MobileMenuItem icon="ri-layout-line" label={t('nav.hostDashboard')} onClick={() => mobileNavTo('/host-dashboard')} />
+                <MobileMenuItem icon="ri-user-line" label={t('nav.myProfile')} onClick={() => mobileNavTo(profilePath)} />
+                {showHostLinks && (
+                  <MobileMenuItem icon="ri-layout-line" label={t('nav.hostDashboard')} onClick={() => mobileNavTo('/host-dashboard')} />
+                )}
                 <div className="border-t border-gray-100 my-2" />
               </>
             )}
 
-            <MobileMenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => mobileNavTo('/become-host')} />
+            {showHostLinks && (
+              <MobileMenuItem icon="ri-home-heart-line" label={t('nav.becomeHost')} onClick={() => mobileNavTo('/become-host')} />
+            )}
             <MobileMenuItem icon="ri-map-pin-line" label={t('nav.aboutGeorgia')} onClick={() => mobileNavTo('/about-georgia')} />
             <MobileMenuItem icon="ri-briefcase-line" label={t('nav.forAgencies')} onClick={() => mobileNavTo('/corporate')} />
 
