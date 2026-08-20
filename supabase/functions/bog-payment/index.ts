@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { findActivePromoForLocation, applyPromoDiscount } from '../_shared/promos.ts';
+import { loadPromoContext, promoNoticeBlock, promoRows, type PromoContext } from '../_shared/promoEmail.ts';
 
 // ── BOG API constants ────────────────────────────────────────────────────
 const BOG_AUTH_URL = 'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token';
@@ -322,19 +323,21 @@ function agencyRows(agencyName: string | null): [string, string][] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildAutoConfirmHostPayAtPropertyHtml(booking: Record<string, any>, hostFirstName: string, agencyName: string | null = null): string {
+function buildAutoConfirmHostPayAtPropertyHtml(booking: Record<string, any>, hostFirstName: string, agencyName: string | null = null, promo: PromoContext | null = null): string {
   return emailWrapper(`
     <h2 style="color:#16a34a;margin-top:0">ახალი ჯავშანი ავტომატურად დადასტურდა ✅</h2>
     <p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p>
     <p style="color:#374151;line-height:1.6">თქვენი ობიექტის <strong>${booking.property_title}</strong> ახალი ჯავშანი <strong>ავტომატურად დადასტურდა</strong>.</p>
     ${agencyNoticeBlock(agencyName)}
+    ${promoNoticeBlock(promo)}
     ${bookingTable([
       ['ჯავშნის ID', String(booking.id)],
       ['კოტეჯი', String(booking.property_title)],
       ['ჩასვლის თარიღი', String(booking.check_in)],
       ['გასვლის თარიღი', String(booking.check_out)],
       ['სტუმრების რაოდენობა', String(booking.guests)],
-      ['ჯამური ფასი', '₾' + String(booking.total_price)],
+      ...promoRows(promo),
+      [promo ? 'ჯამური ფასი (ფასდაკლებით)' : 'ჯამური ფასი', '₾' + String(booking.total_price)],
       ['გადახდის მეთოდი', 'ადგილზე გადახდა (ჩასვლისას)'],
       ['ჯავშნის სტატუსი', 'დადასტურებულია ✅'],
       ...agencyRows(agencyName),
@@ -368,19 +371,21 @@ function buildAutoConfirmCustomerBogHtml(booking: Record<string, any>): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildAutoConfirmHostBogHtml(booking: Record<string, any>, hostFirstName: string, agencyName: string | null = null): string {
+function buildAutoConfirmHostBogHtml(booking: Record<string, any>, hostFirstName: string, agencyName: string | null = null, promo: PromoContext | null = null): string {
   return emailWrapper(`
     <h2 style="color:#16a34a;margin-top:0">ახალი გადახდილი ჯავშანი ავტომატურად დადასტურდა ✅</h2>
     <p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p>
     <p style="color:#374151;line-height:1.6">თქვენი ობიექტის <strong>${booking.property_title}</strong> ახალი <strong>გადახდილი ჯავშანი</strong> <strong>ავტომატურად დადასტურდა</strong>.</p>
     ${agencyNoticeBlock(agencyName)}
+    ${promoNoticeBlock(promo)}
     ${bookingTable([
       ['ჯავშნის ID', String(booking.id)],
       ['კოტეჯი', String(booking.property_title)],
       ['ჩასვლის თარიღი', String(booking.check_in)],
       ['გასვლის თარიღი', String(booking.check_out)],
       ['სტუმრების რაოდენობა', String(booking.guests)],
-      ['ჯამური ფასი', '₾' + String(booking.total_price)],
+      ...promoRows(promo),
+      [promo ? 'ჯამური ფასი (ფასდაკლებით)' : 'ჯამური ფასი', '₾' + String(booking.total_price)],
       ['გადახდის მეთოდი', 'ონლაინ გადახდა (საქართველოს ბანკი)'],
       ['გადახდის სტატუსი', 'გადახდილია ✅'],
       ['ჯავშნის სტატუსი', 'დადასტურებულია ✅'],
@@ -712,12 +717,16 @@ Deno.serve(async (req: Request) => {
       await logEvent(supabase, booking.id, 'created', null, initialBookingStatus, 'system',
         isAutoConfirm ? 'Pay at property — auto confirmed' : 'Pay at property — awaiting host approval');
 
+      // Discount breakdown for the host email — read back off the stored row so
+      // the email can only ever show what was actually recorded on the booking.
+      const promoCtx = await loadPromoContext(supabase, booking);
+
       if (isAutoConfirm) {
         await sendEmail(String(user_email), `Booking Confirmed – ${property_title}`, buildAutoConfirmCustomerPayAtPropertyHtml(booking));
         const adminHtml = emailWrapper(`<h2 style="color:#16a34a;margin-top:0">New Booking Auto-Confirmed (Pay at Property) ✅</h2>${bookingTable([['Booking ID', String(booking.id)], ['Customer Name', String(user_name ?? '—')], ['Customer Email', String(user_email)], ['Cottage', String(property_title)], ['Check-in', String(check_in)], ['Check-out', String(check_out)], ['Guests', String(guests)], ['Total Price', '₾' + String(totalAmount)], ['Payment Method', 'Pay at Property'], ['Mode', 'Auto Confirm'], ['Status', 'Confirmed ✅']])}`);
         await sendEmail(COMPANY_EMAIL, `New Auto-Confirmed Booking (Pay at Property): ${property_title}`, adminHtml);
         if (hostEmail && hostEmail !== COMPANY_EMAIL) {
-          await sendEmail(hostEmail, `ახალი ჯავშანი ავტომატურად დადასტურდა – ${property_title}`, buildAutoConfirmHostPayAtPropertyHtml(booking, hostFirstName, resolvedAgencyName));
+          await sendEmail(hostEmail, `ახალი ჯავშანი ავტომატურად დადასტურდა – ${property_title}`, buildAutoConfirmHostPayAtPropertyHtml(booking, hostFirstName, resolvedAgencyName, promoCtx));
         }
       } else {
         const adminHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">New Booking Request (Pay at Property) 🏡</h2>${bookingTable([['Booking ID', String(booking.id)], ['Customer Name', String(user_name ?? '—')], ['Customer Email', String(user_email)], ['Cottage', String(property_title)], ['Location', String(property_location ?? '—')], ['Check-in', String(check_in)], ['Check-out', String(check_out)], ['Guests', String(guests)], ['Total Price', '₾' + String(totalAmount)], ['Payment Method', 'Pay at Property (on arrival)'], ['Booking Status', 'Pending Host Approval ⏳'], ['Approval Deadline', approvalDeadline ?? '—']])}`);
@@ -725,7 +734,7 @@ Deno.serve(async (req: Request) => {
         const customerHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">Booking Request Received! ✅</h2><p style="color:#374151;line-height:1.6">Hi <strong>${user_name ?? 'there'}</strong>,</p><p style="color:#374151;line-height:1.6">Your booking request has been <strong>successfully received</strong> and is now awaiting host approval. The host has <strong>24 hours</strong> to review your request.</p>${bookingTable([['Booking ID', String(booking.id)], ['Cottage', String(property_title)], ['Location', String(property_location ?? '—')], ['Check-in', String(check_in)], ['Check-out', String(check_out)], ['Guests', String(guests)], ['Total Price', '₾' + String(totalAmount)], ['Payment Method', 'Pay at Property (on arrival)'], ['Booking Status', 'Awaiting Host Approval ⏳']])}<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>What happens next?</strong> The host will review your request within 24 hours. Once approved, you will receive a confirmation email. Payment will be collected when you arrive at the property.</div><div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/profile" style="display:inline-block;background:#e53e3e;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">View My Bookings</a></div>`);
         await sendEmail(String(user_email), `Booking Request Received – ${property_title}`, customerHtml);
         if (hostEmail && hostEmail !== COMPANY_EMAIL) {
-          const hostHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება 🏡</h2><p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p><p style="color:#374151;line-height:1.6">თქვენ გაქვთ <strong>ახალი ჯავშნის მოთხოვნა</strong> ობიექტისთვის <strong>${property_title}</strong>. თქვენ გაქვთ <strong>24 საათი</strong> მის დასადასტურებლად ან უარსაყოფად.</p>${agencyNoticeBlock(resolvedAgencyName)}${bookingTable([['ჯავშნის ID', String(booking.id)], ['კოტეჯი', String(property_title)], ['ჩასვლის თარიღი', String(check_in)], ['გასვლის თარიღი', String(check_out)], ['სტუმრების რაოდენობა', String(guests)], ['ჯამური ფასი', '₾' + String(totalAmount)], ['გადახდის მეთოდი', 'ადგილზე გადახდა (ჩასვლისას)'], ['დადასტურების ბოლო ვადა', approvalDeadline ?? '—'], ...agencyRows(resolvedAgencyName)])}<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>საჭიროა მოქმედება:</strong> თქვენ გაქვთ 24 საათი ამ ჯავშნის დასადასტურებლად ან უარსაყოფად.</div><div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/host-dashboard" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">გადადით მასპინძლის პანელში და დაადასტურეთ ან უარყავით ჯავშანი</a></div>`);
+          const hostHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება 🏡</h2><p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p><p style="color:#374151;line-height:1.6">თქვენ გაქვთ <strong>ახალი ჯავშნის მოთხოვნა</strong> ობიექტისთვის <strong>${property_title}</strong>. თქვენ გაქვთ <strong>24 საათი</strong> მის დასადასტურებლად ან უარსაყოფად.</p>${agencyNoticeBlock(resolvedAgencyName)}${promoNoticeBlock(promoCtx)}${bookingTable([['ჯავშნის ID', String(booking.id)], ['კოტეჯი', String(property_title)], ['ჩასვლის თარიღი', String(check_in)], ['გასვლის თარიღი', String(check_out)], ['სტუმრების რაოდენობა', String(guests)], ...promoRows(promoCtx), [promoCtx ? 'ჯამური ფასი (ფასდაკლებით)' : 'ჯამური ფასი', '₾' + String(totalAmount)], ['გადახდის მეთოდი', 'ადგილზე გადახდა (ჩასვლისას)'], ['დადასტურების ბოლო ვადა', approvalDeadline ?? '—'], ...agencyRows(resolvedAgencyName)])}<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>საჭიროა მოქმედება:</strong> თქვენ გაქვთ 24 საათი ამ ჯავშნის დასადასტურებლად ან უარსაყოფად.</div><div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/host-dashboard" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">გადადით მასპინძლის პანელში და დაადასტურეთ ან უარყავით ჯავშანი</a></div>`);
           await sendEmail(hostEmail, `ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება (24 სთ): ${property_title}`, hostHtml);
         }
       }
@@ -899,6 +908,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Discount breakdown for the host email — bookingRow is a select('*'), so it
+    // already carries the promo audit columns written at create-order time.
+    const callbackPromoCtx = await loadPromoContext(supabase, bookingRow);
+
     const isAutoConfirm     = approvalMode === 'auto_confirm';
     const finalBookingStatus = isAutoConfirm ? 'confirmed' : 'pending_host_approval';
     const approvalDeadline  = !isAutoConfirm ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
@@ -920,7 +933,7 @@ Deno.serve(async (req: Request) => {
       const adminHtml = emailWrapper(`<h2 style="color:#16a34a;margin-top:0">Paid Booking Auto-Confirmed ✅</h2>${bookingTable([['Booking ID', String(bookingRow.id)], ['Customer Name', String(bookingRow.user_name ?? '—')], ['Customer Email', String(bookingRow.user_email)], ['Cottage', String(bookingRow.property_title)], ['Check-in', String(bookingRow.check_in)], ['Check-out', String(bookingRow.check_out)], ['Guests', String(bookingRow.guests)], ['Total Price', '₾' + String(bookingRow.total_price)], ['Payment Method', 'Pay Now (Bank of Georgia)'], ['Payment Status', 'Paid ✅'], ['Booking Status', 'Confirmed ✅'], ['Mode', 'Auto Confirm']])}`);
       await sendEmail(COMPANY_EMAIL, `Paid Booking Auto-Confirmed: ${bookingRow.property_title}`, adminHtml);
       if (hostEmailForProp && hostEmailForProp !== COMPANY_EMAIL) {
-        await sendEmail(hostEmailForProp, `ახალი გადახდილი ჯავშანი ავტომატურად დადასტურდა – ${bookingRow.property_title}`, buildAutoConfirmHostBogHtml(bookingRow, hostFirstName, callbackAgencyName));
+        await sendEmail(hostEmailForProp, `ახალი გადახდილი ჯავშანი ავტომატურად დადასტურდა – ${bookingRow.property_title}`, buildAutoConfirmHostBogHtml(bookingRow, hostFirstName, callbackAgencyName, callbackPromoCtx));
       }
     } else {
       const adminHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">Payment Received — Awaiting Host Approval ⏳</h2>${bookingTable([['Booking ID', String(bookingRow.id)], ['Customer Name', String(bookingRow.user_name ?? '—')], ['Customer Email', String(bookingRow.user_email)], ['Cottage', String(bookingRow.property_title)], ['Location', String(bookingRow.property_location ?? '—')], ['Check-in', String(bookingRow.check_in)], ['Check-out', String(bookingRow.check_out)], ['Guests', String(bookingRow.guests)], ['Total Price', '₾' + String(bookingRow.total_price)], ['Payment Method', 'Pay Now (Bank of Georgia)'], ['Payment Status', 'Paid ✅'], ['Booking Status', 'Awaiting Host Approval ⏳'], ['Approval Deadline', approvalDeadline ?? '—'], ['BOG Order ID', bogOrderId]])}`);
@@ -928,7 +941,7 @@ Deno.serve(async (req: Request) => {
       const customerHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">Payment Successful — Booking Request Received! ✅</h2><p style="color:#374151;line-height:1.6">Hi <strong>${bookingRow.user_name ?? 'there'}</strong>,</p><p style="color:#374151;line-height:1.6">Your payment was <strong>successful</strong> and your booking request has been <strong>received</strong>. The host has <strong>24 hours</strong> to review your request. If the host rejects or doesn't respond, your payment will be automatically refunded (usually within 5–10 business days).</p>${bookingTable([['Booking ID', String(bookingRow.id)], ['Cottage', String(bookingRow.property_title)], ['Location', String(bookingRow.property_location ?? '—')], ['Check-in', String(bookingRow.check_in)], ['Check-out', String(bookingRow.check_out)], ['Guests', String(bookingRow.guests)], ['Total Price', '₾' + String(bookingRow.total_price)], ['Payment Method', 'Pay Now (Bank of Georgia)'], ['Payment Status', 'Paid ✅'], ['Booking Status', 'Awaiting Host Approval ⏳']])}<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;font-size:14px;color:#92400e;"><strong>What happens next?</strong> The host will review your request within 24 hours.</div><div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/profile" style="display:inline-block;background:#e53e3e;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">View My Bookings</a></div>`);
       await sendEmail(String(bookingRow.user_email), `Booking Request Received – ${bookingRow.property_title}`, customerHtml);
       if (hostEmailForProp && hostEmailForProp !== COMPANY_EMAIL) {
-        const hostHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">ახალი გადახდილი ჯავშნის მოთხოვნა — საჭიროა მოქმედება 🏡</h2><p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p><p style="color:#374151;line-height:1.6">ახალი <strong>გადახდილი ჯავშნის მოთხოვნა</strong> ობიექტისთვის <strong>${bookingRow.property_title}</strong>. სტუმარმა უკვე გადაიხადა.</p>${agencyNoticeBlock(callbackAgencyName)}${bookingTable([['ჯავშნის ID', String(bookingRow.id)], ['კოტეჯი', String(bookingRow.property_title)], ['ჩასვლის თარიღი', String(bookingRow.check_in)], ['გასვლის თარიღი', String(bookingRow.check_out)], ['სტუმრების რაოდენობა', String(bookingRow.guests)], ['ჯამური ფასი', '₾' + String(bookingRow.total_price)], ['გადახდის სტატუსი', 'გადახდილია ✅'], ['დადასტურების ბოლო ვადა', approvalDeadline ?? '—'], ...agencyRows(callbackAgencyName)])}<div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/host-dashboard" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">გადადით მასპინძლის პანელში</a></div>`);
+        const hostHtml = emailWrapper(`<h2 style="color:#d97706;margin-top:0">ახალი გადახდილი ჯავშნის მოთხოვნა — საჭიროა მოქმედება 🏡</h2><p style="color:#374151;line-height:1.6">გამარჯობა <strong>${hostFirstName}</strong>,</p><p style="color:#374151;line-height:1.6">ახალი <strong>გადახდილი ჯავშნის მოთხოვნა</strong> ობიექტისთვის <strong>${bookingRow.property_title}</strong>. სტუმარმა უკვე გადაიხადა.</p>${agencyNoticeBlock(callbackAgencyName)}${promoNoticeBlock(callbackPromoCtx)}${bookingTable([['ჯავშნის ID', String(bookingRow.id)], ['კოტეჯი', String(bookingRow.property_title)], ['ჩასვლის თარიღი', String(bookingRow.check_in)], ['გასვლის თარიღი', String(bookingRow.check_out)], ['სტუმრების რაოდენობა', String(bookingRow.guests)], ...promoRows(callbackPromoCtx), [callbackPromoCtx ? 'ჯამური ფასი (ფასდაკლებით)' : 'ჯამური ფასი', '₾' + String(bookingRow.total_price)], ['გადახდის სტატუსი', 'გადახდილია ✅'], ['დადასტურების ბოლო ვადა', approvalDeadline ?? '—'], ...agencyRows(callbackAgencyName)])}<div style="text-align:center;margin:24px 0"><a href="${SITE_URL}/host-dashboard" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">გადადით მასპინძლის პანელში</a></div>`);
         await sendEmail(hostEmailForProp, `გადახდილი ჯავშანი — საჭიროა მოქმედება (24 სთ): ${bookingRow.property_title}`, hostHtml);
       }
     }

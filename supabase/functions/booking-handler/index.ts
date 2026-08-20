@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { loadPromoContext, promoNoticeBlock, promoRows, type PromoContext } from '../_shared/promoEmail.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const COMPANY_EMAIL = 'info.rentcottage@gmail.com';
@@ -56,6 +57,11 @@ interface HostSafeBooking {
   payment_status?: string | null;
   status?: string | null;
   approval_deadline?: string | null;
+  // Promo audit columns — booking-level money facts, NOT customer details, so
+  // they belong in a host email: they are what explains the discounted total.
+  promo_id?: string | null;
+  promo_discount_percent?: number | string | null;
+  pre_discount_total?: number | string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +77,9 @@ function toHostSafeBooking(booking: Record<string, any>): HostSafeBooking {
     payment_status: booking.payment_status ?? null,
     status: booking.status ?? null,
     approval_deadline: booking.approval_deadline ?? null,
+    promo_id: booking.promo_id ?? null,
+    promo_discount_percent: booking.promo_discount_percent ?? null,
+    pre_discount_total: booking.pre_discount_total ?? null,
   };
 }
 
@@ -535,7 +544,7 @@ function buildHostCancelCustomerEmailHtml(booking: Record<string, any>, refundNo
 }
 
 // ─── Host-facing email: new booking request — GEORGIAN ───────────────────────
-function buildHostNewBookingEmailHtml(hostFirstName: string, booking: HostSafeBooking): string {
+function buildHostNewBookingEmailHtml(hostFirstName: string, booking: HostSafeBooking, promo: PromoContext | null = null): string {
   const paymentMethodLabel = booking.payment_method === 'pay_at_property'
     ? 'ადგილზე გადახდა (ჩასვლისას)'
     : booking.payment_method === 'online'
@@ -556,13 +565,15 @@ function buildHostNewBookingEmailHtml(hostFirstName: string, booking: HostSafeBo
     <h2 style="color:#16a34a;margin-top:0">თქვენ გაქვთ ახალი ჯავშნის მოთხოვნა! 🏡</h2>
     <p>გამარჯობა ${hostFirstName},</p>
     <p>სტუმარმა მოითხოვა თქვენი ობიექტის დაჯავშნა. გთხოვთ, განიხილოთ და <strong>24 საათის განმავლობაში</strong> უპასუხოთ.</p>
+    ${promoNoticeBlock(promo)}
     ${bookingTable([
       ['ჯავშნის ID', String(booking.id)],
       ['კოტეჯი', String(booking.property_title)],
       ['ჩასვლის თარიღი', String(booking.check_in)],
       ['გასვლის თარიღი', String(booking.check_out)],
       ['სტუმრების რაოდენობა', String(booking.guests || '—')],
-      ['ჯამური ფასი', booking.total_price != null ? '₾' + booking.total_price : '—'],
+      ...promoRows(promo),
+      [promo ? 'ჯამური ფასი (ფასდაკლებით)' : 'ჯამური ფასი', booking.total_price != null ? '₾' + booking.total_price : '—'],
       ['გადახდის მეთოდი', paymentMethodLabel],
       ['დადასტურების ბოლო ვადა', deadlineLabel],
       ['სტატუსი', 'დადასტურების მოლოდინში'],
@@ -1285,7 +1296,8 @@ Deno.serve(async (req: Request) => {
       if (property_id) {
         const { data: pa } = await supabase.from('property_applications').select('host_email, host_first_name').eq('id', String(property_id)).maybeSingle();
         if (pa?.host_email && pa.host_email !== String(user_email) && pa.host_email !== COMPANY_EMAIL) {
-          await sendEmail(supabase, pa.host_email, `ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება: "${property_title}" 🏡`, buildHostNewBookingEmailHtml(pa.host_first_name || 'there', toHostSafeBooking(booking)), 'booking_request_host', String(booking.id));
+          const promoCtx = await loadPromoContext(supabase, booking);
+          await sendEmail(supabase, pa.host_email, `ახალი ჯავშნის მოთხოვნა — საჭიროა მოქმედება: "${property_title}" 🏡`, buildHostNewBookingEmailHtml(pa.host_first_name || 'there', toHostSafeBooking(booking), promoCtx), 'booking_request_host', String(booking.id));
         }
       }
     }
