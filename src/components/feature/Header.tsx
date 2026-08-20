@@ -25,12 +25,15 @@ export default function Header({ overlay = false }: HeaderProps) {
   const { isLoggedIn, loading } = useAuth();
   // Agencies book for clients and never host, so the host-facing menu entries
   // are hidden for them and "My Profile" opens their agency dashboard.
-  const { isAgency, loading: agencyLoading } = useIsAgency();
+  const { isAgency } = useIsAgency();
   const { t } = useT();
 
   const profilePath = isAgency ? '/corporate/dashboard' : '/profile';
-  // Only hide host entries once we know the answer — never flash them at an agency.
-  const showHostLinks = !isAgency && !agencyLoading;
+  // Hide host entries only once the user is KNOWN to be an agency. Gating on the
+  // in-flight check instead would strip navigation from everyone whenever that
+  // check is slow or fails — a far worse failure than an agency briefly seeing
+  // a host link.
+  const showHostLinks = !isAgency;
 
   const handleLogout = () => {
     // Close menus and navigate immediately — no waiting on network

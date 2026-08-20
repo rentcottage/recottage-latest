@@ -86,21 +86,29 @@ export default function PropertyDetail() {
   }, [property?.location]);
 
   // Detect whether the signed-in user is an approved travel agency.
+  // NOTE: never call supabase.auth.* inside onAuthStateChange — that callback
+  // holds the auth lock, and an awaited auth call inside it deadlocks
+  // getSession() for the whole page. Use the session it hands us and defer the
+  // follow-up query so the lock is released first. (Same rule as useIsAgency.)
   useEffect(() => {
     let cancelled = false;
-    async function detectCorporate() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { if (!cancelled) setCorporateId(null); return; }
+    async function detectFor(userId: string | null) {
+      if (!userId) { if (!cancelled) setCorporateId(null); return; }
       const { data } = await supabase
         .from('corporate_applications')
         .select('id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .eq('status', 'approved')
         .maybeSingle();
       if (!cancelled) setCorporateId(data?.id ?? null);
     }
-    detectCorporate();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => detectCorporate());
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled) detectFor(session?.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const userId = session?.user?.id ?? null;
+      setTimeout(() => { if (!cancelled) detectFor(userId); }, 0);
+    });
     return () => { cancelled = true; sub.subscription.unsubscribe(); };
   }, []);
 

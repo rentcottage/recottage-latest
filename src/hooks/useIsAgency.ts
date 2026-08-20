@@ -8,8 +8,12 @@ import { supabase } from '../lib/supabase';
  * parts of the UI are hidden from them and "My Profile" points at the agency
  * dashboard instead. Pending or rejected agencies are treated as normal users.
  *
- * `loading` stays true until the answer is known, so callers can avoid
- * flashing host links at an agency on first paint.
+ * ⚠️ Never call supabase.auth.* inside the onAuthStateChange callback. That
+ * callback runs while supabase-js holds the auth lock (Web Locks API), so an
+ * awaited auth call inside it deadlocks — getSession() then never resolves for
+ * ANYONE on the page, which strands every `loading` flag in the app. The
+ * callback already hands us the session; use it, and defer any follow-up query
+ * out of the callback with a 0ms timeout so the lock is released first.
  */
 export function useIsAgency(): { isAgency: boolean; loading: boolean } {
   const [isAgency, setIsAgency] = useState(false);
@@ -18,23 +22,31 @@ export function useIsAgency(): { isAgency: boolean; loading: boolean } {
   useEffect(() => {
     let cancelled = false;
 
-    async function detect() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+    async function detectFor(userId: string | null) {
+      if (!userId) {
         if (!cancelled) { setIsAgency(false); setLoading(false); }
         return;
       }
       const { data } = await supabase
         .from('corporate_applications')
         .select('id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .eq('status', 'approved')
         .maybeSingle();
       if (!cancelled) { setIsAgency(!!data); setLoading(false); }
     }
 
-    detect();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => detect());
+    // One initial read, outside any auth callback.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled) detectFor(session?.user?.id ?? null);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const userId = session?.user?.id ?? null;
+      // Deferred: releases the auth lock before the query runs.
+      setTimeout(() => { if (!cancelled) detectFor(userId); }, 0);
+    });
+
     return () => { cancelled = true; sub.subscription.unsubscribe(); };
   }, []);
 
