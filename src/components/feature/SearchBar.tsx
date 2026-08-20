@@ -108,7 +108,7 @@ export default function SearchBar() {
             </button>
           )}
           {showWhereDropdown && (
-            <div className="absolute top-full left-0 mt-1.5 w-full bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+            <div className="absolute top-full left-0 mt-1.5 w-full max-h-[55vh] overflow-y-auto overscroll-contain bg-white rounded-xl shadow-xl border border-gray-200 z-50 text-left">
               <div className="p-3">
                 {selectedLocation.length > 0 ? (
                   <>
@@ -126,8 +126,8 @@ export default function SearchBar() {
                               <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center mr-2 shrink-0">
                                 <i className="ri-home-4-line text-red-500 text-xs"></i>
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-medium text-gray-900 truncate">{cottage.title}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-gray-900 leading-snug line-clamp-2">{cottage.title}</p>
                                 <p className="text-xs text-gray-500 truncate">{cottage.location}</p>
                               </div>
                             </div>
@@ -150,8 +150,8 @@ export default function SearchBar() {
                                 <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
                                   <i className="ri-map-pin-line text-gray-600 text-xs"></i>
                                 </div>
-                                <div>
-                                  <p className="text-xs font-medium text-gray-900">{city.name}</p>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-medium text-gray-900 truncate">{city.name}</p>
                                   <p className="text-xs text-gray-500">{city.region}</p>
                                 </div>
                               </div>
@@ -176,9 +176,9 @@ export default function SearchBar() {
                           <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
                             <i className="ri-map-pin-line text-gray-600 text-xs"></i>
                           </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-900">{destination.name}</p>
-                            <p className="text-xs text-gray-500">{destination.description}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-gray-900 truncate">{destination.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{destination.description}</p>
                           </div>
                         </div>
                       ))}
@@ -246,7 +246,7 @@ export default function SearchBar() {
             <i className="ri-arrow-down-s-line text-sm"></i>
           </div>
           {showGuestsDropdown && (
-            <div className="absolute top-full left-0 mt-1.5 w-full bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+            <div className="absolute top-full left-0 mt-1.5 w-full bg-white rounded-xl shadow-xl border border-gray-200 z-50 text-left">
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -325,27 +325,27 @@ export default function SearchBar() {
           />
 
           {showWhereDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
-              <div className="p-4">
+            <div className="absolute top-full left-0 mt-2 w-[21rem] max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto overscroll-contain bg-white rounded-xl shadow-xl border border-gray-200 z-50 text-left">
+              <div className="p-3">
                 {selectedLocation.length > 0 ? (
                   <>
                     {matchingCottages.length > 0 && (
-                      <div className="mb-4">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('searchBar.matchingCottages')}</h3>
-                        <div className="space-y-2">
+                      <div className="mb-3">
+                        <h3 className="text-[13px] font-semibold text-gray-900 mb-2">{t('searchBar.matchingCottages')}</h3>
+                        <div className="space-y-1">
                           {matchingCottages.map((cottage) => (
                             <div
                               key={cottage.id}
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => handleCottageSelect(cottage.id)}
-                              className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                              className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                             >
-                              <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center mr-3 shrink-0">
-                                <i className="ri-home-4-line text-red-500"></i>
+                              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center mr-2.5 shrink-0">
+                                <i className="ri-home-4-line text-red-500 text-sm"></i>
                               </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{cottage.title}</p>
-                                <p className="text-sm text-gray-600 truncate">{cottage.location}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-900 leading-snug line-clamp-2">{cottage.title}</p>
+                                <p className="text-xs text-gray-600 truncate">{cottage.location}</p>
                               </div>
                             </div>
                           ))}
@@ -354,22 +354,22 @@ export default function SearchBar() {
                     )}
                     {filterCitiesBilingual(georgianCities, selectedLocation).length > 0 && (
                       <>
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('searchBar.matchingDestinations')}</h3>
-                        <div className="space-y-2">
+                        <h3 className="text-[13px] font-semibold text-gray-900 mb-2">{t('searchBar.matchingDestinations')}</h3>
+                        <div className="space-y-1">
                           {filterCitiesBilingual(georgianCities, selectedLocation)
                             .slice(0, 8)
                             .map((city, index) => (
                               <div
                                 key={index}
                                 onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
-                                className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                                className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                               >
-                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                  <i className="ri-map-pin-line text-gray-600"></i>
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-2.5 shrink-0">
+                                  <i className="ri-map-pin-line text-gray-600 text-sm"></i>
                                 </div>
-                                <div>
-                                  <p className="font-medium text-gray-900">{city.name}</p>
-                                  <p className="text-sm text-gray-600">{city.region}</p>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900 truncate">{city.name}</p>
+                                  <p className="text-xs text-gray-600">{city.region}</p>
                                 </div>
                               </div>
                             ))}
@@ -377,25 +377,25 @@ export default function SearchBar() {
                       </>
                     )}
                     {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && matchingCottages.length === 0 && (
-                      <div className="p-3 text-center text-gray-500">{t('searchBar.noMatches')}</div>
+                      <div className="p-2 text-center text-sm text-gray-500">{t('searchBar.noMatches')}</div>
                     )}
                   </>
                 ) : (
                   <>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('searchBar.popularDestinations')}</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-[13px] font-semibold text-gray-900 mb-2">{t('searchBar.popularDestinations')}</h3>
+                    <div className="space-y-1">
                       {popularDestinations.map((destination, index) => (
                         <div
                           key={index}
                           onClick={() => handleLocationSelect(destination.name)}
-                          className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                          className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                         >
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                            <i className="ri-map-pin-line text-gray-600"></i>
+                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-2.5 shrink-0">
+                            <i className="ri-map-pin-line text-gray-600 text-sm"></i>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{destination.name}</p>
-                            <p className="text-sm text-gray-600">{destination.description}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">{destination.name}</p>
+                            <p className="text-xs text-gray-600 truncate">{destination.description}</p>
                           </div>
                         </div>
                       ))}
@@ -449,12 +449,12 @@ export default function SearchBar() {
           </div>
 
           {showGuestsDropdown && (
-            <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+            <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 text-left">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium text-gray-900">{t('searchBar.guests')}</h4>
-                    <p className="text-sm text-gray-600">{t('searchBar.agesNote')}</p>
+                    <p className="text-xs text-gray-600">{t('searchBar.agesNote')}</p>
                   </div>
                   <div className="flex items-center space-x-3">
                     <button

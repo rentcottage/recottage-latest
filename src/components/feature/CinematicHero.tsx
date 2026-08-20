@@ -35,9 +35,11 @@ export default function CinematicHero() {
   const { t } = useT();
   const [sunset, setSunset] = useState(false);
 
+  // No overflow-hidden on the section: it clipped the Where dropdown, and
+  // nothing overflows now that the Ken Burns intro (which needed the clip) is gone.
   return (
     <section
-      className="relative w-full min-h-[100svh] overflow-hidden"
+      className="relative w-full min-h-[100svh]"
       aria-label="Find your cottage in Georgia"
     >
       {/* ── Image layer — static interior, takes the golden-hour grade ── */}
