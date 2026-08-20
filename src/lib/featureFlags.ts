@@ -12,8 +12,8 @@ export const FEATURE_FLAGS = {
 
   /**
    * Offers & Promos public surfaces (home section, search banner, property
-   * discount). Built but dormant — flip to true when the first offers land.
-   * Admin panel promo management works regardless of this flag.
+   * discount). Live: an offer created and activated in the admin panel shows
+   * up on the site by itself — nothing appears while no promo is active.
    */
-  ENABLE_PROMOS: false,
+  ENABLE_PROMOS: true,
 } as const;

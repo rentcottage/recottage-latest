@@ -71,7 +71,7 @@ const en = {
 
   searchBar: {
     where: 'Where',
-    wherePlaceholder: 'Search destinations',
+    wherePlaceholder: 'Search cottages or destinations',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
     checkInShort: 'In',
@@ -87,9 +87,11 @@ const en = {
     },
     search: 'Search',
     addDate: 'Add date',
+    matchingCottages: 'Cottages',
     matchingDestinations: 'Matching destinations',
     popularDestinations: 'Popular destinations',
     noDestinations: 'No destinations found',
+    noMatches: 'No cottages or destinations found',
     agesNote: 'Ages 13 or above',
   },
 
@@ -97,6 +99,7 @@ const en = {
     popularDestinations: 'Popular destinations',
     popularSub: 'Pick a region and discover its best cottages',
     allRegions: 'All regions →',
+    offerUntil: 'until {date}',
     featured: 'Featured cottages',
     featuredSub: 'Top-rated cottages this week',
     viewAll: 'View all →',

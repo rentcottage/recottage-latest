@@ -70,7 +70,7 @@ const ka: Messages = {
 
   searchBar: {
     where: 'სად',
-    wherePlaceholder: 'მიმართულების ძებნა',
+    wherePlaceholder: 'კოტეჯის ან მიმართულების ძებნა',
     checkIn: 'შესვლა',
     checkOut: 'გასვლა',
     checkInShort: 'შესვლა',
@@ -84,9 +84,11 @@ const ka: Messages = {
     },
     search: 'ძებნა',
     addDate: 'დაამატეთ თარიღი',
+    matchingCottages: 'კოტეჯები',
     matchingDestinations: 'შესაბამისი მიმართულებები',
     popularDestinations: 'პოპულარული მიმართულებები',
     noDestinations: 'მიმართულებები ვერ მოიძებნა',
+    noMatches: 'კოტეჯები ან მიმართულებები ვერ მოიძებნა',
     agesNote: '13 წელი და მეტი',
   },
 
@@ -94,6 +96,7 @@ const ka: Messages = {
     popularDestinations: 'პოპულარული მიმართულებები',
     popularSub: 'აირჩიეთ რეგიონი და აღმოაჩინეთ მისი საუკეთესო კოტეჯები',
     allRegions: 'ყველა რეგიონი →',
+    offerUntil: '{date}-მდე',
     featured: 'გამორჩეული კოტეჯები',
     featuredSub: 'ამ კვირის საუკეთესო კოტეჯები',
     viewAll: 'ყველას ნახვა →',

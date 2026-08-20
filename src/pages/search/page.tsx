@@ -7,6 +7,7 @@ import SearchBar from '../../components/feature/SearchBar';
 import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
+import { titleMatches } from '../../lib/propertyNameSearch';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
 import { useT } from '../../i18n';
@@ -183,10 +184,13 @@ export default function SearchResults() {
   useEffect(() => {
     let filtered = [...dbProperties];
 
-    // Filter by location — bilingual matching (Georgian ↔ English)
+    // Filter by location — bilingual matching (Georgian ↔ English).
+    // The same box also searches listing names, so typing a cottage's name
+    // finds that cottage instead of returning nothing.
     if (location) {
       filtered = filtered.filter(property =>
-        locationMatches(property.location, location)
+        locationMatches(property.location, location) ||
+        titleMatches(property.title, location)
       );
     }
 
@@ -719,7 +723,11 @@ export default function SearchResults() {
             {filteredProperties.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[22px]">
                 {filteredProperties.map((property) => (
-                  <PropertyCard key={property.id} {...property} />
+                  <PropertyCard
+                    key={property.id}
+                    {...property}
+                    promoPercent={findPromoForLocation(activePromos, property.location)?.discount_percent ?? null}
+                  />
                 ))}
               </div>
             ) : (

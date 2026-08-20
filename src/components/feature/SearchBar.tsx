@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { filterCitiesBilingual } from '../../lib/locationNormalizer';
+import { filterPropertiesByName } from '../../lib/propertyNameSearch';
+import { useCottageIndex } from '../../hooks/useCottageIndex';
 import { useT } from '../../i18n';
 
 export default function SearchBar() {
@@ -14,6 +16,7 @@ export default function SearchBar() {
   const [showGuestsDropdown, setShowGuestsDropdown] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const cottages = useCottageIndex();
 
   useEffect(() => {
     const urlLocation = searchParams.get('location');
@@ -43,6 +46,15 @@ export default function SearchBar() {
   const handleLocationSelect = (location: string) => {
     setSelectedLocation(location);
     setShowWhereDropdown(false);
+  };
+
+  // Cottages whose name matches what's typed — shown above the city
+  // suggestions so a guest can jump straight to a listing they know by name.
+  const matchingCottages = filterPropertiesByName(cottages, selectedLocation).slice(0, 4);
+
+  const handleCottageSelect = (id: string) => {
+    setShowWhereDropdown(false);
+    navigate(`/property/${id}`);
   };
 
   const handleSearch = () => {
@@ -100,29 +112,56 @@ export default function SearchBar() {
               <div className="p-3">
                 {selectedLocation.length > 0 ? (
                   <>
-                    <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('searchBar.matchingDestinations')}</h3>
-                    <div className="space-y-1">
-                      {filterCitiesBilingual(georgianCities, selectedLocation)
-                        .slice(0, 6)
-                        .map((city, index) => (
-                          <div
-                            key={index}
-                            onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
-                            className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                          >
-                            <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
-                              <i className="ri-map-pin-line text-gray-600 text-xs"></i>
+                    {matchingCottages.length > 0 && (
+                      <div className="mb-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('searchBar.matchingCottages')}</h3>
+                        <div className="space-y-1">
+                          {matchingCottages.map((cottage) => (
+                            <div
+                              key={cottage.id}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => handleCottageSelect(cottage.id)}
+                              className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                            >
+                              <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center mr-2 shrink-0">
+                                <i className="ri-home-4-line text-red-500 text-xs"></i>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-gray-900 truncate">{cottage.title}</p>
+                                <p className="text-xs text-gray-500 truncate">{cottage.location}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs font-medium text-gray-900">{city.name}</p>
-                              <p className="text-xs text-gray-500">{city.region}</p>
-                            </div>
-                          </div>
-                        ))}
-                      {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && (
-                        <div className="p-2 text-center text-xs text-gray-500">{t('searchBar.noDestinations')}</div>
-                      )}
-                    </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filterCitiesBilingual(georgianCities, selectedLocation).length > 0 && (
+                      <>
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('searchBar.matchingDestinations')}</h3>
+                        <div className="space-y-1">
+                          {filterCitiesBilingual(georgianCities, selectedLocation)
+                            .slice(0, 6)
+                            .map((city, index) => (
+                              <div
+                                key={index}
+                                onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
+                                className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                              >
+                                <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
+                                  <i className="ri-map-pin-line text-gray-600 text-xs"></i>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-gray-900">{city.name}</p>
+                                  <p className="text-xs text-gray-500">{city.region}</p>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </>
+                    )}
+                    {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && matchingCottages.length === 0 && (
+                      <div className="p-2 text-center text-xs text-gray-500">{t('searchBar.noMatches')}</div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -262,9 +301,11 @@ export default function SearchBar() {
       </div>
 
       {/* ── DESKTOP LAYOUT (hidden below md) ── */}
-      <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] max-w-[920px] mx-auto bg-white border-[1.5px] border-line rounded-full overflow-hidden shadow-card">
+      {/* No overflow-hidden here: it would clip the Where dropdown. The pill shape
+          comes from rounding the first and last cells instead. */}
+      <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] max-w-[920px] mx-auto bg-white border-[1.5px] border-line rounded-full shadow-card">
         {/* Where */}
-        <div className="relative px-5 py-3.5 border-r border-line text-left">
+        <div className="relative px-5 py-3.5 pl-7 border-r border-line text-left rounded-l-full">
           <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('searchBar.where')}</div>
           <input
             type="text"
@@ -288,29 +329,56 @@ export default function SearchBar() {
               <div className="p-4">
                 {selectedLocation.length > 0 ? (
                   <>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('searchBar.matchingDestinations')}</h3>
-                    <div className="space-y-2">
-                      {filterCitiesBilingual(georgianCities, selectedLocation)
-                        .slice(0, 8)
-                        .map((city, index) => (
-                          <div
-                            key={index}
-                            onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
-                            className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                          >
-                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                              <i className="ri-map-pin-line text-gray-600"></i>
+                    {matchingCottages.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('searchBar.matchingCottages')}</h3>
+                        <div className="space-y-2">
+                          {matchingCottages.map((cottage) => (
+                            <div
+                              key={cottage.id}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => handleCottageSelect(cottage.id)}
+                              className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                            >
+                              <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center mr-3 shrink-0">
+                                <i className="ri-home-4-line text-red-500"></i>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{cottage.title}</p>
+                                <p className="text-sm text-gray-600 truncate">{cottage.location}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{city.name}</p>
-                              <p className="text-sm text-gray-600">{city.region}</p>
-                            </div>
-                          </div>
-                        ))}
-                      {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && (
-                        <div className="p-3 text-center text-gray-500">{t('searchBar.noDestinations')}</div>
-                      )}
-                    </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filterCitiesBilingual(georgianCities, selectedLocation).length > 0 && (
+                      <>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('searchBar.matchingDestinations')}</h3>
+                        <div className="space-y-2">
+                          {filterCitiesBilingual(georgianCities, selectedLocation)
+                            .slice(0, 8)
+                            .map((city, index) => (
+                              <div
+                                key={index}
+                                onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
+                                className="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                              >
+                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                  <i className="ri-map-pin-line text-gray-600"></i>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{city.name}</p>
+                                  <p className="text-sm text-gray-600">{city.region}</p>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </>
+                    )}
+                    {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && matchingCottages.length === 0 && (
+                      <div className="p-3 text-center text-gray-500">{t('searchBar.noMatches')}</div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -427,7 +495,7 @@ export default function SearchBar() {
         <button
           onClick={handleSearch}
           aria-label={t('searchBar.search')}
-          className="bg-red-500 hover:bg-red-600 text-white font-bold text-base w-[52px] flex items-center justify-center cursor-pointer transition-colors whitespace-nowrap"
+          className="bg-red-500 hover:bg-red-600 text-white font-bold text-base w-[52px] flex items-center justify-center cursor-pointer transition-colors whitespace-nowrap rounded-r-full"
         >
           <i className="ri-search-line text-lg"></i>
         </button>

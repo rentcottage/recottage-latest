@@ -1,6 +1,12 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropertyImageSlider from './PropertyImageSlider';
+import { applyPromoDiscount } from '../../lib/promos';
 import { useT } from '../../i18n';
+
+/** ₾ amounts: whole numbers stay whole, fractional show 2 decimals. */
+function formatGel(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
 
 interface PropertyCardProps {
   id: string;
@@ -15,6 +21,12 @@ interface PropertyCardProps {
   amenities: string[];
   isRealListing?: boolean;
   coverPosition?: 'top' | 'center' | 'bottom';
+  /**
+   * Discount percent of the active promo covering this listing's location,
+   * or null when none applies. Shown as a ribbon + struck-through price so
+   * the card agrees with what checkout actually charges.
+   */
+  promoPercent?: number | null;
 }
 
 export default function PropertyCard({
@@ -30,6 +42,7 @@ export default function PropertyCard({
   amenities,
   isRealListing,
   coverPosition,
+  promoPercent,
 }: PropertyCardProps) {
   const { t } = useT();
   const navigate = useNavigate();
@@ -144,10 +157,24 @@ export default function PropertyCard({
         {/* Spacer pushes price to bottom */}
         <div className="flex-1" />
 
-        {/* Price row */}
-        <div className="flex items-baseline gap-1 pt-2.5">
-          <span className="text-base md:text-[18px] font-extrabold text-ink whitespace-nowrap" translate="no">₾{price}</span>
-          <span className="text-xs text-soft whitespace-nowrap">/ night</span>
+        {/* Price row — with an active promo the discounted rate leads, the original
+            is struck through, and the discount badge sits at the opposite end. */}
+        <div className="flex items-center justify-between gap-2 pt-2.5">
+          <div className="flex items-baseline gap-1 flex-wrap min-w-0">
+            <span className="text-base md:text-[18px] font-extrabold text-ink whitespace-nowrap" translate="no">
+              ₾{promoPercent ? formatGel(applyPromoDiscount(price, promoPercent)) : price}
+            </span>
+            {promoPercent ? (
+              <span className="text-xs md:text-sm text-soft line-through whitespace-nowrap" translate="no">₾{price}</span>
+            ) : null}
+            <span className="text-xs text-soft whitespace-nowrap">/ night</span>
+          </div>
+          {promoPercent ? (
+            <span className="flex-shrink-0 inline-flex items-center gap-1 bg-green-600 text-white text-[11.5px] font-bold px-2.5 py-1 rounded-full">
+              <i className="ri-price-tag-3-fill text-[12px] leading-none"></i>
+              <span className="notranslate" translate="no">−{promoPercent}%</span>
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

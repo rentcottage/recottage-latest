@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
+import HeroPromoBanner from './HeroPromoBanner';
 import { useT } from '../../i18n';
 
-// Local production assets (no Unsplash hotlinking — see public/redesign/).
-const EXTERIOR = "url('/redesign/hero-exterior.jpg')";
+// Local production asset (no Unsplash hotlinking — see public/redesign/).
 const INTERIOR = "url('/redesign/hero-interior.jpg')";
 
 // Golden-hour grade applied to the interior view when the sunset toggle is on.
@@ -21,86 +21,30 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
   { labelKey: 'hero.chipPetFriendly', amenity: 'Pet Friendly' },
 ];
 
-type Phase = 'out' | 'crossfade' | 'in';
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-
 /**
- * Cinematic landing hero (ported from the landing-redesign mockup).
+ * Landing hero: the interior view looking back out a window, with the headline
+ * and live search on top.
  *
- * Timeline: an exterior mountain shot does a slow Ken Burns push-in, then at 2s
- * the view crossfades — as if stepping indoors — to an interior looking back out
- * a window, and at 2.5s the headline + live search reveal. Users with
- * prefers-reduced-motion skip straight to the final "inside" state, so search is
- * available immediately and nothing animates.
+ * No intro sequence — the exterior shot, the Ken Burns push-in and the
+ * crossfade were removed, so the hero renders in its final state on first
+ * paint and search is usable immediately. The golden-hour grade stays as an
+ * opt-in toggle.
  */
 export default function CinematicHero() {
   const navigate = useNavigate();
   const { t } = useT();
-  // Reduced-motion users start (and stay) on the functional "inside" state.
-  const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'in' : 'out'));
   const [sunset, setSunset] = useState(false);
-  const [playId, setPlayId] = useState(0); // bump to restart the Ken Burns intro
-  const timers = useRef<number[]>([]);
-
-  const play = useCallback(() => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-    if (prefersReducedMotion()) {
-      setPhase('in'); // no motion → land on the functional state immediately
-      return;
-    }
-    setPhase('out');
-    setPlayId((n) => n + 1);
-    timers.current.push(window.setTimeout(() => setPhase('crossfade'), 2000));
-    timers.current.push(window.setTimeout(() => setPhase('in'), 2500));
-  }, []);
-
-  useEffect(() => {
-    play();
-    return () => timers.current.forEach(clearTimeout);
-  }, [play]);
-
-  const imageInside = phase !== 'out';
-  const showSearch = phase === 'in';
 
   return (
     <section
       className="relative w-full min-h-[100svh] overflow-hidden"
       aria-label="Find your cottage in Georgia"
     >
-      {/* ── Image layers ── */}
-      {/* Exterior (Ken Burns push-in). Keyed by playId so Replay restarts it. */}
-      <div
-        key={playId}
-        aria-hidden="true"
-        className="absolute inset-0 bg-cover bg-center rc-kenburns transition-opacity duration-700"
-        style={{ backgroundImage: EXTERIOR, opacity: imageInside ? 0 : 1 }}
-      />
-      {/* Blurred interior underlay — fills the frame while the sharp layer settles. */}
+      {/* ── Image layer — static interior, takes the golden-hour grade ── */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
-        style={{
-          backgroundImage: INTERIOR,
-          filter: 'blur(28px) brightness(.55)',
-          transform: 'scale(1.1)',
-          opacity: imageInside ? 1 : 0,
-        }}
-      />
-      {/* Sharp interior — settles from a soft blur, takes the golden-hour grade. */}
-      <div
-        aria-hidden="true"
-        className={`absolute inset-0 bg-cover bg-center transition-[opacity,filter] duration-700 ${
-          imageInside ? 'rc-settle' : ''
-        }`}
-        style={{
-          backgroundImage: INTERIOR,
-          opacity: imageInside ? 1 : 0,
-          filter: sunset ? SUNSET_FILTER : undefined,
-        }}
+        className="absolute inset-0 bg-cover bg-center transition-[filter] duration-700"
+        style={{ backgroundImage: INTERIOR, filter: sunset ? SUNSET_FILTER : undefined }}
       />
 
       {/* ── Overlays: shade + vignette for legible white text, sunset wash ── */}
@@ -124,38 +68,10 @@ export default function CinematicHero() {
         }}
       />
 
-      {/* ── Stage: outside intro line, then the inside headline + live search ── */}
+      {/* ── Stage: headline + live search, shown immediately ── */}
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center">
-        {/* Outside intro — decorative lead-in (kept out of the heading outline). */}
-        <div
-          aria-hidden={showSearch}
-          className={`absolute px-4 transition-opacity duration-500 ${
-            showSearch ? 'opacity-0 pointer-events-none' : 'rc-fadein'
-          }`}
-        >
-          <div
-            className="text-xs font-extrabold uppercase text-white/80"
-            style={{ letterSpacing: '.35em' }}
-          >
-            {t('hero.outsideLabel')}
-          </div>
-          <div
-            className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)]"
-            style={{ textShadow: '0 2px 18px rgba(0,0,0,.45)' }}
-          >
-            {t('hero.outsideTitle')}
-          </div>
-        </div>
-
-        {/* Inside — the real headline + search. Mounted throughout (so it is
-            present for prerender/SEO); revealed with a rise once we're inside. */}
-        <div
-          inert={!showSearch}
-          className={`w-full flex flex-col items-center ${
-            showSearch ? '' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          <div className={showSearch ? 'rc-rise' : ''}>
+        <div className="w-full flex flex-col items-center">
+          <div>
             <div
               className="text-xs font-extrabold uppercase text-white/80"
               style={{ letterSpacing: '.35em' }}
@@ -171,10 +87,7 @@ export default function CinematicHero() {
           </div>
 
           {/* Live search card + amenity quick-filters */}
-          <div
-            className={`w-full max-w-[900px] mx-auto mt-8 ${showSearch ? 'rc-rise' : ''}`}
-            style={showSearch ? { animationDelay: '.35s' } : undefined}
-          >
+          <div className="w-full max-w-[900px] mx-auto mt-8">
             <SearchBar />
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {HERO_CHIPS.map((chip) => (
@@ -188,6 +101,8 @@ export default function CinematicHero() {
                 </button>
               ))}
             </div>
+            {/* Active offers — nothing renders when none is running. */}
+            <HeroPromoBanner />
           </div>
         </div>
       </div>
@@ -205,15 +120,6 @@ export default function CinematicHero() {
       >
         <i className="ri-sun-line" aria-hidden="true" />
         {t('hero.goldenHour')}
-      </button>
-
-      <button
-        type="button"
-        onClick={play}
-        className="hidden md:inline-flex items-center gap-1.5 absolute bottom-6 right-6 z-20 rounded-full border border-white/30 bg-black/30 text-white text-xs font-bold px-4 py-2.5 backdrop-blur-sm hover:bg-black/50 transition-colors cursor-pointer"
-      >
-        <i className="ri-restart-line" aria-hidden="true" />
-        {t('hero.replay')}
       </button>
 
       <div

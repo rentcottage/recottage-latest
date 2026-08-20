@@ -618,6 +618,15 @@ export default function BookingWidget({
               {pricingType === 'per_guest' && (
                 <p className="text-gray-700 mt-0.5 font-medium text-sm">{t('property.booking.priceVariesByGuests')}</p>
               )}
+              {/* Promo badge — visible before dates are picked, so the guest knows
+                  a discount is running; the breakdown below shows the actual saving. */}
+              {activePromo && (
+                <p className="mt-1.5 inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  <i className="ri-price-tag-3-line"></i>
+                  <span className="notranslate" translate="no">−{activePromo.discount_percent}%</span>
+                  <span className="truncate">{t('property.booking.promoActive')}</span>
+                </p>
+              )}
             </div>
             <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
               <i className="ri-star-fill text-red-500 mr-1"></i>

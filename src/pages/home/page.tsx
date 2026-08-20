@@ -7,15 +7,16 @@ import Footer from '../../components/feature/Footer';
 import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
-import { fetchActivePromos, type Promo } from '../../lib/promos';
+import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
 import { useT } from '../../i18n';
 
 export default function HomePage() {
   const { t } = useT();
   const [promos, setPromos] = useState<Promo[]>([]);
 
-  // Offers & Promos — dormant until FEATURE_FLAGS.ENABLE_PROMOS is flipped on.
-  // No active promos → the section renders nothing at all.
+  // Active promos, used to stamp the discount badge on matching cottage cards.
+  // The hero banner (HeroPromoBanner) fetches its own copy; both hit the same
+  // fail-safe lookup, which returns [] on any error.
   useEffect(() => {
     if (!FEATURE_FLAGS.ENABLE_PROMOS) return;
     let cancelled = false;
@@ -24,12 +25,6 @@ export default function HomePage() {
   }, []);
 
   const navigate = useNavigate();
-
-  const handlePromoClick = (promo: Promo) => {
-    const searchParams = new URLSearchParams();
-    searchParams.set('location', promo.location);
-    navigate(`/search?${searchParams.toString()}`);
-  };
 
   const { dbProperties, loading: dbLoading } = useApprovedProperties();
 
@@ -161,53 +156,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured cottages (+ dormant promos, flag-gated) */}
+      {/* Featured cottages */}
       <section className="pt-0 pb-12 md:pb-16 px-4 md:px-6 max-w-[1280px] mx-auto">
-        {/* Offers & Promos — hidden entirely when there are no active promos */}
-        {FEATURE_FLAGS.ENABLE_PROMOS && promos.length > 0 && (
-          <div className="mb-8 md:mb-12">
-            <div className="mb-4 md:mb-6">
-              <h2 className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">Offers &amp; Promos</h2>
-              <p className="text-gray-600 text-sm md:text-base">Limited-time discounts — applied automatically at checkout</p>
-            </div>
-            <div className="space-y-3 md:space-y-4">
-              {promos.map((promo) => (
-                <button
-                  key={promo.id}
-                  type="button"
-                  onClick={() => handlePromoClick(promo)}
-                  className="w-full text-left bg-gradient-to-r from-red-500 to-amber-500 rounded-2xl p-4 md:p-6 flex items-center gap-4 md:gap-6 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                >
-                  <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center border border-white/30">
-                    <span className="text-white font-extrabold text-lg md:text-2xl leading-none">−{promo.discount_percent}%</span>
-                    <span className="text-white/80 text-[10px] md:text-xs font-semibold uppercase tracking-wide mt-0.5">off</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-bold text-sm md:text-lg leading-snug mb-1 truncate">{promo.title}</h3>
-                    {promo.description && (
-                      <p className="text-white/80 text-xs md:text-sm leading-snug mb-1.5 line-clamp-1">{promo.description}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                      <span className="inline-flex items-center gap-1 bg-white/25 text-white text-[11px] md:text-xs font-semibold px-2 py-0.5 rounded-full">
-                        <i className="ri-map-pin-line text-xs"></i>{promo.location}
-                      </span>
-                      {promo.ends_at && (
-                        <span className="inline-flex items-center gap-1 text-white/80 text-[11px] md:text-xs font-medium">
-                          <i className="ri-time-line text-xs"></i>
-                          until {new Date(promo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-white/80">
-                    <i className="ri-arrow-right-line text-xl"></i>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Featured Properties */}
         <div id="property-listings" className="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-7">
           <div>
@@ -236,7 +186,11 @@ export default function HomePage() {
         ) : featuredProperties.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             {featuredProperties.map((property) => (
-              <PropertyCard key={property.id} {...property} />
+              <PropertyCard
+                key={property.id}
+                {...property}
+                promoPercent={findPromoForLocation(promos, property.location)?.discount_percent ?? null}
+              />
             ))}
           </div>
         ) : (

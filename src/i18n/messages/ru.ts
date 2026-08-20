@@ -70,7 +70,7 @@ const ru: Messages = {
 
   searchBar: {
     where: 'Где',
-    wherePlaceholder: 'Поиск направлений',
+    wherePlaceholder: 'Поиск коттеджей или направлений',
     checkIn: 'Заезд',
     checkOut: 'Выезд',
     checkInShort: 'Заезд',
@@ -84,9 +84,11 @@ const ru: Messages = {
     },
     search: 'Поиск',
     addDate: 'Добавить дату',
+    matchingCottages: 'Коттеджи',
     matchingDestinations: 'Подходящие направления',
     popularDestinations: 'Популярные направления',
     noDestinations: 'Направления не найдены',
+    noMatches: 'Коттеджи и направления не найдены',
     agesNote: '13 лет и старше',
   },
 
@@ -94,6 +96,7 @@ const ru: Messages = {
     popularDestinations: 'Популярные направления',
     popularSub: 'Выберите регион и откройте его лучшие коттеджи',
     allRegions: 'Все регионы →',
+    offerUntil: 'до {date}',
     featured: 'Избранные коттеджи',
     featuredSub: 'Лучшие коттеджи этой недели',
     viewAll: 'Показать все →',
