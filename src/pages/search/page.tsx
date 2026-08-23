@@ -202,9 +202,18 @@ export default function SearchResults() {
     // Filter by location — bilingual matching (Georgian ↔ English).
     // The same box also searches listing names, so typing a cottage's name
     // finds that cottage instead of returning nothing.
+    // regionMatches() is part of the OR because a location can name a whole
+    // region ("რაჭა-ლეჩხუმი", reached from the hero discount pill): its
+    // cottages are stored by town ("ამბროლაური", "ონი, სოფ. შქმერი") and
+    // never repeat the region, so plain text matching drops them. This is the
+    // same rule the region facet and findPromoForLocation() already use, so a
+    // cottage that is badged with a discount is always inside the results the
+    // discount links to. For a non-region query regionMatches() falls back to
+    // locationMatches(), so city searches are unchanged.
     if (location) {
       filtered = filtered.filter(property =>
         locationMatches(property.location, location) ||
+        regionMatches(property.location, location) ||
         titleMatches(property.title, location)
       );
     }
