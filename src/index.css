@@ -204,7 +204,15 @@ body {
 .rc-fadein   { opacity: 0; animation: rc-fadein 1.1s ease forwards; }
 .rc-bob      { animation: rc-bob 1.4s ease infinite; }
 
+/* The hero deal row is fetched, so it lands a beat after the page settles.
+   On phones it fades in rather than popping — its slot is already held open
+   by HeroPromoBanner, so nothing moves. Desktop is unaffected. */
+@media (max-width: 639px) {
+  .rc-promo-row { opacity: 0; animation: rc-fadein 0.45s ease forwards; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .rc-promo-row { opacity: 1 !important; animation: none !important; }
   .rc-kenburns, .rc-settle, .rc-rise, .rc-fadein, .rc-bob {
     animation: none !important;
     opacity: 1 !important;
