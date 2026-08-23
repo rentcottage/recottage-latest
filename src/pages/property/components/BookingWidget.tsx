@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 import { useT } from '@/i18n';
-import { offerLabel, offerWindowParts, type WidgetOffer } from '@/lib/hostOffers';
+import { offerLabel, offerWindowParts, stayInWindow, type WidgetOffer } from '@/lib/hostOffers';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
@@ -444,12 +444,37 @@ function BookingForm({
 
       {/* An offer is advertised but these dates don't earn it — say so, rather
           than leaving the guest to wonder why the badge changed nothing. */}
-      {activeOffer && nights > 0 && !offerEarned && (
-        <p className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-          <i className="ri-information-line flex-shrink-0 mt-0.5"></i>
-          <span>{t('property.booking.offerNotEarned')}</span>
-        </p>
-      )}
+      {activeOffer && nights > 0 && !offerEarned && (() => {
+        // Two quite different reasons an offer doesn't apply, and a guest can
+        // only act on the one that's actually true: their dates are outside
+        // the offer's window, or their stay is shorter than one full cycle
+        // (a 2+1 needs 3 nights before a night can be free). Saying both at
+        // once — as this notice used to — reads as "something is wrong" and
+        // leaves the guest guessing which lever to pull.
+        const outsideWindow = !stayInWindow(activeOffer, checkIn, checkOut);
+        const cycle = activeOffer.offer_type === 'free_nights'
+          ? Number(activeOffer.buy_nights) + Number(activeOffer.free_nights)
+          : 0;
+        const win = offerWindowParts(activeOffer);
+        let message: string;
+        if (outsideWindow && win) {
+          message = win.kind === 'between'
+            ? t('property.booking.offerMissWindowBetween', { from: win.from!, to: win.to! })
+            : win.kind === 'from'
+            ? t('property.booking.offerMissWindowFrom', { date: win.date! })
+            : t('property.booking.offerMissWindowUntil', { date: win.date! });
+        } else if (cycle > 0 && nights < cycle) {
+          message = plural('property.booking.offerMissTooShort', cycle);
+        } else {
+          message = t('property.booking.offerNotEarned');
+        }
+        return (
+          <p className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+            <i className="ri-information-line flex-shrink-0 mt-0.5"></i>
+            <span>{message}</span>
+          </p>
+        );
+      })()}
 
       {/* Price breakdown */}
       {checkIn && checkOut && nights > 0 && (
@@ -700,16 +725,31 @@ export default function BookingWidget({
                     </span>
                     {/* When the deal only runs for part of the calendar, say so
                         right here — a guest must not have to guess their dates. */}
-                    {win && (
-                      <span className="flex items-center gap-1 mt-1 text-[11.5px] text-gray-500">
-                        <i className="ri-calendar-line"></i>
-                        <span className="notranslate" translate="no">
-                          {win.kind === 'between'
-                            ? t('property.booking.offerWindowBetween', { from: win.from!, to: win.to! })
-                            : win.kind === 'from'
-                            ? t('property.booking.offerWindowFrom', { date: win.date! })
-                            : t('property.booking.offerWindowUntil', { date: win.date! })}
-                        </span>
+                    {(win || activeOffer.offer_type === 'free_nights') && (
+                      <span className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-[11.5px] text-gray-500">
+                        {win && (
+                          <span className="flex items-center gap-1">
+                            <i className="ri-calendar-line"></i>
+                            <span className="notranslate" translate="no">
+                              {win.kind === 'between'
+                                ? t('property.booking.offerWindowBetween', { from: win.from!, to: win.to! })
+                                : win.kind === 'from'
+                                ? t('property.booking.offerWindowFrom', { date: win.date! })
+                                : t('property.booking.offerWindowUntil', { date: win.date! })}
+                            </span>
+                          </span>
+                        )}
+                        {/* The shape "2+1" alone never says how long you must
+                            stay to earn the free night. Say it plainly. */}
+                        {activeOffer.offer_type === 'free_nights' && (
+                          <span className="flex items-center gap-1">
+                            <i className="ri-moon-line"></i>
+                            <span className="notranslate" translate="no">
+                              {plural('property.booking.offerMinNights',
+                                Number(activeOffer.buy_nights) + Number(activeOffer.free_nights))}
+                            </span>
+                          </span>
+                        )}
                       </span>
                     )}
                   </span>
