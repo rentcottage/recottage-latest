@@ -26,13 +26,6 @@ export default function HostResources() {
     t('hostResources.create4'),
   ];
 
-  const VERIFY_STEPS = [
-    t('hostResources.verify1'),
-    t('hostResources.verify2'),
-    t('hostResources.verify3'),
-    t('hostResources.verify4'),
-  ];
-
   const PHOTO_TIPS = [1, 2, 3, 4, 5, 6].map((n) => ({
     num: n,
     title: t(`hostResources.photo${n}Title`),
@@ -129,22 +122,11 @@ export default function HostResources() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-[19px] md:text-[26px] font-extrabold tracking-tight text-ink">{t('hostResources.startTitle')}</h2>
           <p className="text-muted-foreground mb-6 text-[14.5px]">{t('hostResources.startSub')}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[22px]">
+          <div className="grid grid-cols-1 gap-5 md:gap-[22px]">
             <div className="bg-white border border-line rounded-card p-6">
               <h3 className="text-[16.5px] font-bold text-ink mb-3">{t('hostResources.createTitle')}</h3>
               <ul className="space-y-2.5">
                 {CREATE_STEPS.map((li) => (
-                  <li key={li} className="relative pl-6 text-sm text-muted-foreground">
-                    <span className="absolute left-0 text-red-500 font-extrabold" aria-hidden="true">✓</span>
-                    {li}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-white border border-line rounded-card p-6">
-              <h3 className="text-[16.5px] font-bold text-ink mb-3">{t('hostResources.verifyTitle')}</h3>
-              <ul className="space-y-2.5">
-                {VERIFY_STEPS.map((li) => (
                   <li key={li} className="relative pl-6 text-sm text-muted-foreground">
                     <span className="absolute left-0 text-red-500 font-extrabold" aria-hidden="true">✓</span>
                     {li}
