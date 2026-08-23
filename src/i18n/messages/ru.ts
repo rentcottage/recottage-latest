@@ -93,6 +93,15 @@ const ru: Messages = {
   },
 
   home: {
+    offersTitle: 'Оставайтесь дольше, платите меньше',
+    offersSub: 'Предложения с бесплатными ночами от наших хозяев',
+    offersViewAll: 'Смотреть все →',
+    offersFreeNight: '{count} ночь бесплатно',
+    offersFreeNights: '{count} ночей бесплатно',
+    offersStayPay: 'Останьтесь на {total} ночей, заплатите за {paid}',
+    offersFrom: 'от',
+    offersPerNight: '/ ночь',
+    offersUntil: 'до {date}',
     popularDestinations: 'Популярные направления',
     popularSub: 'Выберите регион и откройте его лучшие коттеджи',
     allRegions: 'Все регионы →',

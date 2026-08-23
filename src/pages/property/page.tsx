@@ -4,11 +4,13 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import PropertyReviews from './components/PropertyReviews';
 import PropertyGallery from './components/PropertyGallery';
+import PropertyActivities from './components/PropertyActivities';
 import BookingWidget from './components/BookingWidget';
 import SEO from '../../components/feature/SEO';
 import { supabase } from '../../lib/supabase';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, applyPromoDiscount, type Promo } from '../../lib/promos';
+import { fetchOffersForProperty, findOfferForStay, applyOfferToTotal, freeNightsFor, type HostOffer } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
@@ -72,6 +74,7 @@ export default function PropertyDetail() {
   const [corporateId, setCorporateId] = useState<string | null>(null);
   const [corporateClientName, setCorporateClientName] = useState('');
   const [activePromo, setActivePromo] = useState<Promo | null>(null);
+  const [hostOffers, setHostOffers] = useState<HostOffer[]>([]);
 
   // Location-targeted promo — dormant until FEATURE_FLAGS.ENABLE_PROMOS is on.
   // The server (bog-payment) independently verifies and applies the same promo,
@@ -84,6 +87,16 @@ export default function PropertyDetail() {
     });
     return () => { cancelled = true; };
   }, [property?.location]);
+
+  // The host's own free-night offers on THIS property. Like promos, the server
+  // (bog-payment) independently re-selects and re-applies the offer, so this
+  // only controls what the guest sees — it can never change what is charged.
+  useEffect(() => {
+    if (!FEATURE_FLAGS.ENABLE_HOST_OFFERS || !property?.id) { setHostOffers([]); return; }
+    let cancelled = false;
+    fetchOffersForProperty(String(property.id)).then((o) => { if (!cancelled) setHostOffers(o); });
+    return () => { cancelled = true; };
+  }, [property?.id]);
 
   // Detect whether the signed-in user is an approved travel agency.
   // NOTE: never call supabase.auth.* inside onAuthStateChange — that callback
@@ -246,10 +259,45 @@ export default function PropertyDetail() {
 
   const currentPricePerNight = getPriceForGuests(parseInt(guests) || 1);
   const getBaseTotalPrice = () => calculateNights() * currentPricePerNight;
-  // Promo discount — same formula as the server so the charged amount matches.
-  const getTotalPrice = () => activePromo
-    ? applyPromoDiscount(getBaseTotalPrice(), activePromo.discount_percent)
-    : getBaseTotalPrice();
+
+  // The host offer that fits the chosen stay — free nights or a percentage,
+  // whichever ends up cheaper, and only if the stay falls inside its date
+  // window. Before dates are picked this is the easiest deal to reach, so the
+  // widget can advertise it up front; with 0 nights it never touches the price.
+  //
+  // Two separate selections, because they answer different questions:
+  //   advertisedOffer — what this cottage is promoting, regardless of dates.
+  //                     Keeps the badge on screen when the chosen dates miss
+  //                     the window, so the deal doesn't silently disappear.
+  //   activeOffer     — the deal these particular dates actually earn, or null.
+  const advertisedOffer = findOfferForStay(hostOffers, 0);
+  const activeOffer = findOfferForStay(hostOffers, calculateNights(), checkIn, checkOut);
+  const offerFreeNights = activeOffer ? freeNightsFor(activeOffer, calculateNights()) : 0;
+
+  // Promos and host offers DO NOT STACK — the guest gets whichever single
+  // discount is worth more. The server applies the identical rule (cheapest
+  // candidate wins) so the charged amount always matches what is shown here.
+  const getTotalPrice = () => {
+    const base = getBaseTotalPrice();
+    const promoTotal = activePromo ? applyPromoDiscount(base, activePromo.discount_percent) : base;
+    const offerTotal = activeOffer && calculateNights() > 0
+      ? applyOfferToTotal(activeOffer, currentPricePerNight, calculateNights())
+      : base;
+    return Math.min(base, promoTotal, offerTotal);
+  };
+
+  /** Which discount actually won — decides the line shown in the breakdown. */
+  const appliedDiscount: 'offer' | 'promo' | null = (() => {
+    const base = getBaseTotalPrice();
+    if (base <= 0) return null;
+    const promoTotal = activePromo ? applyPromoDiscount(base, activePromo.discount_percent) : base;
+    const offerTotal = activeOffer && calculateNights() > 0
+      ? applyOfferToTotal(activeOffer, currentPricePerNight, calculateNights())
+      : base;
+    if (offerTotal < base && offerTotal <= promoTotal) return 'offer';
+    if (promoTotal < base) return 'promo';
+    return null;
+  })();
 
   // Clear check-out when it's on/before the new check-in (YYYY-MM-DD sorts as date order) to prevent reversed ranges.
   const handleCheckInChange = useCallback((v: string) => {
@@ -745,6 +793,9 @@ export default function PropertyDetail() {
               </div>
             )}
 
+            {/* What this host offers — renders nothing when there are none */}
+            <PropertyActivities propertyId={String(property.id)} />
+
             {/* Reviews */}
             <div className="mb-4 md:mb-6">
               <PropertyReviews propertyId={property.id} isDbProperty={isDbProperty} />
@@ -777,7 +828,11 @@ export default function PropertyDetail() {
               currentPricePerNight={currentPricePerNight}
               calculateNights={calculateNights}
               getTotalPrice={getTotalPrice}
-              activePromo={activePromo}
+              activePromo={appliedDiscount === 'promo' ? activePromo : null}
+              activeOffer={activeOffer ?? advertisedOffer}
+              offerFreeNights={appliedDiscount === 'offer' ? offerFreeNights : 0}
+              offerApplied={appliedDiscount === 'offer'}
+              offerEarned={Boolean(activeOffer)}
               onCaptchaVerify={(token) => setBookingCaptchaToken(token)}
               onCaptchaExpire={() => setBookingCaptchaToken('')}
               captchaToken={bookingCaptchaToken}

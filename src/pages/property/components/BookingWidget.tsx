@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 import { useT } from '@/i18n';
+import { offerLabel, type CardOffer } from '@/lib/hostOffers';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
@@ -56,6 +57,14 @@ interface BookingWidgetProps {
   getTotalPrice: () => number;
   /** Active location promo — adds a discount line to the price breakdown. */
   activePromo?: { title: string; discount_percent: number } | null;
+  /** The host's own offer for this stay — "2+1" nights or "−10%" — for the badge. */
+  activeOffer?: CardOffer | null;
+  /** Nights the offer makes free — 0 for a discount offer, or when it doesn't win. */
+  offerFreeNights?: number;
+  /** The offer is the discount actually being charged (not just advertised). */
+  offerApplied?: boolean;
+  /** The chosen dates earn the offer — false while it is only being advertised. */
+  offerEarned?: boolean;
   onCaptchaVerify: (token: string) => void;
   onCaptchaExpire: () => void;
   captchaToken: string;
@@ -97,6 +106,10 @@ interface BookingFormProps {
   calculateNights: () => number;
   getTotalPrice: () => number;
   activePromo?: { title: string; discount_percent: number } | null;
+  activeOffer?: CardOffer | null;
+  offerFreeNights?: number;
+  offerApplied?: boolean;
+  offerEarned?: boolean;
   onCaptchaVerify: (token: string) => void;
   onCaptchaExpire: () => void;
   captchaToken: string;
@@ -130,6 +143,10 @@ function BookingForm({
   calculateNights,
   getTotalPrice,
   activePromo,
+  activeOffer,
+  offerFreeNights = 0,
+  offerApplied = false,
+  offerEarned = false,
   onCaptchaVerify,
   onCaptchaExpire,
   captchaToken,
@@ -425,6 +442,15 @@ function BookingForm({
         );
       })()}
 
+      {/* An offer is advertised but these dates don't earn it — say so, rather
+          than leaving the guest to wonder why the badge changed nothing. */}
+      {activeOffer && nights > 0 && !offerEarned && (
+        <p className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+          <i className="ri-information-line flex-shrink-0 mt-0.5"></i>
+          <span>{t('property.booking.offerNotEarned')}</span>
+        </p>
+      )}
+
       {/* Price breakdown */}
       {checkIn && checkOut && nights > 0 && (
         <div className="border-t border-gray-200 pt-4 mb-5 space-y-2">
@@ -442,6 +468,24 @@ function BookingForm({
               <span className="flex items-center gap-1.5 text-green-600 font-medium min-w-0">
                 <i className="ri-price-tag-3-line text-sm flex-shrink-0"></i>
                 <span className="truncate">{t('property.booking.promoLabel')} <span className="notranslate" translate="no">−{activePromo.discount_percent}%</span></span>
+              </span>
+              <span className="text-green-600 font-medium whitespace-nowrap notranslate" translate="no">
+                −₾{formatGel(currentPricePerNight * nights - getTotalPrice())}
+              </span>
+            </div>
+          )}
+          {/* Host free-night offer. Mutually exclusive with the promo line —
+              the page passes only the discount that actually won. */}
+          {offerApplied && activeOffer && (
+            <div className="flex justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-green-600 font-medium min-w-0">
+                <i className={`${activeOffer.offer_type === 'discount' ? 'ri-percent-line' : 'ri-gift-line'} text-sm flex-shrink-0`}></i>
+                <span className="truncate">
+                  {activeOffer.offer_type === 'discount'
+                    ? t('property.booking.offerDiscountLabel')
+                    : t('property.booking.offerLabel', { count: offerFreeNights })}{' '}
+                  <span className="notranslate" translate="no">({offerLabel(activeOffer)})</span>
+                </span>
               </span>
               <span className="text-green-600 font-medium whitespace-nowrap notranslate" translate="no">
                 −₾{formatGel(currentPricePerNight * nights - getTotalPrice())}
@@ -539,6 +583,10 @@ export default function BookingWidget({
   calculateNights,
   getTotalPrice,
   activePromo,
+  activeOffer,
+  offerFreeNights = 0,
+  offerApplied = false,
+  offerEarned = false,
   onCaptchaVerify,
   onCaptchaExpire,
   captchaToken,
@@ -589,6 +637,10 @@ export default function BookingWidget({
     calculateNights,
     getTotalPrice,
     activePromo,
+    activeOffer,
+    offerFreeNights,
+    offerApplied,
+    offerEarned,
     onCaptchaVerify,
     onCaptchaExpire,
     captchaToken,
@@ -627,6 +679,22 @@ export default function BookingWidget({
                   <span className="truncate">{t('property.booking.promoActive')}</span>
                 </p>
               )}
+              {/* Offer badge — visible before dates are picked, so the guest
+                  knows a free night is on the table. */}
+              {activeOffer && (
+                <p className="mt-1.5 inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  <i className={activeOffer.offer_type === 'discount' ? 'ri-percent-line' : 'ri-gift-line'}></i>
+                  <span className="notranslate" translate="no">{offerLabel(activeOffer)}</span>
+                  <span className="truncate">
+                    {activeOffer.offer_type === 'discount'
+                      ? t('property.booking.offerDiscountActive')
+                      : t('property.booking.offerActive', {
+                          total: Number(activeOffer.buy_nights) + Number(activeOffer.free_nights),
+                          paid: Number(activeOffer.buy_nights),
+                        })}
+                  </span>
+                </p>
+              )}
             </div>
             <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
               <i className="ri-star-fill text-red-500 mr-1"></i>
@@ -652,6 +720,9 @@ export default function BookingWidget({
                 <span className="notranslate" translate="no">₾{formatGel(getTotalPrice())}</span> {t('property.booking.total').toLowerCase()} · {plural('property.booking.nightsTotal', nights)}
                 {activePromo && (
                   <span className="text-green-600 font-semibold notranslate" translate="no"> · −{activePromo.discount_percent}%</span>
+                )}
+                {offerApplied && activeOffer && (
+                  <span className="text-green-600 font-semibold notranslate" translate="no"> · {offerLabel(activeOffer)}</span>
                 )}
               </p>
             ) : (

@@ -93,6 +93,15 @@ const ka: Messages = {
   },
 
   home: {
+    offersTitle: 'დარჩით მეტ ხანს, გადაიხადეთ ნაკლები',
+    offersSub: 'უფასო ღამეების შეთავაზებები ჩვენი მასპინძლებისგან',
+    offersViewAll: 'ყველას ნახვა →',
+    offersFreeNight: '{count} ღამე უფასოდ',
+    offersFreeNights: '{count} ღამე უფასოდ',
+    offersStayPay: 'დარჩით {total} ღამე, გადაიხადეთ {paid}-ში',
+    offersFrom: 'დან',
+    offersPerNight: '/ ღამე',
+    offersUntil: '{date}-მდე',
     popularDestinations: 'პოპულარული მიმართულებები',
     popularSub: 'აირჩიეთ რეგიონი და აღმოაჩინეთ მისი საუკეთესო კოტეჯები',
     allRegions: 'ყველა რეგიონი →',

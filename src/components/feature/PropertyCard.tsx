@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropertyImageSlider from './PropertyImageSlider';
 import { applyPromoDiscount } from '../../lib/promos';
+import { offerLabel, formatPercent, type CardOffer } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
 
 /** ₾ amounts: whole numbers stay whole, fractional show 2 decimals. */
@@ -27,6 +28,12 @@ interface PropertyCardProps {
    * the card agrees with what checkout actually charges.
    */
   promoPercent?: number | null;
+  /**
+   * The host's own deal on this listing — "2+1" free nights or "−10%" off —
+   * or null when none is live. Shown as its own badge: a host offer is not the
+   * admin's location promo, so it never replaces or merges with that ribbon.
+   */
+  offerNights?: CardOffer | null;
 }
 
 export default function PropertyCard({
@@ -43,6 +50,7 @@ export default function PropertyCard({
   isRealListing,
   coverPosition,
   promoPercent,
+  offerNights,
 }: PropertyCardProps) {
   const { t } = useT();
   const navigate = useNavigate();
@@ -87,6 +95,14 @@ export default function PropertyCard({
           <span className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 bg-[#222] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-full pointer-events-none">
             <i className="ri-verified-badge-fill text-[12px] leading-none"></i>
             {t('search.badgeVerified')}
+          </span>
+        )}
+        {/* Bottom-left: top-left is the verified tag and top-right is the
+            favourite button, so this is the only free corner. */}
+        {offerNights && (
+          <span className="absolute bottom-2.5 left-2.5 z-20 inline-flex items-center gap-1 bg-gradient-to-br from-emerald-600 to-teal-500 text-white text-[12px] font-extrabold px-2.5 py-1 rounded-full pointer-events-none shadow-lg">
+            <i className={`${offerNights.offer_type === 'discount' ? 'ri-percent-fill' : 'ri-gift-fill'} text-[12px] leading-none`}></i>
+            <span className="notranslate" translate="no">{offerLabel(offerNights)}</span>
           </span>
         )}
       </div>
@@ -176,6 +192,18 @@ export default function PropertyCard({
             </span>
           ) : null}
         </div>
+        {/* What the deal actually gets you, in words — the corner badge alone
+            ("2+1") does not tell a first-time guest what to expect. */}
+        {offerNights && (
+          <p className="text-[11.5px] md:text-xs text-emerald-700 font-semibold mt-1 truncate">
+            {offerNights.offer_type === 'discount'
+              ? t('search.offerDiscountLine', { percent: formatPercent(offerNights.discount_percent) })
+              : t('search.offerStayPay', {
+                  total: Number(offerNights.buy_nights) + Number(offerNights.free_nights),
+                  paid: Number(offerNights.buy_nights),
+                })}
+          </p>
+        )}
       </div>
     </div>
   );

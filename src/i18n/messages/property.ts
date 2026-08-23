@@ -140,6 +140,11 @@ export const propertyEn = {
     nightsLine: '₾{price} × {nights} nights',
     promoLabel: 'Promo',
     promoActive: 'discount applied at checkout',
+    offerLabel: '{count} free night(s)',
+    offerActive: 'stay {total}, pay for {paid}',
+    offerDiscountLabel: 'Host offer',
+    offerDiscountActive: 'off your whole stay',
+    offerNotEarned: 'Your dates don’t qualify for this offer yet — try a longer stay or dates inside the offer window.',
     serviceFee: 'Service fee',
     total: 'Total',
     bookBtn: 'Book',
@@ -266,6 +271,25 @@ export const propertyEn = {
     needHelp: 'Need help?',
     contactSupport: 'Contact support',
   },
+
+  activities: {
+    title: 'What this host offers',
+    sub: 'Extras you can add to your stay, arranged and paid directly with the host.',
+    onRequest: 'Price on request',
+    free: 'Free',
+    perPerson: '{amount} per person',
+    perGroup: '{amount} per group',
+    arrangeNote: 'Paid directly to the host, in cash or as you agree with them. These are not part of your booking total and RentCottage never charges you for them.',
+    cat_cooking: 'Cooking',
+    cat_wine: 'Wine',
+    cat_tour: 'Tour',
+    cat_horse: 'Horses',
+    cat_hiking: 'Hiking',
+    cat_spa: 'Spa',
+    cat_transfer: 'Transfer',
+    cat_other: 'Other',
+  },
+
 } as const;
 
 export type PropertyNs = Widen<typeof propertyEn>;
@@ -406,6 +430,11 @@ export const propertyKa: PropertyNs = {
     nightsLine: '₾{price} × {nights} ღამე',
     promoLabel: 'პრომო',
     promoActive: 'ფასდაკლება გამოიყენება გადახდისას',
+    offerLabel: '{count} ღამე უფასოდ',
+    offerActive: 'დარჩით {total}, გადაიხადეთ {paid}-ში',
+    offerDiscountLabel: 'მასპინძლის შეთავაზება',
+    offerDiscountActive: 'მთელ ჯავშანზე',
+    offerNotEarned: 'თქვენი თარიღები ჯერ არ აკმაყოფილებს ამ შეთავაზებას — სცადეთ უფრო ხანგრძლივი ვიზიტი ან შეთავაზების პერიოდში მოქცეული თარიღები.',
     serviceFee: 'მომსახურების საკომისიო',
     total: 'ჯამში',
     bookBtn: 'დაჯავშნე',
@@ -532,6 +561,25 @@ export const propertyKa: PropertyNs = {
     needHelp: 'გჭირდებათ დახმარება?',
     contactSupport: 'დაუკავშირდით მხარდაჭერას',
   },
+
+  activities: {
+    title: 'რას გთავაზობთ მასპინძელი',
+    sub: 'დამატებითი შეთავაზებები თქვენი ვიზიტისთვის — შეთანხმდებით და იხდით პირდაპირ მასპინძელთან.',
+    onRequest: 'ფასი შეთანხმებით',
+    free: 'უფასო',
+    perPerson: '{amount} ერთ პირზე',
+    perGroup: '{amount} ჯგუფზე',
+    arrangeNote: 'გადახდა ხდება პირდაპირ მასპინძელთან, ნაღდი ან თქვენი შეთანხმებით. ჯავშნის ჯამურ ფასში არ შედის და RentCottage ამას არ გახდევინებთ.',
+    cat_cooking: 'კულინარია',
+    cat_wine: 'ღვინო',
+    cat_tour: 'ტური',
+    cat_horse: 'ცხენები',
+    cat_hiking: 'ლაშქრობა',
+    cat_spa: 'სპა',
+    cat_transfer: 'ტრანსფერი',
+    cat_other: 'სხვა',
+  },
+
 };
 
 export const propertyRu: PropertyNs = {
@@ -670,6 +718,11 @@ export const propertyRu: PropertyNs = {
     nightsLine: '₾{price} × {nights} ночей',
     promoLabel: 'Промо',
     promoActive: 'скидка применяется при оформлении',
+    offerLabel: '{count} ноч. бесплатно',
+    offerActive: 'останьтесь {total}, платите за {paid}',
+    offerDiscountLabel: 'Предложение хозяина',
+    offerDiscountActive: 'на всё проживание',
+    offerNotEarned: 'Ваши даты пока не подходят под это предложение — попробуйте более длительное проживание или даты внутри периода предложения.',
     serviceFee: 'Сервисный сбор',
     total: 'Итого',
     bookBtn: 'Забронировать',
@@ -796,4 +849,23 @@ export const propertyRu: PropertyNs = {
     needHelp: 'Нужна помощь?',
     contactSupport: 'Связаться с поддержкой',
   },
+
+  activities: {
+    title: 'Что предлагает хозяин',
+    sub: 'Дополнения к проживанию — договариваетесь и платите напрямую хозяину.',
+    onRequest: 'Цена по запросу',
+    free: 'Бесплатно',
+    perPerson: '{amount} за человека',
+    perGroup: '{amount} за группу',
+    arrangeNote: 'Оплата напрямую хозяину — наличными или как договоритесь. Это не входит в сумму брони, и RentCottage за это не списывает деньги.',
+    cat_cooking: 'Кулинария',
+    cat_wine: 'Вино',
+    cat_tour: 'Тур',
+    cat_horse: 'Лошади',
+    cat_hiking: 'Походы',
+    cat_spa: 'Спа',
+    cat_transfer: 'Трансфер',
+    cat_other: 'Другое',
+  },
+
 };

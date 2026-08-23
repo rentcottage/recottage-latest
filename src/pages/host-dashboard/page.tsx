@@ -12,10 +12,12 @@ import HostReviewsSection from './components/HostReviewsSection';
 import HostBlockedDatesSection from './components/HostBlockedDatesSection';
 import HostCalendarSection from './components/HostCalendarSection';
 import HostICalSection from './components/HostICalSection';
+import HostOffersSection from './components/HostOffersSection';
+import HostActivitiesSection from './components/HostActivitiesSection';
 import { signOutUser } from '../../hooks/useAuth';
 import { useT } from '../../i18n';
 
-type NavSection = 'overview' | 'calendar' | 'bookings' | 'cancelled' | 'properties' | 'dates' | 'earnings' | 'activity' | 'reviews' | 'blocked' | 'ical';
+type NavSection = 'overview' | 'calendar' | 'bookings' | 'cancelled' | 'properties' | 'offers' | 'activities' | 'dates' | 'earnings' | 'activity' | 'reviews' | 'blocked' | 'ical';
 
 interface HostBooking {
   id: string;
@@ -70,6 +72,8 @@ function useNavItems(t: (key: string) => string): { key: NavSection; label: stri
     { key: 'bookings', label: t('host.dashboard.navBookings'), icon: 'ri-calendar-check-line' },
     { key: 'cancelled', label: t('host.dashboard.navCancelled'), icon: 'ri-close-circle-line' },
     { key: 'properties', label: t('host.dashboard.navProperties'), icon: 'ri-home-smile-line' },
+    { key: 'offers', label: t('host.dashboard.navOffers'), icon: 'ri-price-tag-3-line' },
+    { key: 'activities', label: t('host.dashboard.navActivities'), icon: 'ri-sparkling-2-line' },
     { key: 'dates', label: t('host.dashboard.navDates'), icon: 'ri-calendar-2-line' },
     { key: 'earnings', label: t('host.dashboard.navEarnings'), icon: 'ri-money-cny-circle-line' },
     { key: 'reviews', label: t('host.dashboard.navReviews'), icon: 'ri-star-line' },
@@ -179,6 +183,10 @@ function HostDashboardContent() {
         return <HostBookingsSection bookings={bookings} loading={loading} showCancelledOnly hostEmail={user?.email ?? ''} onRefresh={fetchData} />;
       case 'properties':
         return <HostPropertiesSection properties={properties} loading={loading} onRefresh={fetchData} />;
+      case 'offers':
+        return <HostOffersSection properties={properties} loading={loading} />;
+      case 'activities':
+        return <HostActivitiesSection properties={properties} loading={loading} />;
       case 'dates':
         return <HostDateChangeSection bookings={bookings} loading={loading} />;
       case 'earnings':

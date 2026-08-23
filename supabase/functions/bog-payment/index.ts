@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { findActivePromoForLocation, applyPromoDiscount } from '../_shared/promos.ts';
+import { findActiveOfferForStay, applyOfferToTotal, freeNightsFor } from '../_shared/hostOffers.ts';
 import { loadPromoContext, promoNoticeBlock, promoRows, type PromoContext } from '../_shared/promoEmail.ts';
 
 // ── BOG API constants ────────────────────────────────────────────────────
@@ -611,6 +612,7 @@ Deno.serve(async (req: Request) => {
     // the guest is always charged exactly the amount they were shown.
     if (!property_id) return jsonErr('Missing required field: property_id', 400);
     let appliedPromo: { id: string; discount_percent: number } | null = null;
+    let appliedOffer: { id: string; free_nights: number; discount_percent: number | null } | null = null;
     let preDiscountTotal = 0;
     {
       const { data: pricing } = await supabase
@@ -633,20 +635,43 @@ Deno.serve(async (req: Request) => {
       const serverTotal = nightly * nights;
       if (serverTotal <= 0) return jsonErr('Could not determine the booking price.', 400);
 
-      // Promo lookup is fail-safe: any error inside = null = no discount.
-      // The property's own DB location is authoritative, never the client's.
+      // Both discount lookups are fail-safe: any error inside = null = no
+      // discount. The property's own DB row is authoritative, never the client's.
       const promo = await findActivePromoForLocation(supabase, String(pricing.location ?? property_location ?? ''));
-      const discountedTotal = promo ? applyPromoDiscount(serverTotal, promo.discount_percent) : serverTotal;
+      const offer = await findActiveOfferForStay(supabase, String(property_id), nights, String(check_in), String(check_out));
 
-      if (promo && Math.abs(discountedTotal - totalAmount) <= 1) {
-        totalAmount = discountedTotal; // authoritative discounted price
-        appliedPromo = promo;
-        preDiscountTotal = serverTotal;
-      } else if (Math.abs(serverTotal - totalAmount) <= 1) {
-        totalAmount = serverTotal; // authoritative — overrides whatever the client sent
-      } else {
+      // Promos and host offers DO NOT STACK — the guest gets whichever single
+      // discount is worth more, never both. Candidates are checked cheapest
+      // first, and the first one the client's total matches (±1 GEL) is the
+      // one we charge, so the guest always pays exactly what they were shown.
+      // Full price stays a valid candidate: a client that shows no discounts
+      // (feature flag off, cached bundle) must still book without a false
+      // PRICE_MISMATCH.
+      const promoTotal = promo ? applyPromoDiscount(serverTotal, promo.discount_percent) : null;
+      const offerTotal = offer ? applyOfferToTotal(offer, nightly, nights) : null;
+
+      const candidates: Array<{ total: number; promo: typeof promo; offer: typeof offer }> = [
+        ...(promoTotal !== null ? [{ total: promoTotal, promo, offer: null }] : []),
+        ...(offerTotal !== null ? [{ total: offerTotal, promo: null, offer }] : []),
+        { total: serverTotal, promo: null, offer: null },
+      ].sort((a, b) => a.total - b.total);
+
+      const matched = candidates.find((c) => Math.abs(c.total - totalAmount) <= 1);
+      if (!matched) {
         return jsonErr('PRICE_MISMATCH: the price for these dates has changed. Please refresh and try again.', 400);
       }
+      totalAmount = matched.total; // authoritative — overrides whatever the client sent
+      appliedPromo = matched.promo;
+      appliedOffer = matched.offer
+        ? {
+            id: matched.offer.id,
+            free_nights: freeNightsFor(matched.offer, nights),
+            discount_percent: matched.offer.offer_type === 'discount'
+              ? Number(matched.offer.discount_percent)
+              : null,
+          }
+        : null;
+      preDiscountTotal = (matched.promo || matched.offer) ? serverTotal : 0;
     }
 
     const chosenMethod = String(payment_method ?? 'pay_now');
@@ -706,7 +731,10 @@ Deno.serve(async (req: Request) => {
           corporate_id: resolvedCorporateId,
           promo_id: appliedPromo?.id ?? null,
           promo_discount_percent: appliedPromo?.discount_percent ?? null,
-          pre_discount_total: appliedPromo ? preDiscountTotal : null,
+          pre_discount_total: (appliedPromo || appliedOffer) ? preDiscountTotal : null,
+          host_offer_id: appliedOffer?.id ?? null,
+          host_offer_free_nights: appliedOffer?.free_nights ?? null,
+          host_offer_discount_percent: appliedOffer?.discount_percent ?? null,
         })
         .select().maybeSingle();
 
@@ -758,7 +786,10 @@ Deno.serve(async (req: Request) => {
         corporate_id: resolvedCorporateId,
         promo_id: appliedPromo?.id ?? null,
         promo_discount_percent: appliedPromo?.discount_percent ?? null,
-        pre_discount_total: appliedPromo ? preDiscountTotal : null,
+        pre_discount_total: (appliedPromo || appliedOffer) ? preDiscountTotal : null,
+        host_offer_id: appliedOffer?.id ?? null,
+        host_offer_free_nights: appliedOffer?.free_nights ?? null,
+        host_offer_discount_percent: appliedOffer?.discount_percent ?? null,
       })
       .select().maybeSingle();
 

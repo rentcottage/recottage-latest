@@ -10,6 +10,7 @@ import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
 import { titleMatches } from '../../lib/propertyNameSearch';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
+import { fetchOfferedProperties, type OfferByProperty } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
 
 // Georgian regions for the Region filter. Values stay in English — they're
@@ -101,12 +102,22 @@ export default function SearchResults() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
   const [activePromos, setActivePromos] = useState<Promo[]>([]);
+  const [offeredProperties, setOfferedProperties] = useState<OfferByProperty>({});
 
   // Offers & Promos — dormant until FEATURE_FLAGS.ENABLE_PROMOS is flipped on.
   useEffect(() => {
     if (!FEATURE_FLAGS.ENABLE_PROMOS) return;
     let cancelled = false;
     fetchActivePromos().then((p) => { if (!cancelled) setActivePromos(p); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Free-night offers, keyed by property — powers both the `?offers=1` filter
+  // and the badge stamped on every card that has one.
+  useEffect(() => {
+    if (!FEATURE_FLAGS.ENABLE_HOST_OFFERS) return;
+    let cancelled = false;
+    fetchOfferedProperties().then((o) => { if (!cancelled) setOfferedProperties(o); });
     return () => { cancelled = true; };
   }, []);
 
@@ -117,6 +128,10 @@ export default function SearchResults() {
   const typesParam = searchParams.get('types') || '';
   const regionsParam = searchParams.get('regions') || '';
   const priceParam = searchParams.get('price');
+  /** `?offers=1` — the hero's "Stay longer, pay less" pill lands here. */
+  const offersOnly = searchParams.get('offers') === '1';
+  /** `?promos=1` — the deal chip for location discounts. */
+  const promosOnly = searchParams.get('promos') === '1';
 
   // Memoized so their array identity is stable across renders (keeps the filter effect from looping)
   const selectedAmenities = useMemo(() => (amenitiesParam ? amenitiesParam.split(',') : []), [amenitiesParam]);
@@ -244,6 +259,19 @@ export default function SearchResults() {
       );
     }
 
+    // Filter to cottages carrying a live free-night offer (`?offers=1`).
+    // Waits for the lookup to land: filtering against an empty map would flash
+    // "no results" before the offers arrive.
+    if (offersOnly && Object.keys(offeredProperties).length > 0) {
+      filtered = filtered.filter(property => Boolean(offeredProperties[property.id]));
+    }
+
+    // Filter to cottages covered by an active location discount (`?promos=1`).
+    // Same wait-for-the-lookup rule as offers above.
+    if (promosOnly && activePromos.length > 0) {
+      filtered = filtered.filter(property => Boolean(findPromoForLocation(activePromos, property.location)));
+    }
+
     // ── Sort the ENTIRE filtered set BEFORE pagination ──
     // This ensures "Load More" always continues from the globally sorted list.
     switch (sortBy) {
@@ -273,7 +301,7 @@ export default function SearchResults() {
     // Store the full sorted+filtered set; reset display slice to first page
     setSortedFilteredProperties(filtered);
     setCurrentPage(1);
-  }, [location, guests, category, priceRange, maxPrice, selectedAmenities, selectedPropertyTypes, selectedRegions, sortBy, dbProperties]);
+  }, [location, guests, category, priceRange, maxPrice, selectedAmenities, selectedPropertyTypes, selectedRegions, sortBy, dbProperties, offersOnly, offeredProperties, promosOnly, activePromos]);
 
   // ── Facet counts (REAL data) ──────────────────────────────────────────────
   // How many listings each option would match, using the same predicates the
@@ -488,6 +516,39 @@ export default function SearchResults() {
                 </button>
               );
             })}
+
+            {/* Deal chips. Kept in the same row as the amenity chips so that
+                clearing the filters still leaves a visible way back to the
+                deals, but coloured green rather than red — they filter by
+                price advantage, not by feature. Each renders only when that
+                kind of deal actually exists, so a chip can never lead to an
+                empty result set. */}
+            {FEATURE_FLAGS.ENABLE_PROMOS && activePromos.length > 0 && (
+              <button
+                onClick={() => updateFilterParam('promos', promosOnly ? '' : '1')}
+                className={`shrink-0 inline-flex items-center gap-1.5 border-[1.5px] rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  promosOnly
+                    ? 'bg-green-600 border-green-600 text-white'
+                    : 'bg-white border-green-500 text-green-700 hover:bg-green-50'
+                }`}
+              >
+                <i className="ri-price-tag-3-line text-[15px]"></i>
+                {t('search.chipPromos')}
+              </button>
+            )}
+            {FEATURE_FLAGS.ENABLE_HOST_OFFERS && Object.keys(offeredProperties).length > 0 && (
+              <button
+                onClick={() => updateFilterParam('offers', offersOnly ? '' : '1')}
+                className={`shrink-0 inline-flex items-center gap-1.5 border-[1.5px] rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  offersOnly
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'bg-white border-emerald-500 text-emerald-700 hover:bg-emerald-50'
+                }`}
+              >
+                <i className="ri-gift-line text-[15px]"></i>
+                {t('search.chipOffers')}
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -542,30 +603,6 @@ export default function SearchResults() {
             })()}
           </div>
         </div>
-
-        {/* Active promo for the searched location — discount auto-applies at checkout */}
-        {FEATURE_FLAGS.ENABLE_PROMOS && location && (() => {
-          const searchPromo = findPromoForLocation(activePromos, location);
-          if (!searchPromo) return null;
-          return (
-            <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3.5 mb-6">
-              <div className="flex-shrink-0 w-9 h-9 bg-green-500 rounded-lg flex items-center justify-center">
-                <i className="ri-price-tag-3-line text-white text-lg"></i>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-green-800 leading-snug">
-                  −{searchPromo.discount_percent}% · {searchPromo.title}
-                </p>
-                <p className="text-xs text-green-700 mt-0.5 leading-snug">
-                  {t('search.promoNote')}
-                  {searchPromo.ends_at && (
-                    <> · {t('search.promoUntil', { date: new Date(searchPromo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) })}</>
-                  )}
-                </p>
-              </div>
-            </div>
-          );
-        })()}
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar — Desktop only */}
@@ -719,6 +756,67 @@ export default function SearchResults() {
               </div>
             </div>
 
+            {/* Deal banners. They live INSIDE the results column, below the
+                sort row: the column carries lg:-mt-16 to lift that row up
+                beside the page heading, and a full-width banner above it
+                landed underneath the sort control.
+
+                One flex row so both deals sit side by side, each only as wide
+                as its own text. They wrap to their own line on narrow screens,
+                and a lone banner simply takes the width it needs. */}
+            <div className="flex flex-wrap items-stretch gap-3 mb-6 empty:hidden">
+            {FEATURE_FLAGS.ENABLE_PROMOS && (location || promosOnly) && (() => {
+              // With a location, the promo covering it; with only the chip on,
+              // the best active promo (fetchActivePromos sorts best-first).
+              const searchPromo = location
+                ? findPromoForLocation(activePromos, location)
+                : activePromos[0] ?? null;
+              if (!searchPromo) return null;
+              return (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                    <i className="ri-price-tag-3-line text-white text-base"></i>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-green-800 leading-snug">
+                      −{searchPromo.discount_percent}% · {searchPromo.title}
+                    </p>
+                    <p className="text-xs text-green-700 mt-0.5 leading-snug">
+                      {t('search.promoNote')}
+                      {searchPromo.ends_at && (
+                        <> · {t('search.promoUntil', { date: new Date(searchPromo.ends_at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) })}</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* `?offers=1` is on — say so, and give a one-click way back out. */}
+            {FEATURE_FLAGS.ENABLE_HOST_OFFERS && offersOnly && (
+              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                  <i className="ri-gift-line text-white text-base"></i>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-emerald-800 leading-snug">{t('search.offersFilterTitle')}</p>
+                  <p className="text-xs text-emerald-700 mt-0.5 leading-snug">{t('search.offersFilterSub')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('offers');
+                    setSearchParams(next);
+                  }}
+                  className="flex-shrink-0 ml-1 text-xs font-bold text-emerald-800 underline hover:no-underline cursor-pointer whitespace-nowrap"
+                >
+                  {t('search.offersFilterClear')}
+                </button>
+              </div>
+            )}
+            </div>
+
             {/* Results Grid */}
             {filteredProperties.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[22px]">
@@ -727,6 +825,7 @@ export default function SearchResults() {
                     key={property.id}
                     {...property}
                     promoPercent={findPromoForLocation(activePromos, property.location)?.discount_percent ?? null}
+                    offerNights={offeredProperties[property.id] ?? null}
                   />
                 ))}
               </div>

@@ -96,6 +96,15 @@ const en = {
   },
 
   home: {
+    offersTitle: 'Stay longer, pay less',
+    offersSub: 'Free-night deals from our hosts — stay the nights, skip the bill',
+    offersViewAll: 'View all →',
+    offersFreeNight: '{count} night free',
+    offersFreeNights: '{count} nights free',
+    offersStayPay: 'Stay {total} nights, pay for {paid}',
+    offersFrom: 'from',
+    offersPerNight: '/ night',
+    offersUntil: 'until {date}',
     popularDestinations: 'Popular destinations',
     popularSub: 'Pick a region and discover its best cottages',
     allRegions: 'All regions →',

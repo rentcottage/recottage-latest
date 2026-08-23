@@ -8,11 +8,13 @@ import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
+import { fetchOfferedProperties, type OfferByProperty } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
 
 export default function HomePage() {
   const { t } = useT();
   const [promos, setPromos] = useState<Promo[]>([]);
+  const [offeredProperties, setOfferedProperties] = useState<OfferByProperty>({});
 
   // Active promos, used to stamp the discount badge on matching cottage cards.
   // The hero banner (HeroPromoBanner) fetches its own copy; both hit the same
@@ -21,6 +23,15 @@ export default function HomePage() {
     if (!FEATURE_FLAGS.ENABLE_PROMOS) return;
     let cancelled = false;
     fetchActivePromos().then((p) => { if (!cancelled) setPromos(p); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Free-night offers, for the badge on featured cards. The hero pill fetches
+  // its own copy; both hit the same fail-safe lookup, which returns {} on error.
+  useEffect(() => {
+    if (!FEATURE_FLAGS.ENABLE_HOST_OFFERS) return;
+    let cancelled = false;
+    fetchOfferedProperties().then((o) => { if (!cancelled) setOfferedProperties(o); });
     return () => { cancelled = true; };
   }, []);
 
@@ -190,6 +201,7 @@ export default function HomePage() {
                 key={property.id}
                 {...property}
                 promoPercent={findPromoForLocation(promos, property.location)?.discount_percent ?? null}
+                offerNights={offeredProperties[property.id] ?? null}
               />
             ))}
           </div>
