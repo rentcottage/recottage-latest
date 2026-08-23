@@ -146,14 +146,22 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
-            { name: 'Adjara', nameKey: 'home.regionAdjara', tagKey: 'home.regionAdjaraTag', img: '/redesign/region-adjara.jpg' },
-            { name: 'Racha', nameKey: 'home.regionRacha', tagKey: 'home.regionRachaTag', img: '/redesign/region-racha.jpg' },
-            { name: 'Kakheti', nameKey: 'home.regionKakheti', tagKey: 'home.regionKakhetiTag', img: '/redesign/region-kakheti.jpg' },
+            // `region` (when set) filters by region — the same filter as the search
+            // page checkbox, so a cottage counts as Racha even when its saved
+            // location only names the village. Kazbegi is a town, not a region,
+            // so it stays a plain location search.
+            { name: 'Adjara', region: 'Adjara', nameKey: 'home.regionAdjara', tagKey: 'home.regionAdjaraTag', img: '/redesign/region-adjara.jpg' },
+            { name: 'Racha', region: 'Racha-Lechkhumi', nameKey: 'home.regionRacha', tagKey: 'home.regionRachaTag', img: '/redesign/region-racha.jpg' },
+            { name: 'Kakheti', region: 'Kakheti', nameKey: 'home.regionKakheti', tagKey: 'home.regionKakhetiTag', img: '/redesign/region-kakheti.jpg' },
             { name: 'Kazbegi', nameKey: 'home.regionKazbegi', tagKey: 'home.regionKazbegiTag', img: '/redesign/region-kazbegi.jpg' },
-          ].map((region) => (
+          ].map((region: { name: string; region?: string; nameKey: string; tagKey: string; img: string }) => (
             <button
               key={region.name}
-              onClick={() => navigate(`/search?location=${encodeURIComponent(region.name)}`)}
+              onClick={() => navigate(
+                region.region
+                  ? `/search?regions=${encodeURIComponent(region.region)}`
+                  : `/search?location=${encodeURIComponent(region.name)}`
+              )}
               className="group relative rounded-card overflow-hidden h-44 md:h-52 flex items-end text-left p-4 shadow-card hover:-translate-y-1 transition-transform duration-200 cursor-pointer"
               style={{ backgroundImage: `url('${region.img}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             >

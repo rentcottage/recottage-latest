@@ -144,7 +144,8 @@ export const EN_TO_KA: Record<string, string[]> = {
   ureki: ['ურეკი'],
   shuakhevi: ['შუახევი'],
   khulo: ['ხულო'],
-  keda: ['კედა'],
+  keda: ['ქედა'],
+  qeda: ['ქედა'],
   mtirala: ['მტირალა'],
   kintrishi: ['კინტრიში'],
   didachara: ['დიდაჭარა'],
@@ -228,7 +229,6 @@ export const EN_TO_KA: Record<string, string[]> = {
   poti: ['ფოთი'],
   imerula: ['იმერულა'],
   kvirila: ['კვირილა'],
-  tskhvarichamia: ['წყვარიჭამია'],
   sataplia: ['სათაფლია'],
   'prometheus cave area': ['პრომეთეს მღვიმე'],
   katskhi: ['კაცხი'],
@@ -525,6 +525,23 @@ export const EN_TO_KA: Record<string, string[]> = {
   'shuakhevi village': ['შუახევის სოფელი'],
   'akhalsopeli': ['ახალსოფელი'],
   'tskhinvali district': ['ცხინვალის რაიონი'],
+
+  // ── VILLAGES APPEARING IN LIVE LISTINGS ──────────────────────────────────
+  chkhutuneti: ['ჩხუტუნეთი'],
+  chxutuneti: ['ჩხუტუნეთი'],
+  vaio: ['ვაიო'],
+  bakhmaro: ['ბახმარო'],
+  buknari: ['ბუკნარი'],
+  sabue: ['საბუე'],
+  shalauri: ['შალაური'],
+  pankisi: ['პანკისი'],
+  birkiani: ['ბირკიანი'],
+  bazaleti: ['ბაზალეთი'],
+  tskhvarichamia: ['ცხვარიჭამია'],
+  shkmeri: ['შქმერი'],
+  ghari: ['ღარი'],
+  dziraguli: ['ძირაგეული'],
+  'zemo kvishiani': ['ზემო ქვიშიანი'],
 };
 
 /** Reverse map: Georgian (lowercase) → canonical English key */
@@ -639,6 +656,7 @@ export const CITY_TO_REGION: Record<string, string> = {
   shuakhevi: 'adjara',
   khulo: 'adjara',
   keda: 'adjara',
+  qeda: 'adjara',
   mtirala: 'adjara',
   kintrishi: 'adjara',
   didachara: 'adjara',
@@ -721,7 +739,6 @@ export const CITY_TO_REGION: Record<string, string> = {
   poti: 'imereti',
   imerula: 'imereti',
   kvirila: 'imereti',
-  tskhvarichamia: 'imereti',
   sataplia: 'imereti',
   'prometheus cave area': 'imereti',
   katskhi: 'imereti',
@@ -1013,6 +1030,23 @@ export const CITY_TO_REGION: Record<string, string> = {
   pitsunda: 'abkhazia',
   psou: 'abkhazia',
   gantiadi: 'abkhazia',
+
+  // ── VILLAGES APPEARING IN LIVE LISTINGS ──────────────────────────────────
+  chkhutuneti: 'adjara',
+  chxutuneti: 'adjara',
+  vaio: 'adjara',
+  bakhmaro: 'guria',
+  buknari: 'guria',
+  sabue: 'kakheti',
+  shalauri: 'kakheti',
+  pankisi: 'kakheti',
+  birkiani: 'kakheti',
+  bazaleti: 'mtskheta-mtianeti',
+  tskhvarichamia: 'mtskheta-mtianeti',
+  shkmeri: 'racha-lechkhumi',
+  ghari: 'racha-lechkhumi',
+  dziraguli: 'racha-lechkhumi',
+  'zemo kvishiani': 'kvemo kartli',
 };
 
 /**
@@ -1059,6 +1093,23 @@ function containsWholeWord(haystack: string, needle: string): boolean {
 }
 
 /**
+ * Georgian writes "<city> district / municipality" by putting the city in the
+ * genitive: "ონი" -> "ონის რაიონი", "ამბროლაური" -> "ამბროლაურის მუნიციპალიტეტი".
+ * Hosts type it that way, so drop the administrative word and the trailing
+ * genitive "ს" to recover the bare city name the dictionaries are keyed on.
+ * Also drops the "სოფელი / სოფ." ("village") prefix for the same reason.
+ */
+function stripGeorgianAdminSuffix(part: string): string {
+  const stripped = part
+    .replace(/\s*(რაიონი|მუნიციპალიტეტი|მხარე)\s*$/u, '')
+    .replace(/^\s*(სოფელი|სოფ\.|სოფ|დაბა|ქალაქი|ქ\.)\s+/u, '')
+    .trim();
+  if (stripped === part) return part;
+  // Genitive "ს" — only drop it when a plausible stem is left behind.
+  return stripped.length > 3 && stripped.endsWith('ს') ? stripped.slice(0, -1) : stripped;
+}
+
+/**
  * Given a property location string (e.g. "Telavi, Kakheti" or "თელავი" or "Telavi"),
  * returns the canonical region key (e.g. "kakheti") if it can be determined.
  * Returns null if no region can be inferred.
@@ -1067,7 +1118,10 @@ function inferRegionFromLocation(propertyLocation: string): string | null {
   const propLower = normalizeSpacing(propertyLocation.toLowerCase().trim());
 
   // Split by comma — try each part as a city or region name
-  const parts = propLower.split(',').map(p => normalizeSpacing(p.trim()));
+  const parts = propLower
+    .split(',')
+    .map(p => normalizeSpacing(p.trim()))
+    .map(stripGeorgianAdminSuffix);
 
   for (const part of parts) {
     if (!part) continue;
