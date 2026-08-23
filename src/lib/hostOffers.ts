@@ -223,6 +223,29 @@ export async function fetchOffersForProperty(propertyId: string): Promise<HostOf
 
 /** The deal to advertise on a property's card. */
 export type CardOffer = Pick<HostOffer, 'offer_type' | 'buy_nights' | 'free_nights' | 'discount_percent'>;
+
+/** Card fields plus the stay window, which the booking widget also shows. */
+export type WidgetOffer = CardOffer & Pick<HostOffer, 'starts_at' | 'ends_at'>;
+
+/**
+ * The offer's stay window as a short label ("1 – 8 Sep"), or null when the
+ * offer is open-ended in both directions and there is nothing to say.
+ *
+ * Deliberately terse: it sits beside the deal badge on the cottage page, where
+ * a guest needs to know at a glance whether their dates are in range.
+ */
+export function offerWindowParts(
+  offer: Pick<HostOffer, 'starts_at' | 'ends_at'>,
+): { kind: 'between' | 'from' | 'until'; from?: string; to?: string; date?: string } | null {
+  const short = (d: string) =>
+    new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  if (offer.starts_at && offer.ends_at) {
+    return { kind: 'between', from: short(offer.starts_at), to: short(offer.ends_at) };
+  }
+  if (offer.starts_at) return { kind: 'from', date: short(offer.starts_at) };
+  if (offer.ends_at) return { kind: 'until', date: short(offer.ends_at) };
+  return null;
+}
 export type OfferByProperty = Record<string, CardOffer>;
 
 /**

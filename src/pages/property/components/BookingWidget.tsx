@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 import { useT } from '@/i18n';
-import { offerLabel, type CardOffer } from '@/lib/hostOffers';
+import { offerLabel, offerWindowParts, type WidgetOffer } from '@/lib/hostOffers';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
@@ -58,7 +58,7 @@ interface BookingWidgetProps {
   /** Active location promo — adds a discount line to the price breakdown. */
   activePromo?: { title: string; discount_percent: number } | null;
   /** The host's own offer for this stay — "2+1" nights or "−10%" — for the badge. */
-  activeOffer?: CardOffer | null;
+  activeOffer?: WidgetOffer | null;
   /** Nights the offer makes free — 0 for a discount offer, or when it doesn't win. */
   offerFreeNights?: number;
   /** The offer is the discount actually being charged (not just advertised). */
@@ -106,7 +106,7 @@ interface BookingFormProps {
   calculateNights: () => number;
   getTotalPrice: () => number;
   activePromo?: { title: string; discount_percent: number } | null;
-  activeOffer?: CardOffer | null;
+  activeOffer?: WidgetOffer | null;
   offerFreeNights?: number;
   offerApplied?: boolean;
   offerEarned?: boolean;
@@ -681,20 +681,40 @@ export default function BookingWidget({
               )}
               {/* Offer badge — visible before dates are picked, so the guest
                   knows a free night is on the table. */}
-              {activeOffer && (
-                <p className="mt-1.5 inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-1 rounded-full">
-                  <i className={activeOffer.offer_type === 'discount' ? 'ri-percent-line' : 'ri-gift-line'}></i>
-                  <span className="notranslate" translate="no">{offerLabel(activeOffer)}</span>
-                  <span className="truncate">
-                    {activeOffer.offer_type === 'discount'
-                      ? t('property.booking.offerDiscountActive')
-                      : t('property.booking.offerActive', {
-                          total: Number(activeOffer.buy_nights) + Number(activeOffer.free_nights),
-                          paid: Number(activeOffer.buy_nights),
-                        })}
+              {activeOffer && (() => {
+                const win = offerWindowParts(activeOffer);
+                return (
+                  <span className="block mt-1.5">
+                    <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-1 rounded-full max-w-full">
+                      <i className={activeOffer.offer_type === 'discount' ? 'ri-percent-line' : 'ri-gift-line'}></i>
+                      {/* "2+1, 1 night free" — the label carries the shape, the
+                          text says what the guest actually gets. */}
+                      <span className="notranslate" translate="no">
+                        {offerLabel(activeOffer)}{activeOffer.offer_type === 'discount' ? '' : ','}
+                      </span>
+                      <span className="truncate">
+                        {activeOffer.offer_type === 'discount'
+                          ? t('property.booking.offerDiscountActive')
+                          : plural('property.booking.offerNightsFree', Number(activeOffer.free_nights))}
+                      </span>
+                    </span>
+                    {/* When the deal only runs for part of the calendar, say so
+                        right here — a guest must not have to guess their dates. */}
+                    {win && (
+                      <span className="flex items-center gap-1 mt-1 text-[11.5px] text-gray-500">
+                        <i className="ri-calendar-line"></i>
+                        <span className="notranslate" translate="no">
+                          {win.kind === 'between'
+                            ? t('property.booking.offerWindowBetween', { from: win.from!, to: win.to! })
+                            : win.kind === 'from'
+                            ? t('property.booking.offerWindowFrom', { date: win.date! })
+                            : t('property.booking.offerWindowUntil', { date: win.date! })}
+                        </span>
+                      </span>
+                    )}
                   </span>
-                </p>
-              )}
+                );
+              })()}
             </div>
             <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
               <i className="ri-star-fill text-red-500 mr-1"></i>
