@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, type Promo } from '../../lib/promos';
 import { fetchOfferedProperties } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
+import { localizePlace } from '../../lib/locationNormalizer';
 
 /**
  * The hero's deal row — the first thing a guest sees, directly under the
@@ -19,7 +20,7 @@ import { useT } from '../../i18n';
  * only promos live it looks exactly as it did before the offers pill existed.
  */
 export default function HeroPromoBanner() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const navigate = useNavigate();
   const [promos, setPromos] = useState<Promo[]>([]);
   const [hasOffers, setHasOffers] = useState(false);
@@ -87,8 +88,17 @@ export default function HeroPromoBanner() {
           <span className="flex-shrink-0 bg-white/25 border border-white/30 text-white font-extrabold text-xs sm:text-[15px] rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 notranslate" translate="no">
             −{promo.discount_percent}%
           </span>
+          {/* Built from the promo's own numbers rather than the title the admin
+              typed: that title is free text in one language (Georgian, in
+              practice) and stayed Georgian when the reader switched to English
+              or Russian. The percent and the location are structured data, so
+              the label can be phrased in whatever language is being read. The
+              admin's wording is still on the tooltip. */}
           <span className="text-white font-bold text-[11px] sm:text-[15px] leading-snug truncate min-w-0">
-            {promo.title}
+            {t('home.promoLabel', {
+              percent: promo.discount_percent,
+              location: localizePlace(promo.location, lang),
+            })}
           </span>
           <i className="ri-arrow-right-line text-white/85 text-lg flex-shrink-0 hidden sm:inline-block"></i>
         </button>

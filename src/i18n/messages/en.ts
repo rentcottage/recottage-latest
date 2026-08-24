@@ -109,6 +109,7 @@ const en = {
     popularSub: 'Pick a region and discover its best cottages',
     allRegions: 'All regions →',
     offerUntil: 'until {date}',
+    promoLabel: '{percent}% off cottages — {location}',
     featured: 'Featured cottages',
     featuredSub: 'Top-rated cottages this week',
     viewAll: 'View all →',

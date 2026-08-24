@@ -6,7 +6,7 @@ import PropertyCard from '../../components/feature/PropertyCard';
 import SearchBar from '../../components/feature/SearchBar';
 import SEO from '../../components/feature/SEO';
 import { useApprovedProperties } from '../../hooks/useApprovedProperties';
-import { locationMatches, regionMatches } from '../../lib/locationNormalizer';
+import { locationMatches, regionMatches, localizePlace } from '../../lib/locationNormalizer';
 import { titleMatches } from '../../lib/propertyNameSearch';
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
@@ -88,7 +88,7 @@ const TYPE_LABEL_KEY: Record<string, string> = {
 };
 
 export default function SearchResults() {
-  const { t, plural } = useT();
+  const { t, plural, lang } = useT();
   const [searchParams, setSearchParams] = useSearchParams();
   const { dbProperties, loading: dbLoading } = useApprovedProperties();
 
@@ -844,7 +844,7 @@ export default function SearchResults() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-green-800 leading-snug">
-                      −{searchPromo.discount_percent}% · {searchPromo.title}
+                      −{searchPromo.discount_percent}% · {t('home.promoLabel', { percent: searchPromo.discount_percent, location: localizePlace(searchPromo.location, lang) })}
                     </p>
                     <p className="text-xs text-green-700 mt-0.5 leading-snug">
                       {t('search.promoNote')}

@@ -1262,10 +1262,8 @@ export function filterCitiesBilingual(
  * unmapped village still renders its name rather than disappearing.
  */
 export function localizePlace(name: string, lang: string): string {
-  if (lang !== 'ka' || !name) return name;
-
-  const direct = EN_TO_KA[name.trim().toLowerCase()];
-  if (direct?.[0]) return direct[0];
+  if (!name) return name;
+  const key = name.trim().toLowerCase();
 
   // "Telavi, Kakheti" — translate each part and keep the punctuation.
   if (name.includes(',')) {
@@ -1274,6 +1272,22 @@ export function localizePlace(name: string, lang: string): string {
       .map((part) => localizePlace(part.trim(), lang))
       .join(', ');
   }
+
+  if (lang === 'ka') {
+    const ka = EN_TO_KA[key];
+    return ka?.[0] ?? name;
+  }
+
+  // Reading in English or Russian. Places are stored either way round — the
+  // city catalogue is English, but admin- and host-entered locations are
+  // usually Georgian — so a Georgian name has to be mapped back, or an English
+  // reader is left looking at Georgian script.
+  //
+  // Russian falls through to the English (Latin) form: there is no Cyrillic
+  // name list, and a transliterated name is far more use to a Russian reader
+  // than Georgian script.
+  const en = KA_TO_EN[key];
+  if (en) return en.replace(/\b\w/g, (c) => c.toUpperCase());
 
   return name;
 }

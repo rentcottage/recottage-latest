@@ -106,6 +106,7 @@ const ka: Messages = {
     popularSub: 'აირჩიეთ რეგიონი და აღმოაჩინეთ მისი საუკეთესო კოტეჯები',
     allRegions: 'ყველა რეგიონი →',
     offerUntil: '{date}-მდე',
+    promoLabel: '{percent}% ფასდაკლება კოტეჯებზე — {location}',
     featured: 'გამორჩეული კოტეჯები',
     featuredSub: 'ამ კვირის საუკეთესო კოტეჯები',
     viewAll: 'ყველას ნახვა →',

@@ -106,6 +106,7 @@ const ru: Messages = {
     popularSub: 'Выберите регион и откройте его лучшие коттеджи',
     allRegions: 'Все регионы →',
     offerUntil: 'до {date}',
+    promoLabel: '{percent}% скидка на коттеджи — {location}',
     featured: 'Избранные коттеджи',
     featuredSub: 'Лучшие коттеджи этой недели',
     viewAll: 'Показать все →',
