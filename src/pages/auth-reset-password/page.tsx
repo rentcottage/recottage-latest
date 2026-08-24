@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
-import { supabase } from '../../lib/supabase';
+import { supabase, initialUrlHash, initialStoredAccessToken } from '../../lib/supabase';
 import { useT } from '../../i18n';
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
@@ -22,35 +22,73 @@ export default function ResetPassword() {
   const captchaRef = useRef<HCaptchaLib>(null);
 
   useEffect(() => {
-    // Supabase automatically parses the hash tokens and emits PASSWORD_RECOVERY
+    // `initialUrlHash` is captured at import time, BEFORE supabase-js consumes
+    // and strips the fragment. Reading window.location.hash here would race the
+    // SDK — it usually loses, which is why valid links intermittently reported
+    // themselves as expired and only worked after a few attempts.
+    const params = new URLSearchParams(initialUrlHash.replace(/^#/, ''));
+    const recoveryToken = params.get('access_token');
+    const linkError = params.get('error_description') ?? params.get('error');
+
+    let settled = false;
+    const settle = (state: PageState) => {
+      if (settled) return;
+      settled = true;
+      setPageState(state);
+    };
+
+    // Supabase reports a dead link in the fragment itself — no need to wait.
+    if (linkError) {
+      settle('error');
+      return;
+    }
+    // Supabase's PKCE-style links carry `?code=` instead of a token fragment.
+    // Today's email template uses the fragment, but if that ever changes this
+    // keeps the page waiting for the session rather than declaring the link
+    // dead on arrival.
+    const pkceCode = new URLSearchParams(window.location.search).get('code');
+
+    // Opened without any credential at all (bookmarked, refreshed after the
+    // hash was stripped, or linked to directly).
+    if (!recoveryToken && !pkceCode) {
+      settle('error');
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setPageState('ready');
-      }
+      if (event === 'PASSWORD_RECOVERY') settle('ready');
     });
 
-    // Also check if there's already a session (token already exchanged)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        // Check URL hash for type=recovery token before deciding state
-        const hash = window.location.hash;
-        if (hash.includes('type=recovery') || hash.includes('access_token')) {
-          setPageState('ready');
-        }
+    // The event above is missed whenever the SDK processes the URL before this
+    // component subscribes, so confirm independently: the ACTIVE session must be
+    // the one minted from this link. Comparing the tokens is what rules out the
+    // stale-session case — an already-logged-in visitor whose recovery token was
+    // rejected used to reach the form and then fail on save with "Current
+    // password required when setting new password".
+    const started = Date.now();
+    const poll = window.setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      // Ready once the live session demonstrably came from THIS link: either it
+      // carries the token the link supplied, or it replaced whatever session the
+      // visitor arrived with. Both readings are needed because supabase-js may
+      // hand the link's token straight through or mint a fresh one; what matters
+      // is only that the session isn't the stale pre-existing one.
+      const fromThisLink =
+        !!session &&
+        (session.access_token === recoveryToken ||
+          session.access_token !== initialStoredAccessToken);
+      if (fromThisLink) {
+        settle('ready');
+        window.clearInterval(poll);
+      } else if (Date.now() - started > 8000) {
+        settle('error');
+        window.clearInterval(poll);
       }
-    });
-
-    // Safety timeout — if no event fires after 8 seconds, show error
-    const timer = setTimeout(() => {
-      setPageState((prev) => {
-        if (prev === 'loading') return 'error';
-        return prev;
-      });
-    }, 8000);
+    }, 150);
 
     return () => {
       subscription.unsubscribe();
-      clearTimeout(timer);
+      window.clearInterval(poll);
     };
   }, []);
 
@@ -75,7 +113,12 @@ export default function ResetPassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
-        setFormError(error.message);
+        // Supabase demands the current password when the session isn't a
+        // recovery one ("Secure password change"). Raw, that reads as though the
+        // user forgot to fill a field that isn't on screen — the real remedy is
+        // a fresh link.
+        const stale = /current password|reauthentication/i.test(error.message);
+        setFormError(stale ? t('account.authResetPassword.staleLinkError') : error.message);
         captchaRef.current?.resetCaptcha();
         setCaptchaToken('');
         return;

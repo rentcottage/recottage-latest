@@ -25,7 +25,6 @@ export const georgianCities = [
   { name: 'Makhinjauri', region: 'Adjara' },
   { name: 'Tsikhisdziri', region: 'Adjara' },
   { name: 'Ureki', region: 'Adjara' },
-  { name: 'Shuakhevi', region: 'Adjara' },
   { name: 'Khulo', region: 'Adjara' },
   { name: 'Keda', region: 'Adjara' },
   { name: 'Shuakhevi', region: 'Adjara' },
@@ -102,12 +101,10 @@ export const georgianCities = [
   { name: 'Kakhati', region: 'Imereti' },
   { name: 'Tskaltubo', region: 'Imereti' },
   { name: 'Meore Sviri', region: 'Imereti' },
-  { name: 'Poti', region: 'Imereti' },
 
   // === KAKHETI ===
   { name: 'Telavi', region: 'Kakheti' },
   { name: 'Signagi', region: 'Kakheti' },
-  { name: 'Kvareli', region: 'Kakheti' },
   { name: 'Gurjaani', region: 'Kakheti' },
   { name: 'Sagarejo', region: 'Kakheti' },
   { name: 'Lagodekhi', region: 'Kakheti' },

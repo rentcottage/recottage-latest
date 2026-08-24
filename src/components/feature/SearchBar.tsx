@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { georgianCities } from '../../mocks/georgian-cities';
-import { filterCitiesBilingual } from '../../lib/locationNormalizer';
+import { filterCitiesBilingual, localizePlace } from '../../lib/locationNormalizer';
 import { filterPropertiesByName } from '../../lib/propertyNameSearch';
 import { useCottageIndex } from '../../hooks/useCottageIndex';
 import { useT } from '../../i18n';
 
 export default function SearchBar() {
-  const { t, plural } = useT();
+  const { t, plural, lang } = useT();
   const [showWhereDropdown, setShowWhereDropdown] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [checkIn, setCheckIn] = useState('');
@@ -57,11 +57,44 @@ export default function SearchBar() {
     navigate(`/property/${id}`);
   };
 
+  /**
+   * YYYY-MM-DD from the LOCAL calendar date.
+   *
+   * Not toISOString(): that converts to UTC first, so east of Greenwich (Tbilisi
+   * is UTC+4) it hands back the previous day — which silently let check-out sit
+   * on the check-in date, and made "today" yesterday late in the evening.
+   */
+  const toDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const today = () => toDateStr(new Date());
+
+  /** The day after `date` — a stay has to end later than it starts. */
+  const dayAfter = (date: string) => {
+    if (!date) return today();
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return toDateStr(d);
+  };
+
+  /**
+   * Moving check-in past an already-chosen check-out has to drop the check-out.
+   * The `min` on the check-out input only constrains what can be picked next —
+   * it never re-validates a value chosen earlier, which is how a search could
+   * end up checking out before it checked in.
+   */
+  const handleCheckInChange = (value: string) => {
+    setCheckIn(value);
+    setCheckOut((prev) => (prev && prev <= value ? '' : prev));
+  };
+
   const handleSearch = () => {
     const newSearchParams = new URLSearchParams();
     if (selectedLocation) newSearchParams.set('location', selectedLocation);
     if (checkIn) newSearchParams.set('checkIn', checkIn);
-    if (checkOut) newSearchParams.set('checkOut', checkOut);
+    // Typing straight into a date field bypasses `min` in most browsers, so the
+    // range is checked once more here rather than trusted from the inputs.
+    if (checkOut && (!checkIn || checkOut > checkIn)) newSearchParams.set('checkOut', checkOut);
     if (guests) newSearchParams.set('guests', guests);
     const existingCategory = searchParams.get('category');
     if (existingCategory) newSearchParams.set('category', existingCategory);
@@ -144,15 +177,19 @@ export default function SearchBar() {
                             .map((city, index) => (
                               <div
                                 key={index}
-                                onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
+                                onClick={() =>
+                                  handleLocationSelect(
+                                    `${localizePlace(city.name, lang)}, ${localizePlace(city.region, lang)}`
+                                  )
+                                }
                                 className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                               >
                                 <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
                                   <i className="ri-map-pin-line text-gray-600 text-xs"></i>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-medium text-gray-900 truncate">{city.name}</p>
-                                  <p className="text-xs text-gray-500">{city.region}</p>
+                                  <p className="text-xs font-medium text-gray-900 truncate">{localizePlace(city.name, lang)}</p>
+                                  <p className="text-xs text-gray-500">{localizePlace(city.region, lang)}</p>
                                 </div>
                               </div>
                             ))}
@@ -170,14 +207,14 @@ export default function SearchBar() {
                       {popularDestinations.map((destination, index) => (
                         <div
                           key={index}
-                          onClick={() => handleLocationSelect(destination.name)}
+                          onClick={() => handleLocationSelect(localizePlace(destination.name, lang))}
                           className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                         >
                           <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
                             <i className="ri-map-pin-line text-gray-600 text-xs"></i>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-gray-900 truncate">{destination.name}</p>
+                            <p className="text-xs font-medium text-gray-900 truncate">{localizePlace(destination.name, lang)}</p>
                             <p className="text-xs text-gray-500 truncate">{destination.description}</p>
                           </div>
                         </div>
@@ -203,8 +240,8 @@ export default function SearchBar() {
               <input
                 type="date"
                 value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => handleCheckInChange(e.target.value)}
+                min={today()}
                 className="absolute inset-0 opacity-0 w-full cursor-pointer"
               />
             </div>
@@ -222,7 +259,7 @@ export default function SearchBar() {
                 type="date"
                 value={checkOut}
                 onChange={(e) => setCheckOut(e.target.value)}
-                min={checkIn || new Date().toISOString().split('T')[0]}
+                min={checkIn ? dayAfter(checkIn) : today()}
                 className="absolute inset-0 opacity-0 w-full cursor-pointer"
               />
             </div>
@@ -361,15 +398,19 @@ export default function SearchBar() {
                             .map((city, index) => (
                               <div
                                 key={index}
-                                onClick={() => handleLocationSelect(`${city.name}, ${city.region}`)}
+                                onClick={() =>
+                                  handleLocationSelect(
+                                    `${localizePlace(city.name, lang)}, ${localizePlace(city.region, lang)}`
+                                  )
+                                }
                                 className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                               >
                                 <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-2.5 shrink-0">
                                   <i className="ri-map-pin-line text-gray-600 text-sm"></i>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-gray-900 truncate">{city.name}</p>
-                                  <p className="text-xs text-gray-600">{city.region}</p>
+                                  <p className="text-sm font-medium text-gray-900 truncate">{localizePlace(city.name, lang)}</p>
+                                  <p className="text-xs text-gray-600">{localizePlace(city.region, lang)}</p>
                                 </div>
                               </div>
                             ))}
@@ -387,14 +428,14 @@ export default function SearchBar() {
                       {popularDestinations.map((destination, index) => (
                         <div
                           key={index}
-                          onClick={() => handleLocationSelect(destination.name)}
+                          onClick={() => handleLocationSelect(localizePlace(destination.name, lang))}
                           className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                         >
                           <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-2.5 shrink-0">
                             <i className="ri-map-pin-line text-gray-600 text-sm"></i>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 truncate">{destination.name}</p>
+                            <p className="text-sm font-medium text-gray-900 truncate">{localizePlace(destination.name, lang)}</p>
                             <p className="text-xs text-gray-600 truncate">{destination.description}</p>
                           </div>
                         </div>
@@ -413,8 +454,8 @@ export default function SearchBar() {
           <input
             type="date"
             value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
+            onChange={(e) => handleCheckInChange(e.target.value)}
+            min={today()}
             className="text-[15px] text-ink bg-transparent border-none outline-none w-full cursor-pointer"
             placeholder="Add dates"
           />
@@ -427,7 +468,7 @@ export default function SearchBar() {
             type="date"
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
-            min={checkIn || new Date().toISOString().split('T')[0]}
+            min={checkIn ? dayAfter(checkIn) : today()}
             className="text-[15px] text-ink bg-transparent border-none outline-none w-full cursor-pointer"
             placeholder="Add dates"
           />

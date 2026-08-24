@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import { signInWithEmail, signInWithGoogle, sendPasswordReset } from '../../hooks/useAuth';
 import SEO from '../../components/feature/SEO';
+import PasswordInput from '../../components/ui/PasswordInput';
 import { useApprovedCount } from '../../hooks/useApprovedCount';
 import { useT } from '../../i18n';
 
@@ -169,8 +170,7 @@ export default function LoginPage() {
                   <label className="block text-[12.5px] font-bold mt-3.5 mb-1.5">
                     {t('auth.password')} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={form.password}
                     onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
                     placeholder="••••••••"

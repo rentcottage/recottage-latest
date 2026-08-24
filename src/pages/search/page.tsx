@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
@@ -95,8 +95,6 @@ export default function SearchResults() {
 
   // Full sorted+filtered result set (all matching items)
   const [sortedFilteredProperties, setSortedFilteredProperties] = useState<typeof dbProperties>([]);
-  // How many items are currently visible (display-slice pagination)
-  const [currentPage, setCurrentPage] = useState(1);
 
   const [showFilters, setShowFilters] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -155,6 +153,12 @@ export default function SearchResults() {
   // Derived: the slice currently shown on screen
   const totalCount = sortedFilteredProperties.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  // The pager lives in the URL for the same reason the filters do: open a
+  // cottage from page 2 and come back, and you land on page 2 again.
+  // Clamped (not stored) so a stale/hand-typed `?page=99` settles on the last
+  // real page, and so the value is still right while the results load in.
+  const requestedPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const currentPage = Math.min(requestedPage, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
   const filteredProperties = sortedFilteredProperties.slice(pageStart, pageStart + PAGE_SIZE);
 
@@ -307,10 +311,31 @@ export default function SearchResults() {
         break;
     }
 
-    // Store the full sorted+filtered set; reset display slice to first page
+    // Store the full sorted+filtered set. Resetting to page 1 is handled by the
+    // effect below, which fires only when the filters actually change — this one
+    // also runs on mount, and would throw away a `?page=` restored from the URL.
     setSortedFilteredProperties(filtered);
-    setCurrentPage(1);
   }, [location, guests, category, priceRange, maxPrice, selectedAmenities, selectedPropertyTypes, selectedRegions, sortBy, dbProperties, offersOnly, offeredProperties, promosOnly, activePromos]);
+
+  // A new result set means the old page number is meaningless, so drop it —
+  // but only when the filters really changed. Signature is built from the raw
+  // URL values, not the derived ones (priceRange moves on its own when
+  // maxPrice settles after the listings load, which isn't a filter change).
+  const filterSignature = [
+    location, guests, category, priceParam ?? '', amenitiesParam, typesParam,
+    regionsParam, sortBy, offersOnly ? '1' : '', promosOnly ? '1' : '',
+  ].join('|');
+  const lastFilterSignature = useRef(filterSignature);
+  useEffect(() => {
+    if (lastFilterSignature.current === filterSignature) return;
+    lastFilterSignature.current = filterSignature;
+    setSearchParams((prev) => {
+      if (!prev.get('page')) return prev;
+      const next = new URLSearchParams(prev);
+      next.delete('page');
+      return next;
+    }, { replace: true });
+  }, [filterSignature, setSearchParams]);
 
   // ── Facet counts (REAL data) ──────────────────────────────────────────────
   // How many listings each option would match, using the same predicates the
@@ -340,10 +365,15 @@ export default function SearchResults() {
   const [showAllRegions, setShowAllRegions] = useState(false);
 
   // Pager: jump to a page and scroll the results back into view.
+  // `replace` matches the filters: paging doesn't pile up history steps, but
+  // the page number rides along when you navigate into a property.
   const goToPage = (page: number) => {
     const next = Math.min(Math.max(1, page), totalPages);
     if (next === currentPage) return;
-    setCurrentPage(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === 1) params.delete('page');
+    else params.set('page', String(next));
+    setSearchParams(params, { replace: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -409,13 +439,39 @@ export default function SearchResults() {
     });
   };
 
+  /** Local calendar date as YYYY-MM-DD — see the note in SearchBar: toISOString()
+   *  shifts to UTC and returns the previous day in Georgia's timezone. */
+  const toDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const todayStr = () => toDateStr(new Date());
+
+  /** The day after `date` — a stay has to end later than it starts. */
+  const dayAfterStr = (date: string) => {
+    if (!date) return todayStr();
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return toDateStr(d);
+  };
+
+  /**
+   * Same rule as the header search bar: a check-in that moves past the chosen
+   * check-out clears it, because `min` only limits the next pick and never
+   * re-checks a date chosen earlier.
+   */
+  const handleModalCheckIn = (value: string) => {
+    setModalCheckIn(value);
+    setModalCheckOut((prev) => (prev && prev <= value ? '' : prev));
+  };
+
   const handleMobileSearch = () => {
     const newParams = new URLSearchParams(searchParams);
     if (modalLocation) newParams.set('location', modalLocation);
     else newParams.delete('location');
     if (modalCheckIn) newParams.set('checkIn', modalCheckIn);
     else newParams.delete('checkIn');
-    if (modalCheckOut) newParams.set('checkOut', modalCheckOut);
+    // Typing straight into a date field bypasses `min`, so re-check the range.
+    if (modalCheckOut && (!modalCheckIn || modalCheckOut > modalCheckIn)) newParams.set('checkOut', modalCheckOut);
     else newParams.delete('checkOut');
     if (modalGuests) newParams.set('guests', modalGuests);
     setSearchParams(newParams);
@@ -947,8 +1003,8 @@ export default function SearchResults() {
                     <input
                       type="date"
                       value={modalCheckIn}
-                      onChange={(e) => setModalCheckIn(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => handleModalCheckIn(e.target.value)}
+                      min={todayStr()}
                       className="text-sm text-gray-800 bg-transparent border-none outline-none w-full cursor-pointer"
                     />
                   </div>
@@ -962,7 +1018,7 @@ export default function SearchResults() {
                       type="date"
                       value={modalCheckOut}
                       onChange={(e) => setModalCheckOut(e.target.value)}
-                      min={modalCheckIn || new Date().toISOString().split('T')[0]}
+                      min={modalCheckIn ? dayAfterStr(modalCheckIn) : todayStr()}
                       className="text-sm text-gray-800 bg-transparent border-none outline-none w-full cursor-pointer"
                     />
                   </div>

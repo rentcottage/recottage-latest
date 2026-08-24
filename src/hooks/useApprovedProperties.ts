@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { listingText, type TranslatableListing } from '../lib/listingText';
+import { useT } from '../i18n';
+import type { Lang } from '../i18n/config';
 
 export interface NormalizedProperty {
   id: string;
@@ -21,7 +24,7 @@ export interface NormalizedProperty {
   coverPosition?: 'top' | 'center' | 'bottom';
 }
 
-function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
+function normalizeRow(app: Record<string, unknown>, lang: Lang): NormalizedProperty {
   // Self-hosted placeholder — the old readdy.ai fallback URL 400s (dead endpoint).
   const fallbackImage = '/cottage-placeholder.svg';
   const photoUrls: string[] =
@@ -44,7 +47,8 @@ function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
 
   return {
     id: app.id as string,
-    title: app.title as string,
+    // Card titles follow the reader's language when a translation exists.
+    title: listingText(app as TranslatableListing, 'title', lang),
     location: app.location as string,
     price: Number(app.price_per_night),
     rating: 5.0,
@@ -69,6 +73,7 @@ function normalizeRow(app: Record<string, unknown>): NormalizedProperty {
  * interfering with sort order.
  */
 export function useApprovedProperties() {
+  const { lang } = useT();
   const [dbProperties, setDbProperties] = useState<NormalizedProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,13 +86,29 @@ export function useApprovedProperties() {
         // Fetch all approved listings — no range limit so sorting is always global.
         // SECURITY: select only display-safe columns. Never ship host_email,
         // host_phone, or admin_token to the public client (was select('*')).
-        const { data, error: fetchError } = await supabase
-          .from('property_applications')
-          .select(
-            'id, title, location, price_per_night, host_first_name, host_last_name, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position'
-          )
-          .eq('status', 'approved')
-          .order('created_at', { ascending: false });
+        // The translation columns are added by a separate DB migration, while the
+        // frontend deploys on its own schedule — so there is always a window
+        // where one is ahead of the other. Asking for a column that doesn't
+        // exist yet fails the WHOLE query (PostgREST 42703), which would empty
+        // the site. Ask for them, and fall back to the base set if they're not
+        // there yet.
+        const BASE_COLUMNS =
+          'id, title, location, price_per_night, host_first_name, host_last_name, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position';
+        const TRANSLATION_COLUMNS = 'title_en, title_ru, source_lang';
+
+        const runQuery = (columns: string) =>
+          supabase
+            .from('property_applications')
+            .select(columns)
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false })
+            .returns<Record<string, unknown>[]>();
+
+        let { data, error: fetchError } = await runQuery(`${BASE_COLUMNS}, ${TRANSLATION_COLUMNS}`);
+
+        if (fetchError?.code === '42703') {
+          ({ data, error: fetchError } = await runQuery(BASE_COLUMNS));
+        }
 
         if (fetchError) {
           console.error('[useApprovedProperties] Fetch error:', fetchError.message);
@@ -95,7 +116,7 @@ export function useApprovedProperties() {
           return;
         }
 
-        setDbProperties((data || []).map(normalizeRow));
+        setDbProperties((data || []).map((row) => normalizeRow(row, lang)));
       } catch (e) {
         console.error('[useApprovedProperties] Unexpected error:', e);
         setError('Failed to load listings');
@@ -105,7 +126,8 @@ export function useApprovedProperties() {
     }
 
     fetchAll();
-  }, []);
+    // Re-resolve titles when the reader switches language.
+  }, [lang]);
 
   return {
     dbProperties,

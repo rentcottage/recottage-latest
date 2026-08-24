@@ -736,7 +736,7 @@ export const CITY_TO_REGION: Record<string, string> = {
   kakhati: 'imereti',
   tskaltubo: 'imereti',
   'meore sviri': 'imereti',
-  poti: 'imereti',
+  poti: 'samegrelo-zemo svaneti',
   imerula: 'imereti',
   kvirila: 'imereti',
   sataplia: 'imereti',
@@ -1248,4 +1248,32 @@ export function filterCitiesBilingual(
 
     return false;
   });
+}
+
+/**
+ * Georgian display name for a place, for UI that should read in Georgian.
+ *
+ * The city catalog and the property `location` strings are stored in English —
+ * that stays the canonical form, and matching is bilingual either way. This is
+ * purely about what the reader sees: searching "კახეთი" in Georgian and getting
+ * back a list of "Telavi / Kakheti" is jarring and looks untranslated.
+ *
+ * Falls back to the original string whenever there's no Georgian entry, so an
+ * unmapped village still renders its name rather than disappearing.
+ */
+export function localizePlace(name: string, lang: string): string {
+  if (lang !== 'ka' || !name) return name;
+
+  const direct = EN_TO_KA[name.trim().toLowerCase()];
+  if (direct?.[0]) return direct[0];
+
+  // "Telavi, Kakheti" — translate each part and keep the punctuation.
+  if (name.includes(',')) {
+    return name
+      .split(',')
+      .map((part) => localizePlace(part.trim(), lang))
+      .join(', ');
+  }
+
+  return name;
 }

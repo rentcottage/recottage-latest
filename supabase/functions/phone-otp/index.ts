@@ -234,7 +234,34 @@ Deno.serve(async (req: Request) => {
     // this is the only path that should set phone_verified for an existing account).
     const userId = (body.userId ?? '').trim();
     if (userId) {
-      await supabase.from('profiles').update({ phone, phone_verified: true }).eq('id', userId);
+      // One account per number: passing the SMS proves the user holds the line,
+      // but not that it is free. Without this an existing account could move
+      // onto a number another account already uses — the same duplicate the
+      // signup flow rejects, entered through the profile editor instead.
+      const { data: taken, error: takenErr } = await supabase.rpc('phone_in_use', {
+        p: phone,
+        exclude_user: userId,
+      });
+      if (takenErr) {
+        console.error('[phone-otp] phone_in_use error:', takenErr);
+        return json({ error: 'Could not verify the phone number. Please try again.' }, 500);
+      }
+      if (taken) {
+        return json({ error: 'This phone number is already registered to another account.' }, 409);
+      }
+
+      const { error: updErr } = await supabase
+        .from('profiles')
+        .update({ phone, phone_verified: true })
+        .eq('id', userId);
+      if (updErr) {
+        // 23505 = the unique index caught a number claimed since the check above.
+        if (updErr.code === '23505') {
+          return json({ error: 'This phone number is already registered to another account.' }, 409);
+        }
+        console.error('[phone-otp] profile update error:', updErr);
+        return json({ error: 'Could not save the phone number. Please try again.' }, 500);
+      }
     }
 
     return json({ ok: true, verified: true, phone });

@@ -11,6 +11,7 @@ import {
 import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { sendPhoneOtp, verifyPhoneOtp, normalizeGeoPhone, formatGeoPhone } from '../../lib/otp';
 import { useT } from '../../i18n';
+import PasswordInput from '../ui/PasswordInput';
 
 // Real hCaptcha sitekey for rentcottage.ge — public value, safe to commit.
 // Validated server-side by Supabase using the matching secret stored in
@@ -525,8 +526,7 @@ export default function AuthModals({
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.password')}</label>
-                      <input
-                        type="password"
+                      <PasswordInput
                         required
                         value={loginForm.password}
                         onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
@@ -731,8 +731,7 @@ export default function AuthModals({
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.password')}</label>
-                          <input
-                            type="password"
+                          <PasswordInput
                             required
                             minLength={8}
                             value={signupForm.password}
@@ -744,8 +743,7 @@ export default function AuthModals({
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">{t('account.authModals.confirmPassword')}</label>
-                          <input
-                            type="password"
+                          <PasswordInput
                             required
                             minLength={8}
                             value={signupForm.confirmPassword}

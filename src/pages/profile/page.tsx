@@ -51,6 +51,13 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
+  // Email changes go through Supabase Auth, which mails a confirmation link to
+  // the new address; the change only lands once that link is clicked.
+  const [emailEditing, setEmailEditing] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailStatus, setEmailStatus] = useState<{ kind: 'sent' | 'error'; text: string } | null>(null);
+  const [emailSaving, setEmailSaving] = useState(false);
+
   // Phone verification: changing the number requires re-verifying it by SMS.
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -335,12 +342,16 @@ export default function Profile() {
       // Save name + email now. The phone is written here ONLY if it didn't change
       // (an unchanged number keeps its verified status). A changed number is saved
       // by the verification step below — never before the new number is verified.
+      // `email` is deliberately absent. It mirrors auth.users.email and is synced
+      // from there by upsertProfile once a change is confirmed. Writing whatever
+      // was typed here changed nothing about the login, so the profile ended up
+      // displaying an address the account didn't own — and let anyone put someone
+      // else's address on their profile, unverified.
       const payload: Record<string, string> = {
         id: user.id,
         first_name: editForm.firstName.trim(),
         last_name: editForm.lastName.trim(),
         full_name: `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim(),
-        email: editForm.email.trim(),
       };
       if (!phoneChanged) payload.phone = normalizedNew;
 
@@ -394,6 +405,41 @@ export default function Profile() {
     }
     localStorage.setItem('userProfile', JSON.stringify(merged));
     setIsEditing(false);
+  };
+
+  const handleRequestEmailChange = async () => {
+    const next = newEmail.trim().toLowerCase();
+    const current = (user?.email ?? '').trim().toLowerCase();
+    setEmailStatus(null);
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) {
+      setEmailStatus({ kind: 'error', text: t('account.profile.emailInvalid') });
+      return;
+    }
+    if (next === current) {
+      setEmailStatus({ kind: 'error', text: t('account.profile.emailUnchanged') });
+      return;
+    }
+
+    setEmailSaving(true);
+    try {
+      // Supabase mails the confirmation itself and only swaps the address once
+      // the link is opened, so an address the user doesn't control can never
+      // become their login. Nothing is written to profiles here.
+      const { error } = await supabase.auth.updateUser(
+        { email: next },
+        { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      );
+      if (error) {
+        setEmailStatus({ kind: 'error', text: error.message });
+        return;
+      }
+      setEmailStatus({ kind: 'sent', text: t('account.profile.emailChangeSent', { email: next }) });
+      setEmailEditing(false);
+      setNewEmail('');
+    } finally {
+      setEmailSaving(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -712,12 +758,59 @@ export default function Profile() {
                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
                           {t('account.profile.email')}
                         </label>
+                        {/* Read-only: this is the login address. Changing it is a
+                            separate, confirmed action — see below. */}
                         <input
                           type="email"
-                          value={editForm.email}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                          className="w-full p-2.5 md:p-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          value={user?.email ?? ''}
+                          readOnly
+                          disabled
+                          className="w-full p-2.5 md:p-3 text-sm border border-gray-200 bg-gray-50 text-gray-600 rounded-lg cursor-not-allowed"
                         />
+
+                        {!emailEditing ? (
+                          <button
+                            type="button"
+                            onClick={() => { setEmailEditing(true); setEmailStatus(null); setNewEmail(''); }}
+                            className="mt-1.5 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer"
+                          >
+                            {t('account.profile.changeEmail')}
+                          </button>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            <input
+                              type="email"
+                              value={newEmail}
+                              onChange={(e) => setNewEmail(e.target.value)}
+                              placeholder={t('account.profile.newEmailPlaceholder')}
+                              className="w-full p-2.5 md:p-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500">{t('account.profile.emailChangeNote')}</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={handleRequestEmailChange}
+                                disabled={emailSaving}
+                                className="px-3 py-2 text-xs font-semibold bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white rounded-lg cursor-pointer"
+                              >
+                                {emailSaving ? t('common.loading') : t('account.profile.sendConfirmation')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setEmailEditing(false); setEmailStatus(null); }}
+                                className="px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 cursor-pointer"
+                              >
+                                {t('account.profile.cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {emailStatus && (
+                          <p className={`mt-2 text-xs ${emailStatus.kind === 'sent' ? 'text-green-600' : 'text-red-600'}`}>
+                            {emailStatus.text}
+                          </p>
+                        )}
                       </div>
 
                       <div>

@@ -12,6 +12,7 @@ import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, applyPromoDiscount, type Promo } from '../../lib/promos';
 import { fetchOffersForProperty, findOfferForStay, applyOfferToTotal, freeNightsFor, type HostOffer } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
+import { listingText, type TranslatableListing } from '../../lib/listingText';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
 
@@ -48,7 +49,7 @@ interface ICalBlockedRange {
 }
 
 export default function PropertyDetail() {
-  const { t, plural } = useT();
+  const { t, plural, lang } = useT();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -127,16 +128,28 @@ export default function PropertyDetail() {
 
   useEffect(() => {
     async function loadProperty() {
-      const { data: app, error } = await supabase
-        .from('property_applications')
-        // SECURITY: explicit display-safe columns only — never expose
-        // host_email, host_phone, or admin_token to the public client.
-        .select(
-          'id, title, location, price_per_night, cover_photo_url, cover_photo_position, amenities, categories, description, bedrooms, bathrooms, max_guests, google_maps_url, latitude, longitude, address, accepted_payment_methods, pricing_type, guest_pricing_tiers, host_first_name, host_last_name, photo_urls'
-        )
-        .eq('id', id)
-        .eq('status', 'approved')
-        .maybeSingle();
+      // SECURITY: explicit display-safe columns only — never expose
+      // host_email, host_phone, or admin_token to the public client.
+      const BASE_COLUMNS =
+        'id, title, location, price_per_night, cover_photo_url, cover_photo_position, amenities, categories, description, bedrooms, bathrooms, max_guests, google_maps_url, latitude, longitude, address, accepted_payment_methods, pricing_type, guest_pricing_tiers, host_first_name, host_last_name, photo_urls';
+      // Added by a later DB migration than this code may be deployed with;
+      // requesting a missing column fails the whole query, so fall back.
+      const TRANSLATION_COLUMNS = 'title_en, title_ru, description_en, description_ru, source_lang';
+
+      const runQuery = (columns: string) =>
+        supabase
+          .from('property_applications')
+          .select(columns)
+          .eq('id', id)
+          .eq('status', 'approved')
+          .maybeSingle()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .returns<Record<string, any>>();
+
+      let { data: app, error } = await runQuery(`${BASE_COLUMNS}, ${TRANSLATION_COLUMNS}`);
+      if (error?.code === '42703') {
+        ({ data: app, error } = await runQuery(BASE_COLUMNS));
+      }
 
       if (error || !app) {
         navigate('/');
@@ -151,7 +164,7 @@ export default function PropertyDetail() {
 
       setProperty({
         id: app.id,
-        title: app.title,
+        title: listingText(app as TranslatableListing, 'title', lang),
         location: app.location,
         price: Number(app.price_per_night),
         rating: 5.0,
@@ -162,7 +175,9 @@ export default function PropertyDetail() {
           : photos,
         host: hostName,
         amenities: app.amenities || [],
-        description: app.description,
+        // Host text resolved into the reader's language, falling back to what
+        // the host wrote when no translation exists yet.
+        description: listingText(app as TranslatableListing, 'description', lang),
         bedrooms: app.bedrooms,
         bathrooms: app.bathrooms,
         maxGuests: app.max_guests,
@@ -196,7 +211,9 @@ export default function PropertyDetail() {
     }
 
     loadProperty();
-  }, [id, navigate, searchParams]);
+    // `lang` matters: the host text is resolved into the reader's language while
+    // mapping the row, so switching language has to re-resolve it.
+  }, [id, navigate, searchParams, lang]);
 
   useEffect(() => {
     if (!id) return;

@@ -10,10 +10,16 @@ import { useT } from '../../i18n';
  * the profiles table and clear the stash.
  * Uses upsert so it works even if the profile row doesn't exist yet.
  */
-async function savePendingPhone(userId: string): Promise<void> {
-  const pending = localStorage.getItem('rc_pending_phone');
+async function savePendingPhone(userId: string, metadataPhone?: string): Promise<void> {
+  const stashed = localStorage.getItem('rc_pending_phone');
+  // Falls back to the copy carried in user_metadata, so confirming the email on
+  // a different device (or on www rather than the apex domain) still keeps the
+  // number the visitor typed at registration.
+  const pending = stashed || metadataPhone?.trim() || '';
   if (!pending) return;
-  const verified = localStorage.getItem('rc_pending_phone_verified') === '1';
+  // Verified only counts when it came from the local stash written straight
+  // after an SMS check — user_metadata is user-writable.
+  const verified = !!stashed && localStorage.getItem('rc_pending_phone_verified') === '1';
   const payload = verified ? { phone: pending, phone_verified: true } : { phone: pending };
   try {
     // First try update (profile row should exist after upsertProfile)
@@ -85,7 +91,7 @@ export default function AuthCallback() {
           }
 
           await upsertProfile(session.user);
-          await savePendingPhone(session.user.id);
+          await savePendingPhone(session.user.id, session.user.user_metadata?.phone as string | undefined);
 
           if (!cancelled) {
             const provider = session.user.app_metadata?.provider ?? '';
@@ -118,7 +124,7 @@ export default function AuthCallback() {
             }
 
             await upsertProfile(s.user);
-            await savePendingPhone(s.user.id);
+            await savePendingPhone(s.user.id, s.user.user_metadata?.phone as string | undefined);
             subscription.unsubscribe();
 
             const provider = s.user.app_metadata?.provider ?? '';

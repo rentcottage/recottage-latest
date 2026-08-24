@@ -64,8 +64,8 @@ Deno.serve(async (req: Request) => {
     return isAdmin ? jsonOk({ success: true }) : jsonErr('Invalid password', 401);
   }
 
-  // Everything except the public signup email-check requires admin.
-  if (action !== 'check-email' && !isAdmin) {
+  // Everything except the public signup checks requires admin.
+  if (action !== 'check-email' && action !== 'check-availability' && !isAdmin) {
     return jsonErr('Unauthorized', 401);
   }
 
@@ -195,6 +195,44 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     return jsonOk({ blocked: !!data, reason: data?.blocked_reason ?? null });
+  }
+
+  // ── Is this email / phone already taken? (used by the public signup flow) ──
+  // Auth keeps emails unique on its own, but nothing guarded the phone number,
+  // and with email-confirmation enabled Supabase deliberately hides "already
+  // registered" from the client — so the browser cannot tell on its own that a
+  // signup is a duplicate. Answering here, with the service role, is what lets
+  // registration fail loudly instead of silently doing nothing.
+  //
+  // The database indexes added by db/registration-uniqueness.sql remain the
+  // real guarantee; this check exists to produce a useful message before the
+  // account is created.
+  if (action === 'check-availability') {
+    const { email, phone } = body as { email?: string; phone?: string };
+
+    let emailTaken = false;
+    if (email && email.trim()) {
+      // listUsers() has no exact-email lookup, so use the filter and compare
+      // ourselves — a partial match on another address must not count.
+      const target = email.trim().toLowerCase();
+      const { data, error } = await supabase.auth.admin.listUsers({ perPage: 200 });
+      if (error) return jsonErr('Could not verify the email address', 500);
+      emailTaken = data.users.some((u) => (u.email ?? '').toLowerCase() === target);
+    }
+
+    let phoneTaken = false;
+    if (phone && phone.trim()) {
+      // phone_in_use() applies the same normalization as the unique index, so
+      // "+995 555 …" and "555…" are recognised as the same line.
+      const { data, error } = await supabase.rpc('phone_in_use', { p: phone.trim() });
+      if (error) {
+        console.error('[check-availability] phone_in_use error:', error);
+        return jsonErr('Could not verify the phone number', 500);
+      }
+      phoneTaken = !!data;
+    }
+
+    return jsonOk({ success: true, emailTaken, phoneTaken });
   }
 
   return jsonErr('Unknown action');

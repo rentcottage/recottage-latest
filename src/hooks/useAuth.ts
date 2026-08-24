@@ -139,11 +139,18 @@ export async function upsertProfile(user: User): Promise<void> {
   const resolvedLast = updatePayload.last_name ?? existingLast;
   updatePayload.full_name = `${resolvedFirst} ${resolvedLast}`.trim();
 
-  // Only set phone if the profile currently has none — never overwrite an existing phone
-  const pendingPhone = localStorage.getItem('rc_pending_phone');
+  // Only set phone if the profile currently has none — never overwrite an existing phone.
+  // Prefer the local stash (it may carry a verified flag); fall back to the copy
+  // in user_metadata, which is what makes this work across browsers and devices.
+  const stashedPhone = localStorage.getItem('rc_pending_phone');
+  const metaPhone = typeof meta?.phone === 'string' ? meta.phone.trim() : '';
+  const pendingPhone = stashedPhone || metaPhone;
   if (!existing?.phone && pendingPhone) {
     updatePayload.phone = pendingPhone;
-    if (localStorage.getItem('rc_pending_phone_verified') === '1') {
+    // Verified status is only ever honoured from the local stash, which is set
+    // right after a real SMS check. Metadata is user-writable, so a phone
+    // arriving that way is saved unverified.
+    if (stashedPhone && localStorage.getItem('rc_pending_phone_verified') === '1') {
       updatePayload.phone_verified = true;
     }
     localStorage.removeItem('rc_pending_phone');
@@ -174,6 +181,42 @@ export async function checkEmailBlocked(email: string): Promise<{ blocked: boole
   }
 }
 
+export const EMAIL_TAKEN_MESSAGE =
+  'An account with this email address already exists. Please log in instead, or use "Forgot password".';
+export const PHONE_TAKEN_MESSAGE =
+  'This phone number is already registered to another account. Please use a different number.';
+
+/**
+ * Is this email / phone free to register with?
+ *
+ * Answered server-side (service role) because the browser genuinely cannot tell:
+ * Supabase Auth hides "already registered" from signUp() when email confirmation
+ * is on, and profiles.phone isn't readable under RLS. A network failure returns
+ * "available" — the unique indexes in db/registration-uniqueness.sql are the
+ * actual guarantee, so a soft failure here degrades the message, not the rule.
+ */
+export async function checkRegistrationAvailability(
+  email: string,
+  phone?: string,
+): Promise<{ emailTaken: boolean; phoneTaken: boolean }> {
+  try {
+    const res = await fetch(USER_MGMT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'check-availability',
+        email: email.trim().toLowerCase(),
+        phone: phone?.trim() ?? '',
+      }),
+    });
+    if (!res.ok) return { emailTaken: false, phoneTaken: false };
+    const data = await res.json();
+    return { emailTaken: !!data.emailTaken, phoneTaken: !!data.phoneTaken };
+  } catch {
+    return { emailTaken: false, phoneTaken: false };
+  }
+}
+
 export async function signUpWithEmail(
   firstName: string,
   lastName: string,
@@ -200,6 +243,17 @@ export async function signUpWithEmail(
     };
   }
 
+  // Refuse a duplicate before creating anything. Without this the email case
+  // silently no-ops (see the identities check below) and the phone case happily
+  // creates a second account on someone else's number.
+  const { emailTaken, phoneTaken } = await checkRegistrationAvailability(email, phone);
+  if (emailTaken) {
+    return { session: null, user: null, error: EMAIL_TAKEN_MESSAGE, confirmationRequired: false };
+  }
+  if (phoneTaken) {
+    return { session: null, user: null, error: PHONE_TAKEN_MESSAGE, confirmationRequired: false };
+  }
+
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
   const { data, error } = await supabase.auth.signUp({
@@ -210,6 +264,15 @@ export async function signUpWithEmail(
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         full_name: fullName,
+        // Travels with the account, server-side. The localStorage stash below
+        // only survives if the confirmation link is opened in the very same
+        // browser — not on a phone, not in another browser, and not on www when
+        // signup happened on the apex domain (separate origins, separate
+        // storage). Whenever that failed, the number was lost and the profile
+        // asked for it all over again.
+        // NOTE: user_metadata is writable by the user, so this carries the
+        // number only — never phone_verified, which must stay server-verified.
+        ...(phone?.trim() ? { phone: phone.trim() } : {}),
       },
       // Redirect target after clicking the confirmation link in email
       emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -217,7 +280,26 @@ export async function signUpWithEmail(
     },
   });
 
-  if (error) return { session: null, user: null, error: error.message, confirmationRequired: false };
+  if (error) {
+    // Supabase phrases this as "User already registered" when confirmations are
+    // off; say the same thing here as the pre-check does.
+    const dup = /already registered|already been registered/i.test(error.message);
+    return {
+      session: null,
+      user: null,
+      error: dup ? EMAIL_TAKEN_MESSAGE : error.message,
+      confirmationRequired: false,
+    };
+  }
+
+  // Enumeration protection: for an email that already exists, Supabase returns
+  // a decoy user with NO identities and no error, rather than admitting the
+  // address is taken. Treated as success, that shows "Confirm your email" for
+  // an account the visitor doesn't own and no account is ever created — the
+  // exact "registered with an already used email" symptom.
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    return { session: null, user: null, error: EMAIL_TAKEN_MESSAGE, confirmationRequired: false };
+  }
 
   // "Confirm email" DISABLED → Supabase returns a session immediately
   if (data.session && data.user) {
@@ -236,6 +318,36 @@ export async function signUpWithEmail(
       },
       { onConflict: 'id' }
     );
+    // 23505 = the profiles_unique_contact trigger rejected this row, i.e. the
+    // number was claimed between the check above and this insert. Rare, but the
+    // account must not end up silently sharing a number: save the profile
+    // without a phone so the account still works, and say why.
+    if (profileError?.code === '23505') {
+      const { error: retryError } = await supabase.from('profiles').upsert(
+        {
+          id: data.user.id,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: fullName,
+          email: email.trim(),
+          role: 'customer',
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      // Still rejected with no phone in the payload → it was the email that
+      // collided, not the number, so name that instead of misdirecting.
+      if (retryError?.code === '23505') {
+        return { session: data.session, user: data.user, error: EMAIL_TAKEN_MESSAGE, confirmationRequired: false };
+      }
+      if (retryError) console.error('Profile creation error:', retryError);
+      return {
+        session: data.session,
+        user: data.user,
+        error: PHONE_TAKEN_MESSAGE,
+        confirmationRequired: false,
+      };
+    }
     if (profileError) console.error('Profile creation error:', profileError);
     return { session: data.session, user: data.user, error: null, confirmationRequired: false };
   }

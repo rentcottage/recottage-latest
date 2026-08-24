@@ -5,6 +5,7 @@ import SEO from '../../components/feature/SEO';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useT } from '../../i18n';
+import PasswordInput from '../../components/ui/PasswordInput';
 
 const CORPORATE_FN_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/corporate-application-handler`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -372,16 +373,29 @@ function Field({
   placeholder?: string;
   type?: string;
 }) {
+  // Password fields get the show/hide toggle; everything else stays a plain input.
+  const inputClass =
+    'w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow';
+
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-700 mb-1.5">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
-      />
+      {type === 'password' ? (
+        <PasswordInput
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={inputClass}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={inputClass}
+        />
+      )}
     </div>
   );
 }
