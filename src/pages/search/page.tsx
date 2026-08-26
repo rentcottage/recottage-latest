@@ -35,16 +35,15 @@ const GEORGIAN_REGIONS = [
 ];
 
 /**
- * Does this listing count as `type`?
+ * Does this listing count as `type`? Its stored property_type, and nothing else.
  *
- * Normally that is just its stored property_type. Winery is the exception: it
- * is a type a host can pick today AND a category older listings were tagged
- * with, so matching only the type would report 0 wineries while seven of them
- * sit in the results.
+ * The retired `Winery` CATEGORY is deliberately not consulted. Five of the
+ * seven listings carrying that tag have no wine, vineyard, cellar or qvevri
+ * anywhere in their description — they ticked every category back when the
+ * picker existed. Only a property_type set by review counts as a winery.
  */
-function matchesPropertyType(property: { propertyType: string; categories?: string[] }, type: string): boolean {
-  if (property.propertyType === type) return true;
-  return type === 'Winery' && (property.categories || []).some((c) => c.toLowerCase() === 'winery');
+function matchesPropertyType(property: { propertyType: string }, type: string): boolean {
+  return property.propertyType === type;
 }
 
 const PAGE_SIZE = 9;
@@ -223,15 +222,17 @@ export default function SearchResults() {
     // Filter by category if present — uses the real categories[] field saved
     // during host registration.
     //
-    // Property type counts too: Winery is now both a type a host can pick and a
-    // category older listings were tagged with, so matching only one of the two
-    // would hide half the wineries. No other category shares a name with a type.
+    // Property type counts too, so `?category=Winery` (the მარანი chip) agrees
+    // with the type checkbox rather than reporting the over-tagged listings the
+    // checkbox excludes.
     if (category) {
       const categoryNormalized = category.trim().toLowerCase();
       filtered = filtered.filter(property => {
-        const cats = property.categories || [];
-        return cats.some(c => c.toLowerCase() === categoryNormalized)
-          || property.propertyType.toLowerCase() === categoryNormalized;
+        if (property.propertyType.toLowerCase() === categoryNormalized) return true;
+        // Winery is a reviewed property type now; its old free-for-all category
+        // tag is not evidence of one.
+        if (categoryNormalized === 'winery') return false;
+        return (property.categories || []).some(c => c.toLowerCase() === categoryNormalized);
       });
     }
 
