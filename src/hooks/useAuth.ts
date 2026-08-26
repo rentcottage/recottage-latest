@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { attachPhoneVerification, claimPhoneVerification } from '../lib/otp';
 
 export interface AuthState {
   user: User | null;
@@ -164,6 +165,28 @@ export async function upsertProfile(user: User): Promise<void> {
   if (updateErr) console.error('Profile update error:', updateErr);
 }
 
+/**
+ * Redeem a phone verification that was made at signup, before the account had a
+ * session. Cheap no-op for accounts that are already verified, so it is safe to
+ * call on any screen that reads phone_verified.
+ *
+ * This is the durable counterpart to the localStorage stash: the binding was
+ * written server-side at signup, so it still works when the confirmation link
+ * was opened on another device, on a different origin, or not at all because
+ * the user simply logged in.
+ *
+ * Returns true when the profile went from unverified to verified.
+ */
+export async function ensurePhoneVerification(userId: string): Promise<boolean> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('phone_verified')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profile?.phone_verified) return false;
+  return (await claimPhoneVerification()) !== null;
+}
+
 const USER_MGMT_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/admin-user-management`;
 
 export async function checkEmailBlocked(email: string): Promise<{ blocked: boolean; reason: string | null }> {
@@ -225,6 +248,8 @@ export async function signUpWithEmail(
   phone?: string,
   captchaToken?: string,
   phoneVerified = false,
+  /** From verifyPhoneOtp() — binds the SMS check to the new account, server-side. */
+  phoneClaimToken?: string,
 ): Promise<{
   session: import('@supabase/supabase-js').Session | null;
   user: User | null;
@@ -354,7 +379,16 @@ export async function signUpWithEmail(
 
   // "Confirm email" ENABLED → user exists but no session yet; confirmation email was sent
   if (data.user && !data.session) {
-    // Stash the phone (and its verified status) so auth-callback can save it after confirmation
+    // Bind the SMS verification to the new account server-side. This is what
+    // makes it survive the confirmation gap: the localStorage stash below only
+    // works if the confirmation link is opened in this very browser — not on a
+    // phone, not on www when signup happened on the apex domain, and not when
+    // the user just logs in instead of landing on /auth/callback. Whenever that
+    // failed, the profile asked them to verify a number they had already proven.
+    if (phone?.trim() && phoneVerified && phoneClaimToken) {
+      await attachPhoneVerification(phone.trim(), phoneClaimToken, data.user.id);
+    }
+    // Fast path for the same-browser case, so the flag lands without a round trip.
     if (phone?.trim()) {
       localStorage.setItem('rc_pending_phone', phone.trim());
       if (phoneVerified) localStorage.setItem('rc_pending_phone_verified', '1');

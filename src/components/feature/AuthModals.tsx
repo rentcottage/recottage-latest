@@ -82,6 +82,10 @@ export default function AuthModals({
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpVerified, setOtpVerified] = useState(false);
+  // Proof of the SMS check, handed to signUpWithEmail so the new account can
+  // bind it server-side. Held in state so a retry after a failed create
+  // (expired captcha, say) still has it without burning another SMS.
+  const [otpClaimToken, setOtpClaimToken] = useState('');
   const [resendIn, setResendIn] = useState(0);
 
   // Resend cooldown ticker
@@ -261,6 +265,7 @@ export default function AuthModals({
           );
           return;
         }
+        setOtpClaimToken(v.claimToken ?? '');
         setOtpVerified(true);
       }
 
@@ -272,6 +277,7 @@ export default function AuthModals({
         otpSentTo,
         signupCaptchaToken,
         true, // phone verified via SMS
+        otpClaimToken,
       );
 
       if (error) {

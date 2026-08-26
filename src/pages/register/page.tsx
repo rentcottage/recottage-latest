@@ -38,6 +38,10 @@ export default function RegisterPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpVerified, setOtpVerified] = useState(false);
+  // Proof of the SMS check, handed to signUpWithEmail so the new account can
+  // bind it server-side. Held in state so a retry after a failed create
+  // (expired captcha, say) still has it without burning another SMS.
+  const [otpClaimToken, setOtpClaimToken] = useState('');
   const [resendIn, setResendIn] = useState(0);
   const [captchaToken, setCaptchaToken] = useState('');
   const captchaRef = useRef<HCaptchaLib>(null);
@@ -129,6 +133,7 @@ export default function RegisterPage() {
           );
           return;
         }
+        setOtpClaimToken(v.claimToken ?? '');
         setOtpVerified(true);
       }
 
@@ -140,6 +145,7 @@ export default function RegisterPage() {
         otpSentTo,
         captchaToken,
         true, // phone proven by SMS just now
+        otpClaimToken,
       );
       if (err) {
         setOtpError(err);

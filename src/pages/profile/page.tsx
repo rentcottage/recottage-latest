@@ -7,7 +7,7 @@ import BookingCard from './components/BookingCard';
 import PhoneVerifyModal from '../../components/feature/PhoneVerifyModal';
 import { supabase } from '../../lib/supabase';
 import { normalizeGeoPhone } from '../../lib/otp';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth, ensurePhoneVerification } from '../../hooks/useAuth';
 import { useT } from '../../i18n';
 import type { Booking } from '../../lib/supabase';
 
@@ -81,6 +81,13 @@ export default function Profile() {
 
   // Load full profile from Supabase — this is the source of truth for phone, name, etc.
   const loadProfileFromSupabase = async (userId: string) => {
+    // A number proven by SMS at signup is only written to the profile once the
+    // account has a session. If the email was confirmed elsewhere — another
+    // device, the other origin — or the user just logged in, that write never
+    // happened and this page would ask them to verify all over again. Redeem
+    // the signup binding first; it is a no-op for an already-verified account.
+    await ensurePhoneVerification(userId);
+
     const { data } = await supabase
       .from('profiles')
       .select('avatar_url, phone, phone_verified, first_name, last_name, full_name, email')

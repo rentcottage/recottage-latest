@@ -27,6 +27,7 @@ const MAX_ATTEMPTS = 5;          // wrong guesses allowed per code before it's b
 const RESEND_COOLDOWN_SEC = 60;  // min gap between sends to one number
 const MAX_PER_PHONE_HOUR = 5;    // sends per number per hour
 const MAX_PER_IP_HOUR = 12;      // sends per IP per hour
+const CLAIM_WINDOW_SEC = 604_800; // a signup verification stays redeemable for 7 days
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,6 +65,74 @@ function makeCode(): string {
   const a = new Uint32Array(1);
   crypto.getRandomValues(a);
   return (a[0] % 1_000_000).toString().padStart(6, '0');
+}
+
+/** A one-time secret handed to whoever passed the SMS check, so they can later bind it to an account. */
+function makeClaimToken(): string {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The caller's own user id, taken from their session token — never from the
+ * request body. This function runs with verify_jwt = false so that the signup
+ * page can reach it without a session, which means anything the body claims
+ * about identity is attacker-controlled.
+ */
+async function callerUserId(
+  req: Request,
+  supabase: ReturnType<typeof createClient>,
+): Promise<string | null> {
+  const header = req.headers.get('Authorization') ?? '';
+  if (!/^bearer /i.test(header)) return null;
+  const token = header.slice(7).trim();
+  // The publishable key is also sent as a bearer token by some callers; it is
+  // not a user JWT, so getUser rejects it and we fall through to null.
+  if (!token) return null;
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
+/**
+ * Point a profile at a number that has just been proven by SMS.
+ * Returns an error response, or null on success.
+ */
+async function stampProfilePhone(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  phone: string,
+): Promise<Response | null> {
+  // One account per number: passing the SMS proves the user holds the line,
+  // but not that it is free. Without this an existing account could move
+  // onto a number another account already uses — the same duplicate the
+  // signup flow rejects, entered through the profile editor instead.
+  const { data: taken, error: takenErr } = await supabase.rpc('phone_in_use', {
+    p: phone,
+    exclude_user: userId,
+  });
+  if (takenErr) {
+    console.error('[phone-otp] phone_in_use error:', takenErr);
+    return json({ ok: false, error: 'Could not verify the phone number. Please try again.' }, 500);
+  }
+  if (taken) {
+    return json({ ok: false, error: 'This phone number is already registered to another account.' }, 409);
+  }
+
+  const { error: updErr } = await supabase
+    .from('profiles')
+    .update({ phone, phone_verified: true })
+    .eq('id', userId);
+  if (updErr) {
+    // 23505 = the unique index caught a number claimed since the check above.
+    if (updErr.code === '23505') {
+      return json({ ok: false, error: 'This phone number is already registered to another account.' }, 409);
+    }
+    console.error('[phone-otp] profile update error:', updErr);
+    return json({ ok: false, error: 'Could not save the phone number. Please try again.' }, 500);
+  }
+  return null;
 }
 
 function clientIp(req: Request): string {
@@ -118,11 +187,52 @@ Deno.serve(async (req: Request) => {
   );
   const pepper = Deno.env.get('OTP_PEPPER') ?? '';
 
-  let body: { action?: string; phone?: string; code?: string; captchaToken?: string; userId?: string };
+  let body: {
+    action?: string;
+    phone?: string;
+    code?: string;
+    captchaToken?: string;
+    userId?: string;
+    claimToken?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  // ── CLAIM ──────────────────────────────────────────────────────────────────
+  // Redeem a verification made before the account had a session. No phone is
+  // supplied: the binding made at signup says which number this account proved,
+  // so a caller cannot aim the claim at a number they never verified.
+  if (body.action === 'claim') {
+    const userId = await callerUserId(req, supabase);
+    if (!userId) return json({ ok: false, error: 'Not signed in.' }, 401);
+
+    const since = new Date(Date.now() - CLAIM_WINDOW_SEC * 1000).toISOString();
+    const { data: rows, error: selErr } = await supabase
+      .from('phone_otps')
+      .select('id, phone, verified_at')
+      .eq('claimed_by', userId)
+      .is('applied_at', null)
+      .not('verified_at', 'is', null)
+      .gte('verified_at', since)
+      .order('verified_at', { ascending: false })
+      .limit(1);
+    if (selErr) {
+      console.error('[phone-otp] claim lookup error:', selErr);
+      return json({ ok: false, error: 'Could not check the verification. Please try again.' }, 500);
+    }
+
+    const row = rows?.[0];
+    if (!row) return json({ ok: false, error: 'No verification to claim.' }, 404);
+
+    const failed = await stampProfilePhone(supabase, userId, row.phone);
+    if (failed) return failed;
+
+    // One-shot: the binding is spent whether or not the user later edits the number.
+    await supabase.from('phone_otps').update({ applied_at: new Date().toISOString() }).eq('id', row.id);
+    return json({ ok: true, verified: true, phone: row.phone });
   }
 
   const phone = normalizePhone(body.phone ?? '');
@@ -227,44 +337,80 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: 'Incorrect code. Please try again.', remaining }, 400);
     }
 
-    // Correct — burn the code so it can't be reused.
-    await supabase.from('phone_otps').update({ consumed: true, attempts: row.attempts + 1 }).eq('id', row.id);
-
-    // If a signed-in user is verifying, stamp their profile server-side (authoritative —
-    // this is the only path that should set phone_verified for an existing account).
-    const userId = (body.userId ?? '').trim();
-    if (userId) {
-      // One account per number: passing the SMS proves the user holds the line,
-      // but not that it is free. Without this an existing account could move
-      // onto a number another account already uses — the same duplicate the
-      // signup flow rejects, entered through the profile editor instead.
-      const { data: taken, error: takenErr } = await supabase.rpc('phone_in_use', {
-        p: phone,
-        exclude_user: userId,
-      });
-      if (takenErr) {
-        console.error('[phone-otp] phone_in_use error:', takenErr);
-        return json({ error: 'Could not verify the phone number. Please try again.' }, 500);
-      }
-      if (taken) {
-        return json({ error: 'This phone number is already registered to another account.' }, 409);
-      }
-
-      const { error: updErr } = await supabase
-        .from('profiles')
-        .update({ phone, phone_verified: true })
-        .eq('id', userId);
-      if (updErr) {
-        // 23505 = the unique index caught a number claimed since the check above.
-        if (updErr.code === '23505') {
-          return json({ error: 'This phone number is already registered to another account.' }, 409);
-        }
-        console.error('[phone-otp] profile update error:', updErr);
-        return json({ error: 'Could not save the phone number. Please try again.' }, 500);
-      }
+    // Correct — burn the code so it can't be reused, and record that it was
+    // burned by a *correct* answer (`consumed` is also set by the attempt limit).
+    // The claim token lets whoever passed this check bind it to an account later.
+    const claimToken = makeClaimToken();
+    const { error: burnErr } = await supabase
+      .from('phone_otps')
+      .update({
+        consumed: true,
+        attempts: row.attempts + 1,
+        verified_at: new Date().toISOString(),
+        claim_hash: await sha256Hex(`${claimToken}:${pepper}`),
+      })
+      .eq('id', row.id);
+    if (burnErr) {
+      // 42703 = undefined column: db/phone-verification-claim.sql has not been
+      // applied yet. Failing here would also leave the code unburned and reusable,
+      // so refuse rather than let a verified code stay live for its whole TTL.
+      console.error('[phone-otp] could not burn code:', burnErr);
+      return json({ ok: false, error: 'Could not complete verification. Please try again.' }, 500);
     }
 
-    return json({ ok: true, verified: true, phone });
+    // A signed-in user verifying from the profile editor gets stamped straight
+    // away. The id comes from their session — the body cannot be trusted here,
+    // since this function is public, and taking userId from it let any caller
+    // point an SMS they passed at somebody else's profile.
+    const sessionUserId = await callerUserId(req, supabase);
+    const claimsUser = (body.userId ?? '').trim().length > 0;
+    if (claimsUser) {
+      if (!sessionUserId) return json({ ok: false, error: 'Not signed in.' }, 401);
+      if (body.userId!.trim() !== sessionUserId) {
+        return json({ ok: false, error: 'Session does not match the requested account.' }, 403);
+      }
+      const failed = await stampProfilePhone(supabase, sessionUserId, phone);
+      if (failed) return failed;
+      return json({ ok: true, verified: true, phone });
+    }
+
+    // Nobody signed in: this is the signup flow. Hand back the claim token so
+    // the account created next can bind it.
+    return json({ ok: true, verified: true, phone, claimToken });
+  }
+
+  // ── ATTACH ─────────────────────────────────────────────────────────────────
+  // Called right after signUp, while the account exists but has no session yet
+  // (email confirmation pending). Presenting the claim token proves this is the
+  // same visitor who passed the SMS check moments ago.
+  if (body.action === 'attach') {
+    const userId = (body.userId ?? '').trim();
+    const claimToken = (body.claimToken ?? '').trim();
+    if (!userId || !claimToken) return json({ ok: false, error: 'Missing binding details.' }, 400);
+
+    const claim_hash = await sha256Hex(`${claimToken}:${pepper}`);
+    const { data: rows } = await supabase
+      .from('phone_otps')
+      .select('id')
+      .eq('phone', phone)
+      .eq('claim_hash', claim_hash)
+      .is('claimed_by', null)
+      .not('verified_at', 'is', null)
+      .limit(1);
+
+    const row = rows?.[0];
+    if (!row) return json({ ok: false, error: 'No matching verification to bind.' }, 404);
+
+    const { error: bindErr } = await supabase
+      .from('phone_otps')
+      .update({ claimed_by: userId })
+      .eq('id', row.id)
+      .is('claimed_by', null);
+    if (bindErr) {
+      console.error('[phone-otp] attach error:', bindErr);
+      return json({ ok: false, error: 'Could not bind the verification.' }, 500);
+    }
+    return json({ ok: true, attached: true });
   }
 
   return json({ error: 'Unknown action.' }, 400);

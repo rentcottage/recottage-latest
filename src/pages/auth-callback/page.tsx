@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { upsertProfile, checkEmailBlocked } from '../../hooks/useAuth';
+import { upsertProfile, checkEmailBlocked, ensurePhoneVerification } from '../../hooks/useAuth';
 import { useT } from '../../i18n';
 
 /**
@@ -20,6 +20,9 @@ async function savePendingPhone(userId: string, metadataPhone?: string): Promise
   // Verified only counts when it came from the local stash written straight
   // after an SMS check — user_metadata is user-writable.
   const verified = !!stashed && localStorage.getItem('rc_pending_phone_verified') === '1';
+  // Without the stash the number is saved unverified here; ensurePhoneVerification()
+  // below then redeems the server-side binding made at signup, which is what
+  // covers confirming the email on a different device or origin.
   const payload = verified ? { phone: pending, phone_verified: true } : { phone: pending };
   try {
     // First try update (profile row should exist after upsertProfile)
@@ -92,6 +95,7 @@ export default function AuthCallback() {
 
           await upsertProfile(session.user);
           await savePendingPhone(session.user.id, session.user.user_metadata?.phone as string | undefined);
+          await ensurePhoneVerification(session.user.id);
 
           if (!cancelled) {
             const provider = session.user.app_metadata?.provider ?? '';
@@ -125,6 +129,7 @@ export default function AuthCallback() {
 
             await upsertProfile(s.user);
             await savePendingPhone(s.user.id, s.user.user_metadata?.phone as string | undefined);
+            await ensurePhoneVerification(s.user.id);
             subscription.unsubscribe();
 
             const provider = s.user.app_metadata?.provider ?? '';
