@@ -74,7 +74,7 @@ export default function HomePage() {
       '@type': 'Organization',
       name: 'RentCottage.Ge',
       url: siteUrl,
-      logo: `${siteUrl}/vite.svg`,
+      logo: `${siteUrl}/logo.png`,
       contactPoint: {
         '@type': 'ContactPoint',
         email: 'info.rentcottage@gmail.com',
