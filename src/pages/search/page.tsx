@@ -12,11 +12,14 @@ import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, type Promo } from '../../lib/promos';
 import { fetchOfferedProperties, type OfferByProperty } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
+import { AMENITY_LABEL_KEY } from '../../lib/amenityLabels';
+import { REGION_LABEL_KEY } from '../../lib/regions';
 
 // Georgian regions for the Region filter. Values stay in English — they're
 // matched bilingually against stored listings via `regionMatches()` — only the
 // on-screen label is translated (see REGION_LABEL_KEY below).
 const GEORGIAN_REGIONS = [
+  'Abkhazia',
   'Adjara',
   'Guria',
   'Imereti',
@@ -31,20 +34,18 @@ const GEORGIAN_REGIONS = [
   'Tbilisi',
 ];
 
-const REGION_LABEL_KEY: Record<string, string> = {
-  'Adjara': 'search.regionAdjara',
-  'Guria': 'search.regionGuria',
-  'Imereti': 'search.regionImereti',
-  'Kakheti': 'search.regionKakheti',
-  'Kvemo Kartli': 'search.regionKvemoKartli',
-  'Mtskheta-Mtianeti': 'search.regionMtskhetaMtianeti',
-  'Racha-Lechkhumi': 'search.regionRachaLechkhumi',
-  'Samegrelo-Zemo Svaneti': 'search.regionSamegreloZemoSvaneti',
-  'Samtskhe-Javakheti': 'search.regionSamtskheJavakheti',
-  'Shida Kartli': 'search.regionShidaKartli',
-  'Svaneti': 'search.regionSvaneti',
-  'Tbilisi': 'search.regionTbilisi',
-};
+/**
+ * Does this listing count as `type`?
+ *
+ * Normally that is just its stored property_type. Winery is the exception: it
+ * is a type a host can pick today AND a category older listings were tagged
+ * with, so matching only the type would report 0 wineries while seven of them
+ * sit in the results.
+ */
+function matchesPropertyType(property: { propertyType: string; categories?: string[] }, type: string): boolean {
+  if (property.propertyType === type) return true;
+  return type === 'Winery' && (property.categories || []).some((c) => c.toLowerCase() === 'winery');
+}
 
 const PAGE_SIZE = 9;
 
@@ -52,39 +53,36 @@ const PAGE_SIZE = 9;
 //
 // `amenity`  → drives the existing amenity filter (real data).
 // `type`     → drives the existing property-type filter (real data).
+// `category` → drives the existing `?category=` filter (real data).
 // Every chip drives a real filter — nothing here is decorative.
-type QuickFilter = { labelKey: string; amenity?: string; type?: string };
+//
+// Winery is a CATEGORY, not a property type: hosts pick it in the categories
+// step, and no listing is ever stored with property_type 'Winery'. Filtering it
+// by type matched nothing, which is why the chip came back empty.
+type QuickFilter = { labelKey: string; amenity?: string; type?: string; category?: string };
 const QUICK_FILTERS: QuickFilter[] = [
   { labelKey: 'search.chipHotTub', amenity: 'Hot Tub' },
   { labelKey: 'search.chipFireplace', amenity: 'Fireplace' },
   { labelKey: 'search.chipPool', amenity: 'Swimming Pool' },
-  { labelKey: 'search.chipPets', amenity: 'Pet Friendly' },
-  { labelKey: 'search.chipWinery', type: 'Winery' },
+  { labelKey: 'search.chipWinery', category: 'Winery' },
 ];
 
-// Amenity + property-type filter VALUES stay in English (matched against
-// stored listing data via includes()/comparison) — only the displayed label
-// is translated, via these lookup maps.
-const AMENITY_LABEL_KEY: Record<string, string> = {
-  'WiFi': 'search.amenityWifi',
-  'Kitchen': 'search.amenityKitchen',
-  'Fireplace': 'search.amenityFireplace',
-  'Mountain View': 'search.amenityMountainView',
-  'Lake Access': 'search.amenityLakeAccess',
-  'Pet Friendly': 'search.amenityPetFriendly',
-  'BBQ Grill': 'search.amenityBbqGrill',
-  'Hot Tub': 'search.amenityHotTub',
-  'Parking': 'search.amenityParking',
-  'Swimming Pool': 'search.amenitySwimmingPool',
-};
+// Property-type filter VALUES stay in English (matched against stored listing
+// data via includes()/comparison) — only the displayed label is translated,
+// via the lookup map below. Amenities work the same way, through the shared
+// AMENITY_LABEL_KEY catalog.
 
-const PROPERTY_TYPES = ['Cottage', 'Cabin', 'House', 'Farmhouse', 'Winery'];
+// The property types offered as filters — the same four a host can pick.
+// Cabin and Farmhouse were retired: two live listings still carry them and are
+// unaffected in the results, they just aren't a filter of their own any more.
+const PROPERTY_TYPES = ['Cottage', 'Winery', 'Villa', 'Glamping'];
 const TYPE_LABEL_KEY: Record<string, string> = {
   'Cottage': 'search.typeCottage',
-  'Cabin': 'search.typeCabin',
-  'House': 'search.typeHouse',
-  'Farmhouse': 'search.typeFarmhouse',
   'Winery': 'search.typeWinery',
+  'Villa': 'search.typeVilla',
+  'Glamping': 'search.typeGlamping',
+  'Cabin': 'search.typeCabin',
+  'Farmhouse': 'search.typeFarmhouse',
 };
 
 export default function SearchResults() {
@@ -222,12 +220,18 @@ export default function SearchResults() {
       );
     }
 
-    // Filter by category if present — uses the real categories[] field saved during host registration
+    // Filter by category if present — uses the real categories[] field saved
+    // during host registration.
+    //
+    // Property type counts too: Winery is now both a type a host can pick and a
+    // category older listings were tagged with, so matching only one of the two
+    // would hide half the wineries. No other category shares a name with a type.
     if (category) {
-      const categoryNormalized = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+      const categoryNormalized = category.trim().toLowerCase();
       filtered = filtered.filter(property => {
         const cats = property.categories || [];
-        return cats.some(c => c.toLowerCase() === categoryNormalized.toLowerCase());
+        return cats.some(c => c.toLowerCase() === categoryNormalized)
+          || property.propertyType.toLowerCase() === categoryNormalized;
       });
     }
 
@@ -258,7 +262,7 @@ export default function SearchResults() {
     // Filter by property types
     if (selectedPropertyTypes.length > 0) {
       filtered = filtered.filter(property =>
-        selectedPropertyTypes.includes(property.propertyType)
+        selectedPropertyTypes.some((type) => matchesPropertyType(property, type))
       );
     }
 
@@ -351,7 +355,7 @@ export default function SearchResults() {
       ).length;
     });
     PROPERTY_TYPES.forEach((ty) => {
-      type[ty] = dbProperties.filter((p) => p.propertyType === ty).length;
+      type[ty] = dbProperties.filter((p) => matchesPropertyType(p, ty)).length;
     });
     GEORGIAN_REGIONS.forEach((r) => {
       region[r] = dbProperties.filter((p) => regionMatches(p.location, r)).length;
@@ -509,9 +513,20 @@ export default function SearchResults() {
       />
       <Header />
       
-      {/* Search zone — white compact bar + quick-filter chips (mockup "new look") */}
-      <section className="bg-white border-b border-line">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      {/* Search zone — search bar + quick-filter chips over a Caucasus backdrop.
+          No `overflow-hidden` here on purpose: SearchBar's autocomplete and
+          guest panels overflow this section and would be clipped by it. */}
+      <section
+        className="relative border-b border-line bg-ink bg-cover bg-center"
+        style={{ backgroundImage: "url('/redesign/search-mountains.jpg')" }}
+      >
+        {/* Scrim — the bar and chips are white pills, so the photo is darkened
+            enough for them to read at any crop, on any screen width. */}
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/40 to-black/55"
+          aria-hidden="true"
+        />
+        <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6">
           {/* Desktop: full SearchBar */}
           <div className="hidden md:block">
             <SearchBar />
@@ -559,19 +574,22 @@ export default function SearchResults() {
           </div>
 
           {/* Quick-filter chips — mockup's curated set (10px gap, 7px/15px padding) */}
-          <div className="flex flex-wrap justify-center gap-2.5 mt-3 pb-0.5">
+          <div className="flex flex-wrap justify-center gap-1.5 md:gap-2.5 mt-2.5 md:mt-3 pb-0.5">
             {QUICK_FILTERS.map((f) => {
-              const on = f.type
-                ? selectedPropertyTypes.includes(f.type)
-                : selectedAmenities.includes(f.amenity!);
+              const on = f.category
+                ? category.toLowerCase() === f.category.toLowerCase()
+                : f.type
+                  ? selectedPropertyTypes.includes(f.type)
+                  : selectedAmenities.includes(f.amenity!);
               return (
                 <button
                   key={f.labelKey}
                   onClick={() => {
-                    if (f.type) handlePropertyTypeToggle(f.type);
+                    if (f.category) updateFilterParam('category', on ? '' : f.category);
+                    else if (f.type) handlePropertyTypeToggle(f.type);
                     else handleAmenityToggle(f.amenity!);
                   }}
-                  className={`shrink-0 border-[1.5px] rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`shrink-0 border-[1.5px] rounded-full px-3 py-[5px] text-[11.5px] md:px-[15px] md:py-[7px] md:text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                     on
                       ? 'bg-red-50 border-red-500 text-red-500'
                       : 'bg-white border-line text-gray-700 hover:border-red-500 hover:text-red-500'
@@ -591,26 +609,26 @@ export default function SearchResults() {
             {FEATURE_FLAGS.ENABLE_PROMOS && activePromos.length > 0 && (
               <button
                 onClick={() => updateFilterParam('promos', promosOnly ? '' : '1')}
-                className={`shrink-0 inline-flex items-center gap-1.5 border-[1.5px] rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                className={`shrink-0 inline-flex items-center gap-1.5 border-[1.5px] rounded-full px-3 py-[5px] text-[11.5px] md:px-[15px] md:py-[7px] md:text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                   promosOnly
                     ? 'bg-green-600 border-green-600 text-white'
                     : 'bg-white border-green-500 text-green-700 hover:bg-green-50'
                 }`}
               >
-                <i className="ri-price-tag-3-line text-[15px]"></i>
+                <i className="ri-price-tag-3-line text-[13px] md:text-[15px]"></i>
                 {t('search.chipPromos')}
               </button>
             )}
             {FEATURE_FLAGS.ENABLE_HOST_OFFERS && Object.keys(offeredProperties).length > 0 && (
               <button
                 onClick={() => updateFilterParam('offers', offersOnly ? '' : '1')}
-                className={`shrink-0 inline-flex items-center gap-1.5 border-[1.5px] rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                className={`shrink-0 inline-flex items-center gap-1.5 border-[1.5px] rounded-full px-3 py-[5px] text-[11.5px] md:px-[15px] md:py-[7px] md:text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                   offersOnly
                     ? 'bg-emerald-600 border-emerald-600 text-white'
                     : 'bg-white border-emerald-500 text-emerald-700 hover:bg-emerald-50'
                 }`}
               >
-                <i className="ri-gift-line text-[15px]"></i>
+                <i className="ri-gift-line text-[13px] md:text-[15px]"></i>
                 {t('search.chipOffers')}
               </button>
             )}

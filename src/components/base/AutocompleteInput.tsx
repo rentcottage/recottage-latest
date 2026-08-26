@@ -15,6 +15,23 @@ interface AutocompleteInputProps {
   options: AutocompleteOption[];
   required?: boolean;
   className?: string;
+  /** Called when a catalog entry is picked (not on free typing). */
+  onOptionSelect?: (option: AutocompleteOption) => void;
+  /** What a picked entry writes into the field. Defaults to "Name, Region". */
+  formatSelection?: (option: AutocompleteOption) => string;
+  /**
+   * How each suggestion is labelled on screen. Defaults to the catalog's own
+   * text, which is English — pass this to show the reader's language instead.
+   */
+  optionLabel?: (option: AutocompleteOption) => { name: string; region: string };
+  /** Free-text fallback row copy. Defaults to English. */
+  customLabel?: (typed: string) => { title: React.ReactNode; hint: string };
+  /**
+   * Whether the field already holds a resolved catalog entry. Pass this when
+   * the displayed text is not the stored value — a localized city name will
+   * never match the English catalog by string comparison.
+   */
+  resolved?: boolean;
 }
 
 export default function AutocompleteInput({
@@ -24,16 +41,25 @@ export default function AutocompleteInput({
   onChange,
   options,
   required = false,
-  className = ''
+  className = '',
+  onOptionSelect,
+  formatSelection = (option) => `${option.name}, ${option.region}`,
+  optionLabel = (option) => ({ name: option.name, region: option.region }),
+  customLabel,
+  resolved,
 }: AutocompleteInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState<AutocompleteOption[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Picking an option rewrites `value`, which re-runs the filter effect below
+  // and used to spring the list straight back open — so the first click looked
+  // like it had done nothing and the host had to pick the city twice.
+  const justSelectedRef = useRef(false);
 
   // Check if current value exactly matches a known option
-  const isKnownLocation = options.some(
+  const isKnownLocation = resolved ?? options.some(
     opt => `${opt.name}, ${opt.region}`.toLowerCase() === value.toLowerCase() ||
            opt.name.toLowerCase() === value.toLowerCase()
   );
@@ -46,6 +72,13 @@ export default function AutocompleteInput({
   const totalItems = filteredOptions.length + (showCustomOption ? 1 : 0);
 
   useEffect(() => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      setFilteredOptions([]);
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+      return;
+    }
     if (value.length >= 1) {
       // Use bilingual filtering so Georgian hosts can type in Georgian
       // and still find the correct city, and vice versa
@@ -65,7 +98,9 @@ export default function AutocompleteInput({
   };
 
   const handleOptionClick = (option: AutocompleteOption) => {
-    onChange(`${option.name}, ${option.region}`);
+    justSelectedRef.current = true;
+    onChange(formatSelection(option));
+    onOptionSelect?.(option);
     setIsOpen(false);
     setHighlightedIndex(-1);
   };
@@ -137,6 +172,7 @@ export default function AutocompleteInput({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           onFocus={() => {
+            if (isKnownLocation) return;
             if (filteredOptions.length > 0 || value.trim().length >= 2) {
               setIsOpen(true);
             }
@@ -174,8 +210,8 @@ export default function AutocompleteInput({
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">{option.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{option.region}</div>
+                  <div className="font-medium text-gray-900 text-sm">{optionLabel(option).name}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{optionLabel(option).region}</div>
                 </div>
                 <div className="w-5 h-5 flex items-center justify-center ml-2 flex-shrink-0">
                   <i className="ri-map-pin-line text-gray-300 text-xs"></i>
@@ -205,9 +241,15 @@ export default function AutocompleteInput({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-gray-800 truncate">
-                  Use &ldquo;<span className="text-red-600">{value.trim()}</span>&rdquo;
+                  {customLabel ? (
+                    customLabel(value.trim()).title
+                  ) : (
+                    <>Use &ldquo;<span className="text-red-600">{value.trim()}</span>&rdquo;</>
+                  )}
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">Enter as custom location</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {customLabel ? customLabel(value.trim()).hint : 'Enter as custom location'}
+                </div>
               </div>
               <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                 <i className="ri-check-line text-gray-300 text-xs"></i>

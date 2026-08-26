@@ -246,23 +246,27 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-14 md:py-16 px-4 sm:px-6 lg:px-8 max-w-[1280px] mx-auto">
-        <div className="mb-8 md:mb-10">
+      <section className="py-9 md:py-12 px-4 sm:px-6 lg:px-8 max-w-[1280px] mx-auto">
+        <div className="mb-5 md:mb-6">
           <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">{t('home.howTitle')}</h2>
-          <p className="text-soft mt-1">{t('home.howSub')}</p>
+          <p className="text-sm md:text-base text-soft mt-0.5">{t('home.howSub')}</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {[
             { n: 1, titleKey: 'home.step1Title', descKey: 'home.step1Desc' },
             { n: 2, titleKey: 'home.step2Title', descKey: 'home.step2Desc' },
             { n: 3, titleKey: 'home.step3Title', descKey: 'home.step3Desc' },
           ].map((step) => (
-            <div key={step.n} className="bg-white border border-line rounded-card p-6 md:p-7">
-              <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 font-extrabold text-lg flex items-center justify-center mb-3.5">
-                {step.n}
+            /* The step number sits beside its title rather than stacked above it —
+               same information, one row shorter per card. */
+            <div key={step.n} className="bg-white border border-line rounded-card p-4 md:p-5">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="w-7 h-7 flex-shrink-0 rounded-full bg-red-50 text-red-500 font-extrabold text-sm flex items-center justify-center">
+                  {step.n}
+                </span>
+                <h3 className="text-base font-bold text-ink">{t(step.titleKey)}</h3>
               </div>
-              <h3 className="text-[17px] font-bold text-ink mb-1.5">{t(step.titleKey)}</h3>
-              <p className="text-sm text-soft leading-relaxed">{t(step.descKey)}</p>
+              <p className="text-sm text-soft leading-snug">{t(step.descKey)}</p>
             </div>
           ))}
         </div>

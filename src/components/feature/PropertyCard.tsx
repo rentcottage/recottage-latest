@@ -2,6 +2,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import PropertyImageSlider from './PropertyImageSlider';
 import { applyPromoDiscount } from '../../lib/promos';
 import { offerLabel, formatPercent, type CardOffer } from '../../lib/hostOffers';
+import { localizePlace } from '../../lib/locationNormalizer';
+import { amenityLabel } from '../../lib/amenityLabels';
+import { localizeHostName } from '../../lib/hostNames';
 import { useT } from '../../i18n';
 
 /** ₾ amounts: whole numbers stay whole, fractional show 2 decimals. */
@@ -52,7 +55,7 @@ export default function PropertyCard({
   promoPercent,
   offerNights,
 }: PropertyCardProps) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -70,6 +73,10 @@ export default function PropertyCard({
   };
 
   const photoList = images && images.length > 0 ? images : [image];
+
+  // Listing data is stored in one canonical form (English places, English
+  // amenity values) — it is the label that follows the reader's language.
+  const localizedLocation = localizePlace(location, lang);
 
   // Limit amenities shown on desktop to 2, mobile to 1 (cards are narrow in the grid)
   const desktopAmenities = amenities.slice(0, 2);
@@ -91,10 +98,12 @@ export default function PropertyCard({
           coverPosition={coverPosition}
           onFavoriteClick={(e) => e.stopPropagation()}
         />
+        {/* Capped short of the favourite button in the opposite corner: the
+            Georgian label is long enough to run under it on a narrow card. */}
         {isRealListing && (
-          <span className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 bg-[#222] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-full pointer-events-none">
-            <i className="ri-verified-badge-fill text-[12px] leading-none"></i>
-            {t('search.badgeVerified')}
+          <span className="absolute top-2 left-2 md:top-2.5 md:left-2.5 z-20 inline-flex items-center gap-1 max-w-[calc(100%-2.75rem)] md:max-w-[calc(100%-3.5rem)] bg-[#222] text-white text-[10px] md:text-[11.5px] font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full pointer-events-none">
+            <i className="ri-verified-badge-fill text-[11px] md:text-[12px] leading-none flex-shrink-0"></i>
+            <span className="truncate">{t('search.badgeVerified')}</span>
           </span>
         )}
         {/* Bottom-left: top-left is the verified tag and top-right is the
@@ -131,10 +140,10 @@ export default function PropertyCard({
         </div>
 
         {/* Location — single line, truncated */}
-        <p className="text-xs md:text-[13.5px] text-soft mb-1.5 truncate leading-tight">{location}</p>
+        <p className="text-xs md:text-[13.5px] text-soft mb-1.5 truncate leading-tight">{localizedLocation}</p>
 
         {/* Host — desktop only */}
-        <p className="hidden md:block text-xs text-gray-400 mb-2.5 truncate">{t('property.detail.hostedBy', { host })}</p>
+        <p className="hidden md:block text-xs text-gray-400 mb-2.5 truncate">{t('property.detail.hostedBy', { host: localizeHostName(host, lang) })}</p>
 
         {/* Amenities — desktop */}
         <div className="hidden md:flex items-center gap-1.5 mb-3 flex-nowrap overflow-hidden">
@@ -143,7 +152,7 @@ export default function PropertyCard({
               key={index}
               className="text-xs bg-[#fafafa] border border-line text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0 max-w-[120px] truncate"
             >
-              {amenity}
+              {amenityLabel(amenity, t)}
             </span>
           ))}
           {desktopExtra > 0 && (
@@ -160,7 +169,7 @@ export default function PropertyCard({
               key={index}
               className="text-xs bg-[#fafafa] border border-line text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 max-w-[100px] truncate"
             >
-              {amenity}
+              {amenityLabel(amenity, t)}
             </span>
           ))}
           {mobileExtra > 0 && (
@@ -183,7 +192,7 @@ export default function PropertyCard({
             {promoPercent ? (
               <span className="text-xs md:text-sm text-soft line-through whitespace-nowrap" translate="no">₾{price}</span>
             ) : null}
-            <span className="text-xs text-soft whitespace-nowrap">/ night</span>
+            <span className="text-xs text-soft whitespace-nowrap">{t('search.perNight')}</span>
           </div>
           {promoPercent ? (
             <span className="flex-shrink-0 inline-flex items-center gap-1 bg-green-600 text-white text-[11.5px] font-bold px-2.5 py-1 rounded-full">

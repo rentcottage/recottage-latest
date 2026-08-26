@@ -2,9 +2,8 @@ import { useState, useRef } from 'react';
 import HCaptchaLib from '@hcaptcha/react-hcaptcha';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
-import AutocompleteInput from '../../components/base/AutocompleteInput';
+import LocationPicker from '../../components/feature/LocationPicker';
 import SEO from '../../components/feature/SEO';
-import { georgianCities } from '../../mocks/georgian-cities';
 import { supabase } from '../../lib/supabase';
 import { compressImage } from '../../lib/imageCompression';
 import { useT } from '../../i18n';
@@ -14,21 +13,19 @@ const PROPERTY_APP_FN_URL =
 
 const HCAPTCHA_SITE_KEY = '7c3ed03a-c4f2-4bd4-8bda-e8a291bc5ede';
 
+// The types a host can file a listing under. Cabin and Farmhouse were retired
+// from the form; their labels stay so the handful of existing listings already
+// stored under them still render their own type rather than a raw string.
 const PROPERTY_TYPE_KEY: Record<string, string> = {
   Cottage: 'account.becomeHost.typeCottage',
+  Winery: 'account.becomeHost.typeWinery',
+  Villa: 'account.becomeHost.typeVilla',
+  Glamping: 'account.becomeHost.typeGlamping',
   Cabin: 'account.becomeHost.typeCabin',
   Farmhouse: 'account.becomeHost.typeFarmhouse',
-  Villa: 'account.becomeHost.typeVilla',
 };
 
-const CATEGORY_KEY: Record<string, string> = {
-  Mountain: 'account.becomeHost.categoryMountain',
-  Lakeside: 'account.becomeHost.categoryLakeside',
-  Traditional: 'account.becomeHost.categoryTraditional',
-  Forest: 'account.becomeHost.categoryForest',
-  Countryside: 'account.becomeHost.categoryCountryside',
-  Winery: 'account.becomeHost.categoryWinery',
-};
+const OFFERED_PROPERTY_TYPES = ['Cottage', 'Winery', 'Villa', 'Glamping'];
 
 const AMENITY_KEY: Record<string, string> = {
   'WiFi': 'account.becomeHost.amenityWifi',
@@ -58,12 +55,12 @@ export default function BecomeHost() {
 
   const [formData, setFormData] = useState({
     propertyType: '',
-    location: '',
+    locationCity: '',
+    locationRegion: '',
     bedrooms: '',
     bathrooms: '',
     guests: '',
     amenities: [] as string[],
-    categories: [] as string[],
     photos: [] as File[],
     title: '',
     description: '',
@@ -74,6 +71,12 @@ export default function BecomeHost() {
     phone: '',
     acceptedPaymentMethods: 'both',
   });
+
+  /** Canonical listing location — the shape the DB, geocoder and search filters
+      have always been given. The two fields above are only how it's collected. */
+  const location = [formData.locationCity.trim(), formData.locationRegion]
+    .filter(Boolean)
+    .join(', ');
 
   const maxGuestsNum = parseInt(formData.guests) || 0;
   const guestRange = maxGuestsNum > 0 ? Array.from({ length: maxGuestsNum }, (_, i) => i + 1) : [];
@@ -99,15 +102,6 @@ export default function BecomeHost() {
       amenities: prev.amenities.includes(amenity)
         ? prev.amenities.filter(a => a !== amenity)
         : [...prev.amenities, amenity]
-    }));
-  };
-
-  const handleCategoryToggle = (category: string) => {
-    setFormData(prev => ({
-      ...prev,
-      categories: prev.categories.includes(category)
-        ? prev.categories.filter(c => c !== category)
-        : [...prev.categories, category]
     }));
   };
 
@@ -141,7 +135,8 @@ export default function BecomeHost() {
     if (currentStep === 1) {
       const missing: string[] = [];
       if (!formData.propertyType) missing.push(t('account.becomeHost.missingPropertyType'));
-      if (!formData.location) missing.push(t('account.becomeHost.missingLocation'));
+      if (!formData.locationCity) missing.push(t('account.becomeHost.missingLocation'));
+      if (!formData.locationRegion) missing.push(t('account.becomeHost.missingRegion'));
       if (!formData.bedrooms) missing.push(t('account.becomeHost.missingBedrooms'));
       if (!formData.bathrooms) missing.push(t('account.becomeHost.missingBathrooms'));
       if (!formData.guests) missing.push(t('account.becomeHost.missingGuests'));
@@ -197,7 +192,8 @@ export default function BecomeHost() {
     if (!formData.email) missing.push(t('account.becomeHost.missingEmail'));
     if (!formData.phone) missing.push(t('account.becomeHost.missingPhone'));
     if (!formData.propertyType) missing.push(t('account.becomeHost.missingPropertyTypeStep1'));
-    if (!formData.location) missing.push(t('account.becomeHost.missingLocationStep1'));
+    if (!formData.locationCity) missing.push(t('account.becomeHost.missingLocationStep1'));
+    if (!formData.locationRegion) missing.push(t('account.becomeHost.missingRegion'));
     if (!formData.bedrooms) missing.push(t('account.becomeHost.missingBedroomsStep1'));
     if (!formData.bathrooms) missing.push(t('account.becomeHost.missingBathroomsStep1'));
     if (!formData.guests) missing.push(t('account.becomeHost.missingGuestsStep1'));
@@ -253,12 +249,14 @@ export default function BecomeHost() {
           host_email: formData.email,
           host_phone: formData.phone,
           property_type: formData.propertyType,
-          location: formData.location,
+          location,
           bedrooms: parseInt(formData.bedrooms),
           bathrooms: parseInt(formData.bathrooms),
           max_guests: parseInt(formData.guests),
           amenities: formData.amenities,
-          categories: formData.categories,
+          // The category picker was removed from the form; the column stays so
+          // existing listings and the `?category=` filter keep working.
+          categories: [],
           photo_urls: photoUrls,
           title: formData.title,
           description: formData.description,
@@ -279,12 +277,12 @@ export default function BecomeHost() {
         // Reset all form fields after successful submission
         setFormData({
           propertyType: '',
-          location: '',
+          locationCity: '',
+          locationRegion: '',
           bedrooms: '',
           bathrooms: '',
           guests: '',
           amenities: [],
-          categories: [],
           photos: [],
           title: '',
           description: '',
@@ -439,7 +437,7 @@ export default function BecomeHost() {
                 <div>
                   <label className="block text-sm font-medium text-gray-707 mb-2">{t('account.becomeHost.propertyTypeLabel')}</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {['Cottage', 'Cabin', 'Farmhouse', 'Villa'].map((type) => (
+                    {OFFERED_PROPERTY_TYPES.map((type) => (
                       <button
                         key={type}
                         type="button"
@@ -460,58 +458,11 @@ export default function BecomeHost() {
                 </div>
 
                 {/* Property Categories */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-707 mb-2">
-                    {t('account.becomeHost.propertyCategoriesLabel')} <span className="text-gray-400 font-normal">{t('account.becomeHost.selectAllApply')}</span>
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      { label: 'Mountain', icon: 'ri-landscape-line' },
-                      { label: 'Lakeside', icon: 'ri-ship-line' },
-                      { label: 'Traditional', icon: 'ri-building-2-line' },
-                      { label: 'Forest', icon: 'ri-tree-line' },
-                      { label: 'Countryside', icon: 'ri-sun-line' },
-                      { label: 'Winery', icon: 'ri-goblet-line' },
-                    ].map(({ label, icon }) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleCategoryToggle(label);
-                        }}
-                        className={`flex items-center gap-3 p-3 border rounded-lg text-left cursor-pointer transition-colors ${
-                          formData.categories.includes(label)
-                            ? 'border-red-500 bg-red-50 text-red-700'
-                            : 'border-gray-300 hover:border-gray-400 text-gray-700'
-                        }`}
-                      >
-                        <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                          <i className={`${icon} text-base`}></i>
-                        </div>
-                        <span className="text-sm font-medium whitespace-nowrap">{t(CATEGORY_KEY[label])}</span>
-                        {formData.categories.includes(label) && (
-                          <div className="ml-auto w-4 h-4 flex items-center justify-center flex-shrink-0">
-                            <i className="ri-check-line text-red-500 text-sm"></i>
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  {formData.categories.length > 0 && (
-                    <p className="text-xs text-red-600 mt-2 font-medium">
-                      {t('account.becomeHost.selected', { list: formData.categories.map(c => t(CATEGORY_KEY[c] || c)).join(', ') })}
-                    </p>
-                  )}
-                </div>
-
-                <AutocompleteInput
-                  label={t('account.becomeHost.locationLabel')}
-                  placeholder={t('account.becomeHost.locationPlaceholder')}
-                  value={formData.location}
-                  onChange={(value) => handleInputChange('location', value)}
-                  options={georgianCities}
-                  required={true}
+                <LocationPicker
+                  city={formData.locationCity}
+                  region={formData.locationRegion}
+                  onCityChange={(value) => handleInputChange('locationCity', value)}
+                  onRegionChange={(value) => handleInputChange('locationRegion', value)}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

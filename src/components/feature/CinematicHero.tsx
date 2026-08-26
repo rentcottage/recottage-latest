@@ -18,7 +18,6 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
   { labelKey: 'hero.chipFireplace', amenity: 'Fireplace' },
   { labelKey: 'hero.chipMountainView', amenity: 'Mountain View' },
   { labelKey: 'hero.chipSwimmingPool', amenity: 'Swimming Pool' },
-  { labelKey: 'hero.chipPetFriendly', amenity: 'Pet Friendly' },
 ];
 
 /**

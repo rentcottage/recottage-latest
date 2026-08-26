@@ -13,24 +13,11 @@ import { fetchActivePromos, findPromoForLocation, applyPromoDiscount, type Promo
 import { fetchOffersForProperty, findOfferForStay, applyOfferToTotal, freeNightsFor, type HostOffer } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
 import { listingText, type TranslatableListing } from '../../lib/listingText';
+import { amenityLabel } from '../../lib/amenityLabels';
+import { localizePlace } from '../../lib/locationNormalizer';
+import { localizeHostName } from '../../lib/hostNames';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
-
-// Amenity display labels reuse the `search.*` catalog keys (content namespace) so the
-// same vocabulary translates identically between the search filters and this page.
-// The underlying amenity VALUE stays in English (it's stored verbatim in the DB).
-const AMENITY_LABEL_KEY: Record<string, string> = {
-  'WiFi': 'search.amenityWifi',
-  'Kitchen': 'search.amenityKitchen',
-  'Fireplace': 'search.amenityFireplace',
-  'Mountain View': 'search.amenityMountainView',
-  'Lake Access': 'search.amenityLakeAccess',
-  'Pet Friendly': 'search.amenityPetFriendly',
-  'BBQ Grill': 'search.amenityBbqGrill',
-  'Hot Tub': 'search.amenityHotTub',
-  'Parking': 'search.amenityParking',
-  'Swimming Pool': 'search.amenitySwimmingPool',
-};
 
 interface BlockedRange {
   id: string;
@@ -565,7 +552,7 @@ export default function PropertyDetail() {
             <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 mt-2 text-[14.5px] text-gray-700">
               <span className="inline-flex items-center gap-1">
                 <i className="ri-map-pin-line text-soft"></i>
-                {property.location}
+                {localizePlace(property.location, lang)}
               </span>
               <span className="inline-flex items-center gap-1 font-bold">
                 <i className="ri-star-fill text-red-500"></i>
@@ -609,10 +596,10 @@ export default function PropertyDetail() {
             {/* Host Info */}
             <div className="flex items-center gap-3.5 border-b border-line pb-5 mb-5 md:pb-6 md:mb-6">
               <div className="w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-red-50 text-red-500 font-extrabold text-lg md:text-xl flex items-center justify-center flex-shrink-0 notranslate" translate="no">
-                {property.host?.trim()?.charAt(0)?.toUpperCase() || 'H'}
+                {localizeHostName(property.host, lang)?.trim()?.charAt(0)?.toUpperCase() || 'H'}
               </div>
               <div className="min-w-0">
-                <h2 className="text-[16px] font-bold text-ink truncate">{t('property.detail.hostedBy', { host: property.host })}</h2>
+                <h2 className="text-[16px] font-bold text-ink truncate">{t('property.detail.hostedBy', { host: localizeHostName(property.host, lang) })}</h2>
                 <p className="text-[13.5px] text-soft">{t('property.detail.superhostTenure')}</p>
               </div>
               <span className="ml-auto flex-shrink-0 bg-red-50 text-red-500 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
@@ -643,7 +630,7 @@ export default function PropertyDetail() {
               {(() => {
                 const fullText = property.description
                   ? property.description
-                  : t('property.detail.aboutFallback', { titleLower: property.title.toLowerCase(), location: property.location, host: property.host });
+                  : t('property.detail.aboutFallback', { titleLower: property.title.toLowerCase(), location: property.location, host: localizeHostName(property.host, lang) });
                 const PREVIEW_LENGTH = 400;
                 const isLong = fullText.length > PREVIEW_LENGTH;
                 const displayText = !showFullDesc && isLong ? `${fullText.slice(0, PREVIEW_LENGTH).trimEnd()}…` : fullText;
@@ -694,7 +681,7 @@ export default function PropertyDetail() {
                           'ri-checkbox-circle-line'
                         } text-red-500`}></i>
                       </div>
-                      <span>{t(AMENITY_LABEL_KEY[amenity] || amenity)}</span>
+                      <span>{amenityLabel(amenity, t)}</span>
                     </div>
                   ))}
                 </div>
