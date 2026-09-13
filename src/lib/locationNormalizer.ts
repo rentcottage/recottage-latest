@@ -553,12 +553,29 @@ for (const [en, kaList] of Object.entries(EN_TO_KA)) {
 }
 
 /**
+ * Places known by more than one name, keyed by EN_TO_KA key. Kazbegi is the
+ * old (and still common) name of Stepantsminda, so hosts save either one —
+ * searching for one name must also find listings saved under the other.
+ */
+const PLACE_SYNONYMS: string[][] = [
+  ['kazbegi', 'stepantsminda'],
+];
+
+/**
  * Returns all search tokens for a given query string.
  * Expands any query into all equivalent forms in both scripts.
  */
 export function getSearchTokens(query: string): string[] {
   const q = query.toLowerCase().trim();
   const tokens = new Set<string>([q]);
+
+  // Expand synonyms first so the bilingual passes below cover every name.
+  for (const group of PLACE_SYNONYMS) {
+    const names = group.flatMap((en) => [en, ...(EN_TO_KA[en] || []).map((ka) => ka.toLowerCase())]);
+    if (names.some((n) => q === n || q.includes(n))) {
+      names.forEach((n) => tokens.add(n));
+    }
+  }
 
   // Try EN → KA: check if query matches or contains any English key
   for (const [en, kaList] of Object.entries(EN_TO_KA)) {
@@ -814,13 +831,13 @@ export const CITY_TO_REGION: Record<string, string> = {
   algeti: 'kvemo kartli',
   kldeisi: 'kvemo kartli',
   koda: 'kvemo kartli',
-  zhinvali: 'kvemo kartli',
+  zhinvali: 'mtskheta-mtianeti',
   nichbisi: 'kvemo kartli',
   bediani: 'kvemo kartli',
   sadakhlo: 'kvemo kartli',
   yerevi: 'kvemo kartli',
   'akhali saniore': 'kvemo kartli',
-  sioni: 'kvemo kartli',
+  sioni: 'mtskheta-mtianeti',
   tamarisi: 'kvemo kartli',
   tabakhmela: 'kvemo kartli',
   kabali: 'kvemo kartli',
@@ -1166,6 +1183,15 @@ function inferRegionFromLocation(propertyLocation: string): string | null {
  */
 export function regionMatches(propertyLocation: string, filterRegion: string): boolean {
   if (!filterRegion.trim() || !propertyLocation) return false;
+
+  // A list of regions ("კახეთი, მცხეთა-მთიანეთი" — one promo covering two)
+  // matches a property in any of them. Only split when every part is itself a
+  // region name, so "Telavi, Kakheti" is still one place, not all of Kakheti.
+  const parts = filterRegion.split(',').map((p) => normalizeSpacing(p.toLowerCase().trim())).filter(Boolean);
+  if (parts.length > 1 && parts.every((part) =>
+    Object.values(REGION_ALIASES).some((aliases) => aliases.some((a) => normalizeSpacing(a.toLowerCase()) === part)))) {
+    return parts.some((part) => regionMatches(propertyLocation, part));
+  }
 
   const filterLower = normalizeSpacing(filterRegion.toLowerCase().trim());
 
