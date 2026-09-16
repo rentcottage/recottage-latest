@@ -39,12 +39,14 @@ verify_jwt = false
 [functions.resend-approval-email]
 verify_jwt = false
 
-# Serves anonymous email one-click links (approve/reject/confirm) AND the host &
-# admin dashboards, which send no user JWT — the host dashboard sends no auth
-# header and the admin panel sends the `sb_publishable_*` key. With the default
-# verify_jwt=true the gateway rejected both (missing / INVALID_JWT_FORMAT), so
-# host- and admin-side booking rejection failed identically. Host actions
-# self-authorize via a property-ownership check; admin actions still inherit the
-# shared anon-key posture of the other admin-* functions (not yet gated).
+# Authorizes every action in code (see booking-handler/handler.ts):
+#   admin-*                        → `x-admin-password` (ADMIN_PANEL_PASSWORD)
+#   host-* / cancel / change-dates → user session JWT, verified with
+#                                    auth.getUser(), plus property/booking ownership
+#   expire-pending-approvals,
+#   send-contact-reveal-emails     → `x-cron-secret` (CRON_SECRET)
+# Gateway verification stays off: the admin panel authenticates with the admin
+# password rather than a user JWT, and scheduler calls use the cron secret.
+# The old anonymous GET email links and implicit booking creation are removed.
 [functions.booking-handler]
 verify_jwt = false

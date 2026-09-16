@@ -310,6 +310,7 @@ export default function AdminBookings() {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'admin-confirm-booking', bookingId }),
       });
@@ -339,6 +340,7 @@ export default function AdminBookings() {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-admin-password': sessionStorage.getItem('rc_admin_pw') ?? '',
         },
         body: JSON.stringify({ action: 'admin-reject-booking', bookingId, rejectionNote: note.trim() || undefined }),
       });

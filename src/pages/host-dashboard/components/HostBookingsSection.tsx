@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useT } from '../../../i18n';
+import { supabase } from '../../../lib/supabase';
 
 interface Booking {
   id: string;
@@ -49,6 +50,17 @@ const FN_HEADERS = {
   'apikey': ANON_KEY,
   'Authorization': `Bearer ${ANON_KEY}`,
 };
+
+// booking-handler authorizes host actions from the signed-in host's session
+// token (never from the hostEmail in the body), so send it instead of the anon key.
+async function hostSessionHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'apikey': ANON_KEY,
+    'Authorization': `Bearer ${data.session?.access_token ?? ''}`,
+  };
+}
 
 function fmt(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -249,7 +261,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
         method: 'POST',
-        headers: FN_HEADERS,
+        headers: await hostSessionHeaders(),
         body: JSON.stringify({ action: 'host-approve-booking', bookingId, hostEmail }),
       });
       const data = await res.json();
@@ -271,7 +283,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
         method: 'POST',
-        headers: FN_HEADERS,
+        headers: await hostSessionHeaders(),
         body: JSON.stringify({ action: 'host-reject-booking', bookingId, hostEmail, rejectionNote: note }),
       });
       const data = await res.json();
@@ -294,7 +306,7 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
         method: 'POST',
-        headers: FN_HEADERS,
+        headers: await hostSessionHeaders(),
         body: JSON.stringify({ action: 'host-cancel-booking', bookingId, hostEmail }),
       });
       const data = await res.json();

@@ -25,6 +25,8 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  // Price confirmed by the server (the browser estimate is only a preview).
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
 
   const nights = checkIn && checkOut && checkOut > checkIn ? daysBetween(checkIn, checkOut) : 0;
   const newTotal = booking.price_per_night && nights > 0
@@ -53,7 +55,10 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
 
       const res = await fetch(BOOKING_HANDLER_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData?.session?.access_token ?? ''}`,
+        },
         body: JSON.stringify({
           action: 'change-dates',
           bookingId: booking.id,
@@ -71,6 +76,7 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
         return;
       }
 
+      if (typeof data.requestedTotalPrice === 'number') setServerTotal(data.requestedTotalPrice);
       setSubmitted(true);
       onSuccess();
     } catch {
@@ -107,10 +113,10 @@ export default function ChangeDatesModal({ booking, onClose, onSuccess }: Change
                 <span className="text-gray-400">{t('account.changeDatesModal.requestedCheckOut')}</span>
                 <span className="font-medium text-gray-700">{checkOut}</span>
               </div>
-              {newTotal !== null && (
+              {(serverTotal ?? newTotal) !== null && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">{t('account.changeDatesModal.newTotal')}</span>
-                  <span className="font-medium text-gray-700">₾{newTotal}</span>
+                  <span className="font-medium text-gray-700">₾{serverTotal ?? newTotal}</span>
                 </div>
               )}
             </div>
