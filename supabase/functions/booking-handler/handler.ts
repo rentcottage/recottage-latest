@@ -8,7 +8,8 @@
 //  admin-approve-dates, admin-reject-dates      → `x-admin-password` header must
 //                                                 match ADMIN_PANEL_PASSWORD
 //  host-approve-booking, host-reject-booking,
-//  host-cancel-booking                          → `Authorization: Bearer <user
+//  host-cancel-booking, host-approve-dates,
+//  host-reject-dates                            → `Authorization: Bearer <user
 //                                                 session>`; verified, email-
 //                                                 confirmed user whose email is
 //                                                 the property's host_email
@@ -99,7 +100,7 @@ export const corsHeaders = {
 };
 
 const ADMIN_ACTIONS = new Set(['admin-confirm-booking', 'admin-reject-booking', 'admin-approve-dates', 'admin-reject-dates']);
-const HOST_ACTIONS = new Set(['host-approve-booking', 'host-reject-booking', 'host-cancel-booking']);
+const HOST_ACTIONS = new Set(['host-approve-booking', 'host-reject-booking', 'host-cancel-booking', 'host-approve-dates', 'host-reject-dates']);
 const GUEST_ACTIONS = new Set(['cancel', 'change-dates']);
 const BATCH_ACTIONS = new Set(['expire-pending-approvals', 'send-contact-reveal-emails']);
 
@@ -590,7 +591,7 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
     return { requestedTotalPrice: price };
   }
 
-  async function approveDateChange(booking: Row): Promise<void> {
+  async function approveDateChange(booking: Row, changedBy: 'admin' | 'host'): Promise<void> {
     const id = String(booking.id);
     if (booking.date_change_status !== 'pending') throw new HttpError(409, 'No pending date change request');
     const ci = booking.requested_check_in;
@@ -608,17 +609,17 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
       .eq('id', id).eq('date_change_status', 'pending').select('id');
     if (error) throw new HttpError(500, 'Request failed');
     if (!Array.isArray(data) || data.length !== 1) throw new HttpError(409, 'No pending date change request');
-    await logEvent(id, 'dates_approved', booking.status, booking.status, 'admin');
+    await logEvent(id, 'dates_approved', booking.status, booking.status, changedBy);
     await sendEmail(booking.user_email, `Date Change Approved – ${booking.property_title}`, buildDateChangeApprovedEmailHtml(safeRecord(booking), ci, co, '₾' + price), 'date_change_approved', id);
   }
 
-  async function rejectDateChange(booking: Row): Promise<void> {
+  async function rejectDateChange(booking: Row, changedBy: 'admin' | 'host'): Promise<void> {
     const id = String(booking.id);
     if (booking.date_change_status !== 'pending') throw new HttpError(409, 'No pending date change request');
     const { data, error } = await db.from('bookings').update({ date_change_status: 'rejected' }).eq('id', id).eq('date_change_status', 'pending').select('id');
     if (error) throw new HttpError(500, 'Request failed');
     if (!Array.isArray(data) || data.length !== 1) throw new HttpError(409, 'No pending date change request');
-    await logEvent(id, 'dates_rejected', booking.status, booking.status, 'admin');
+    await logEvent(id, 'dates_rejected', booking.status, booking.status, changedBy);
     await sendEmail(booking.user_email, `Date Change Not Approved – ${booking.property_title}`, buildDateChangeRejectedEmailHtml(safeRecord(booking)), 'date_change_rejected', id);
   }
 
@@ -697,8 +698,8 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
           if (r.refund === 'failed') return json({ error: REFUND_FAILED_MESSAGE, refundFailed: true }, 502);
           return json({ success: true, alreadyRejected: r.alreadyDone });
         }
-        if (action === 'admin-approve-dates') { await approveDateChange(booking); return json({ success: true }); }
-        await rejectDateChange(booking);
+        if (action === 'admin-approve-dates') { await approveDateChange(booking, 'admin'); return json({ success: true }); }
+        await rejectDateChange(booking, 'admin');
         return json({ success: true });
       }
 
@@ -707,6 +708,16 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
         const id = bookingIdFrom(body);
         const booking = await loadBooking(id);
         await assertHostOwnsBooking(user, booking);
+        // Date-change decisions: same rules as the admin path (availability
+        // re-check, server price, atomic pending → approved/rejected).
+        if (action === 'host-approve-dates') {
+          await approveDateChange(booking as Row, 'host');
+          return json({ success: true });
+        }
+        if (action === 'host-reject-dates') {
+          await rejectDateChange(booking as Row, 'host');
+          return json({ success: true });
+        }
         if (action === 'host-approve-booking') {
           await confirmBooking(booking as Row, 'host');
           return json({ success: true });

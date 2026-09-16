@@ -1,5 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useT } from '../../../i18n';
+import { supabase } from '../../../lib/supabase';
+
+const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
+const ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
 interface Booking {
   id: string;
@@ -20,6 +24,7 @@ interface Booking {
 interface Props {
   bookings: Booking[];
   loading: boolean;
+  onRefresh?: () => void;
 }
 
 function fmt(d: string) {
@@ -44,8 +49,36 @@ const STATUS_KEY: Record<string, string> = {
   pending: 'host.common.statusPending',
 };
 
-export default function HostDateChangeSection({ bookings, loading }: Props) {
+export default function HostDateChangeSection({ bookings, loading, onRefresh }: Props) {
   const { t } = useT();
+  const [actionLoading, setActionLoading] = useState<Record<string, 'approve' | 'reject' | null>>({});
+  const [actionError, setActionError] = useState<Record<string, string>>({});
+
+  // booking-handler authorizes this from the signed-in host's session token
+  // and checks property ownership server-side; nothing in the body is trusted.
+  const decide = async (bookingId: string, decision: 'approve' | 'reject') => {
+    setActionLoading((prev) => ({ ...prev, [bookingId]: decision }));
+    setActionError((prev) => ({ ...prev, [bookingId]: '' }));
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${sessionData?.session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ action: decision === 'approve' ? 'host-approve-dates' : 'host-reject-dates', bookingId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? t('host.bookings.somethingWentWrong'));
+      onRefresh?.();
+    } catch (e: unknown) {
+      setActionError((prev) => ({ ...prev, [bookingId]: e instanceof Error ? e.message : t('host.bookings.somethingWentWrong') }));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [bookingId]: null }));
+    }
+  };
   const dateChanges = useMemo(() =>
     bookings.filter((b) => b.date_change_status !== null),
     [bookings]
@@ -89,6 +122,7 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
                     t('host.dateChange.colPrice'),
                     t('host.dateChange.colRequested'),
                     t('host.dateChange.colStatus'),
+                    t('host.bookings.colActions'),
                   ].map((h) => (
                     <th key={h} className="px-3 md:px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {h}
@@ -145,6 +179,35 @@ export default function HostDateChangeSection({ bookings, loading }: Props) {
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusBadge(b.date_change_status ?? 'pending')}`}>
                         {b.date_change_status && STATUS_KEY[b.date_change_status] ? t(STATUS_KEY[b.date_change_status]) : b.date_change_status}
                       </span>
+                    </td>
+                    <td className="px-3 md:px-5 py-3 md:py-4 whitespace-nowrap">
+                      {b.date_change_status === 'pending' ? (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => decide(b.id, 'approve')}
+                              disabled={!!actionLoading[b.id]}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
+                            >
+                              <i className={actionLoading[b.id] === 'approve' ? 'ri-loader-4-line animate-spin' : 'ri-check-line'}></i>
+                              {t('host.bookings.approve')}
+                            </button>
+                            <button
+                              onClick={() => decide(b.id, 'reject')}
+                              disabled={!!actionLoading[b.id]}
+                              className="flex items-center gap-1 px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap transition-colors"
+                            >
+                              <i className={actionLoading[b.id] === 'reject' ? 'ri-loader-4-line animate-spin' : 'ri-close-line'}></i>
+                              {t('host.bookings.reject')}
+                            </button>
+                          </div>
+                          {actionError[b.id] && (
+                            <p className="text-xs text-red-500 max-w-[220px] whitespace-normal">{actionError[b.id]}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

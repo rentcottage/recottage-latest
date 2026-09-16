@@ -773,3 +773,125 @@ test('T45 pricing uses active promos/offers like bog-payment; promo host-email t
   assert.ok(withPromo.includes('ჯამური ფასი (ფასდაკლებით)'));
   assert.ok(without.includes('ჯამური ფასი') && !without.includes('(ფასდაკლებით)'));
 });
+
+// ─── Host date-change decisions (regression: hosts could not approve/reject) ──
+
+function withPendingChange(h: H, id: string, over: Row = {}) {
+  Object.assign(b(h, id), { date_change_status: 'pending', requested_check_in: '2027-09-10', requested_check_out: '2027-09-13', requested_total_price: 1, date_change_requested_at: '2026-09-15T10:00:00Z', ...over });
+}
+
+test('T46 authenticated host approves a date change on their own property → dates applied, server price, logged as host', async () => {
+  const h = harness();
+  const r = await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-host-a'));
+  assert.deepEqual([r.status, r.body], [200, { success: true }]);
+  const row = b(h, 'b-datechange');
+  assert.deepEqual([row.check_in, row.check_out, row.date_change_status], ['2027-04-10', '2027-04-14', 'approved']);
+  assert.equal(row.total_price, 400, 'server price (4 nights × 100), not the stored browser price of 1');
+  assert.ok(h.db.rows('booking_status_logs').some((l) => l.booking_id === 'b-datechange' && l.event_type === 'dates_approved' && l.changed_by === 'host'));
+  assert.ok(h.emails.some((e) => e.to === GUEST_1 && e.subject.startsWith('Date Change Approved') && e.html.includes('₾400')));
+});
+
+test('T47 authenticated host rejects a date change on their own property → booking dates and price unchanged', async () => {
+  const h = harness();
+  const before = { ...b(h, 'b-datechange') };
+  const r = await call(h, { action: 'host-reject-dates', bookingId: 'b-datechange' }, bearer('tok-host-a'));
+  assert.deepEqual([r.status, r.body], [200, { success: true }]);
+  const row = b(h, 'b-datechange');
+  assert.equal(row.date_change_status, 'rejected');
+  assert.deepEqual([row.check_in, row.check_out, row.total_price], [before.check_in, before.check_out, before.total_price]);
+  assert.ok(h.db.rows('booking_status_logs').some((l) => l.event_type === 'dates_rejected' && l.changed_by === 'host'));
+  assert.ok(h.emails.some((e) => e.to === GUEST_1 && e.subject.startsWith('Date Change Not Approved')));
+});
+
+test('T48 host date-change actions without a valid session → 401, no changes', async () => {
+  const h = harness();
+  const before = snapshot(h);
+  for (const action of ['host-approve-dates', 'host-reject-dates']) {
+    const attempts: Record<string, string>[] = [{}, { apikey: ANON_JWT, ...bearer(ANON_JWT) }, bearer('tok-host-a-unconfirmed'), bearer('tok-unknown'), admin, cron];
+    for (const headers of attempts) {
+      assert.equal((await call(h, { action, bookingId: 'b-datechange', hostEmail: HOST_A }, headers)).status, 401, `${action} ${Object.keys(headers)}`);
+    }
+  }
+  assert.equal(snapshot(h), before);
+  assert.equal(h.emails.length, 0);
+});
+
+test('T49 authenticated host of another property → 404, no changes', async () => {
+  const h = harness();
+  withPendingChange(h, 'b-host-b');
+  const before = snapshot(h);
+  for (const action of ['host-approve-dates', 'host-reject-dates']) {
+    const r = await call(h, { action, bookingId: 'b-host-b' }, bearer('tok-host-a'));
+    assert.deepEqual([r.status, r.body], [404, { error: 'Booking not found' }]);
+  }
+  assert.equal(snapshot(h), before);
+  assert.equal(h.emails.length, 0);
+});
+
+test('T50 body-supplied host email cannot impersonate the property owner', async () => {
+  const h = harness();
+  // Host B's session + host A's email in the body cannot decide host A's request.
+  for (const action of ['host-approve-dates', 'host-reject-dates']) {
+    assert.equal((await call(h, { action, bookingId: 'b-datechange', hostEmail: HOST_A }, bearer('tok-host-b'))).status, 404);
+  }
+  assert.equal(b(h, 'b-datechange').date_change_status, 'pending');
+  // Host A's session with host B's email in the body still acts only as host A.
+  assert.equal((await call(h, { action: 'host-reject-dates', bookingId: 'b-datechange', hostEmail: HOST_B }, bearer('tok-host-a'))).status, 200);
+});
+
+test('T51 host approval re-checks availability (booking, blocked, iCal) and never trusts the stored browser price', async () => {
+  const conflicts: [string, (h: H) => void][] = [
+    ['booking', (h) => { h.db.rows('bookings').push(booking('b-conflict', { status: 'confirmed', check_in: '2027-09-11', check_out: '2027-09-12', user_email: GUEST_2 })); }],
+    ['blocked', (h) => { h.db.rows('blocked_dates').push({ id: 'blk-2', property_id: 'prop-a', start_date: '2027-09-12', end_date: '2027-09-12' }); }],
+    ['ical', (h) => { h.db.rows('ical_blocked_dates').push({ id: 'ical-2', property_id: 'prop-a', start_date: '2027-09-09', end_date: '2027-09-10' }); }],
+  ];
+  for (const [label, addConflict] of conflicts) {
+    const h = harness();
+    withPendingChange(h, 'b-confirmed-paid');
+    addConflict(h);
+    const r = await call(h, { action: 'host-approve-dates', bookingId: 'b-confirmed-paid' }, bearer('tok-host-a'));
+    assert.deepEqual([r.status, r.body], [409, { error: 'Selected dates are not available' }], label);
+    const row = b(h, 'b-confirmed-paid');
+    assert.deepEqual([row.check_in, row.check_out, row.date_change_status, row.total_price], ['2026-11-01', '2026-11-03', 'pending', 300], label);
+  }
+  const h = harness();
+  withPendingChange(h, 'b-confirmed-paid', { requested_total_price: 1 });
+  h.db.rows('promos').push({ id: 'promo-1', discount_percent: 10, location: 'Mestia', active: true, starts_at: null, ends_at: null, created_at: '2026-01-01' });
+  assert.equal((await call(h, { action: 'host-approve-dates', bookingId: 'b-confirmed-paid', totalPrice: 1, requested_total_price: 1 }, bearer('tok-host-a'))).status, 200);
+  assert.equal(b(h, 'b-confirmed-paid').total_price, 270, '3 nights × 100 with the active 10% promo');
+});
+
+test('T52 duplicate or conflicting host decisions are rejected; concurrent decisions apply exactly once', async () => {
+  const h = harness();
+  assert.equal((await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-host-a'))).status, 200);
+  const emails = h.emails.length;
+  for (const action of ['host-approve-dates', 'host-reject-dates']) {
+    const r = await call(h, { action, bookingId: 'b-datechange' }, bearer('tok-host-a'));
+    assert.deepEqual([r.status, r.body], [409, { error: 'No pending date change request' }]);
+  }
+  assert.equal(b(h, 'b-datechange').date_change_status, 'approved');
+  assert.equal(h.emails.length, emails, 'no extra emails');
+
+  // Host and admin deciding at the same moment: exactly one decision wins.
+  const h2 = harness();
+  const rs = await Promise.all([
+    call(h2, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-host-a')),
+    call(h2, { action: 'host-reject-dates', bookingId: 'b-datechange' }, bearer('tok-host-a')),
+    call(h2, { action: 'admin-reject-dates', bookingId: 'b-datechange' }, admin),
+  ]);
+  assert.equal(rs.filter((r) => r.status === 200).length, 1);
+  assert.equal(rs.filter((r) => r.status === 409).length, 2);
+  assert.equal(h2.emails.filter((e) => e.subject.startsWith('Date Change')).length, 1);
+  const final = b(h2, 'b-datechange');
+  if (final.date_change_status === 'rejected') assert.equal(final.check_in, '2027-04-01');
+  else assert.equal(final.check_in, '2027-04-10');
+});
+
+test('T53 host date-change actions stay host-only; admin date-change actions stay admin-only', async () => {
+  const h = harness();
+  assert.equal((await call(h, { action: 'admin-approve-dates', bookingId: 'b-datechange' }, bearer('tok-host-a'))).status, 401, 'host session cannot use admin action');
+  assert.equal((await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, admin)).status, 401, 'admin password cannot use host action');
+  assert.equal((await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-guest-1'))).status, 404, 'the guest is not the host');
+  assert.equal(b(h, 'b-datechange').date_change_status, 'pending');
+  assertNoLeaks(h);
+});

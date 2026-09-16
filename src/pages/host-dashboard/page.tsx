@@ -188,7 +188,7 @@ function HostDashboardContent() {
       case 'activities':
         return <HostActivitiesSection properties={properties} loading={loading} />;
       case 'dates':
-        return <HostDateChangeSection bookings={bookings} loading={loading} />;
+        return <HostDateChangeSection bookings={bookings} loading={loading} onRefresh={fetchData} />;
       case 'earnings':
         return <HostEarningsSection bookings={bookings} loading={loading} />;
       case 'reviews':
