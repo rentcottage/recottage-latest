@@ -50,3 +50,10 @@ verify_jwt = false
 # The old anonymous GET email links and implicit booking creation are removed.
 [functions.booking-handler]
 verify_jwt = false
+
+# Invoked only by Supabase Cron. Authorizes in code: POST with `x-cron-secret`
+# matching CRON_SECRET (see booking-reminders/handler.ts); every other caller
+# gets 401/405. Gateway verification stays off because the scheduler does not
+# send a user JWT.
+[functions.booking-reminders]
+verify_jwt = false
