@@ -31,6 +31,14 @@ verify_jwt = false
 [functions.admin-host-actions]
 verify_jwt = false
 
+# Called only by the admin panel (sends the anon key as bearer, which is not a
+# user session). Authorizes in code against ADMIN_PANEL_PASSWORD via the
+# `x-admin-password` header — see resend-approval-email/handler.ts. Listed
+# explicitly because production runs with verification off; the default (true)
+# would change behaviour on a CLI deploy.
+[functions.resend-approval-email]
+verify_jwt = false
+
 # Serves anonymous email one-click links (approve/reject/confirm) AND the host &
 # admin dashboards, which send no user JWT — the host dashboard sends no auth
 # header and the admin panel sends the `sb_publishable_*` key. With the default
