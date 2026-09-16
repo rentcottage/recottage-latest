@@ -41,16 +41,6 @@ interface Props {
 const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
 
-// Send the project apikey + bearer on every booking-handler call, identical to
-// the admin panel's calls (which work). The host actions previously sent no auth
-// headers at all — the only thing that differed from the working admin path —
-// so host approve/reject/cancel were rejected while admin succeeded.
-const FN_HEADERS = {
-  'Content-Type': 'application/json',
-  'apikey': ANON_KEY,
-  'Authorization': `Bearer ${ANON_KEY}`,
-};
-
 // booking-handler authorizes host actions from the signed-in host's session
 // token (never from the hostEmail in the body), so send it instead of the anon key.
 async function hostSessionHeaders(): Promise<Record<string, string>> {
@@ -333,24 +323,6 @@ export default function HostBookingsSection({ bookings, loading, showCancelledOn
       ];
 
   const pendingApprovalCount = counts.pending_host_approval;
-
-  // ── Expire overdue pending approvals on mount ──────────────────────────
-  useEffect(() => {
-    const expireOverdue = async () => {
-      try {
-        await fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
-          method: 'POST',
-          headers: FN_HEADERS,
-          body: JSON.stringify({ action: 'expire-pending-approvals', hostEmail }),
-        });
-        onRefresh();
-      } catch {
-        // non-fatal
-      }
-    };
-    if (hostEmail) expireOverdue();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hostEmail]);
 
   return (
     <div>

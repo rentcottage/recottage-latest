@@ -202,22 +202,10 @@ export default function Profile() {
     }
   }, [activeTab, user]);
 
-  // Trigger contact-reveal emails once per day when customer views their profile
+  // Trigger pending booking reminders (at most once per hour)
   useEffect(() => {
     if (!user) return;
     const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
-    const lastRun = localStorage.getItem('rc_contact_reveal_last_run');
-    const today = new Date().toISOString().split('T')[0];
-    if (lastRun === today) return;
-    fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'send-contact-reveal-emails' }),
-    })
-      .then(() => localStorage.setItem('rc_contact_reveal_last_run', today))
-      .catch(() => {});
-
-    // Also trigger pending booking reminders (at most once per hour)
     const lastReminder = localStorage.getItem('rc_booking_reminders_last_run');
     const nowMs = Date.now();
     const ONE_HOUR_MS = 60 * 60 * 1000;

@@ -123,22 +123,6 @@ function HostDashboardContent() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Trigger contact-reveal emails once per day on dashboard load
-  useEffect(() => {
-    const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
-    const ANON_KEY = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string;
-    const lastRun = localStorage.getItem('rc_contact_reveal_last_run');
-    const today = new Date().toISOString().split('T')[0];
-    if (lastRun === today) return; // already ran today
-    fetch(`${SUPABASE_URL}/functions/v1/booking-handler`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` },
-      body: JSON.stringify({ action: 'send-contact-reveal-emails' }),
-    })
-      .then(() => localStorage.setItem('rc_contact_reveal_last_run', today))
-      .catch(() => {}); // non-fatal
-  }, []);
-
   // Trigger pending booking reminder emails — runs at most once per hour
   useEffect(() => {
     const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
