@@ -123,21 +123,6 @@ function HostDashboardContent() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Trigger pending booking reminder emails — runs at most once per hour
-  useEffect(() => {
-    const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
-    const lastRun = localStorage.getItem('rc_booking_reminders_last_run');
-    const nowMs = Date.now();
-    const ONE_HOUR_MS = 60 * 60 * 1000;
-    if (lastRun && nowMs - Number(lastRun) < ONE_HOUR_MS) return; // ran within last hour
-    fetch(`${SUPABASE_URL}/functions/v1/booking-reminders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    })
-      .then(() => localStorage.setItem('rc_booking_reminders_last_run', String(nowMs)))
-      .catch(() => {}); // non-fatal
-  }, []);
-
   const pendingCount = bookings.filter((b) => b.status === 'pending' || b.status === 'pending_host_approval').length;
   const dateChangeCount = bookings.filter((b) => b.date_change_status === 'pending').length;
   const cancelledCount = bookings.filter((b) => b.status === 'cancelled' || b.status === 'cancelled_by_host').length;

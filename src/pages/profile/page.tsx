@@ -202,23 +202,6 @@ export default function Profile() {
     }
   }, [activeTab, user]);
 
-  // Trigger pending booking reminders (at most once per hour)
-  useEffect(() => {
-    if (!user) return;
-    const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
-    const lastReminder = localStorage.getItem('rc_booking_reminders_last_run');
-    const nowMs = Date.now();
-    const ONE_HOUR_MS = 60 * 60 * 1000;
-    if (!lastReminder || nowMs - Number(lastReminder) >= ONE_HOUR_MS) {
-      fetch(`${SUPABASE_URL}/functions/v1/booking-reminders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-        .then(() => localStorage.setItem('rc_booking_reminders_last_run', String(nowMs)))
-        .catch(() => {});
-    }
-  }, [user]);
-
   // ── Avatar upload ──────────────────────────────────────────────────────────
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
