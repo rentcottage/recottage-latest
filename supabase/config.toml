@@ -71,3 +71,9 @@ verify_jwt = true
 # an identical 404 for anything else.
 [functions.ical-export]
 verify_jwt = false
+
+# Read-only admin data (status logs). The admin dashboard has no Supabase
+# session; access is gated in code by x-admin-password (SHA-256 + constant-time
+# compare against ADMIN_PANEL_PASSWORD). See admin-read/handler.ts.
+[functions.admin-read]
+verify_jwt = false
