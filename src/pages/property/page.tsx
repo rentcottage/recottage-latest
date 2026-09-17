@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
@@ -16,6 +16,7 @@ import { listingText, type TranslatableListing } from '../../lib/listingText';
 import { amenityLabel } from '../../lib/amenityLabels';
 import { localizePlace } from '../../lib/locationNormalizer';
 import { localizeHostName } from '../../lib/hostNames';
+import { isStayUnavailable, parseUnavailableRanges, type UnavailableRange } from '../../lib/availability';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
 
@@ -35,6 +36,10 @@ interface ICalBlockedRange {
   summary: string | null;
 }
 
+// The public availability RPC carries no platform names, so there are no
+// per-platform ranges to pass to the widget.
+const NO_ICAL_RANGES: ICalBlockedRange[] = [];
+
 export default function PropertyDetail() {
   const { t, plural, lang } = useT();
   const { id } = useParams();
@@ -44,8 +49,7 @@ export default function PropertyDetail() {
   const [isDbProperty, setIsDbProperty] = useState(false);
   const [pricingType, setPricingType] = useState<'fixed' | 'per_guest'>('fixed');
   const [guestPricingTiers, setGuestPricingTiers] = useState<Array<{ min_guests: number; max_guests: number; price_per_night: number }>>([]);
-  const [blockedRanges, setBlockedRanges] = useState<BlockedRange[]>([]);
-  const [icalBlockedRanges, setIcalBlockedRanges] = useState<ICalBlockedRange[]>([]);
+  const [unavailableRanges, setUnavailableRanges] = useState<UnavailableRange[]>([]);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('1');
@@ -202,42 +206,32 @@ export default function PropertyDetail() {
     // mapping the row, so switching language has to re-resolve it.
   }, [id, navigate, searchParams, lang]);
 
+  // Availability comes from the public RPC: date ranges only (host blocks,
+  // imported OTA blocks and occupying bookings), never the underlying records.
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     supabase
-      .from('blocked_dates')
-      .select('id, property_id, start_date, end_date')
-      .eq('property_id', id)
-      .then(({ data }) => {
-        if (data) setBlockedRanges(data as BlockedRange[]);
+      .rpc('get_unavailable_ranges', { p_property_id: id })
+      .then(({ data, error }) => {
+        if (!cancelled && !error) setUnavailableRanges(parseUnavailableRanges(data));
       });
-
-    supabase
-      .from('ical_blocked_dates')
-      .select('id, property_id, start_date, end_date, platform, summary')
-      .eq('property_id', id)
-      .then(({ data }) => {
-        if (data) setIcalBlockedRanges(data as ICalBlockedRange[]);
-      });
+    return () => { cancelled = true; };
   }, [id]);
 
-  const isDateRangeBlocked = useCallback((start: string, end: string): boolean => {
-    if (!start || !end) return false;
-    const manualBlocked = blockedRanges.some((r) => !(end < r.start_date || start > r.end_date));
-    const icalBlocked = icalBlockedRanges.some((r) => !(end < r.start_date || start > r.end_date));
-    return manualBlocked || icalBlocked;
-  }, [blockedRanges, icalBlockedRanges]);
+  const blockedRanges = useMemo<BlockedRange[]>(
+    () => unavailableRanges
+      .filter((r) => r.source_kind === 'blocked')
+      .map((r, i) => ({ id: `blocked-${i}-${r.start_date}-${r.end_date}`, property_id: String(id ?? ''), start_date: r.start_date, end_date: r.end_date })),
+    [unavailableRanges, id],
+  );
 
-  const getICalConflictPlatforms = useCallback((start: string, end: string): string[] => {
-    if (!start || !end) return [];
-    const platforms = new Set<string>();
-    icalBlockedRanges.forEach((r) => {
-      if (!(end < r.start_date || start > r.end_date)) {
-        platforms.add(r.platform ?? 'External');
-      }
-    });
-    return Array.from(platforms);
-  }, [icalBlockedRanges]);
+  const isDateRangeBlocked = useCallback(
+    (start: string, end: string): boolean => isStayUnavailable(unavailableRanges, start, end),
+    [unavailableRanges],
+  );
+
+  const getICalConflictPlatforms = useCallback((_start: string, _end: string): string[] => [], []);
 
   const calculateNights = () => {
     if (!checkIn || !checkOut) return 0;
@@ -442,7 +436,7 @@ export default function PropertyDetail() {
         }
         // Someone else secured these dates first: no payment was started.
         if (response.status === 409 && errMsg === 'DATES_UNAVAILABLE') {
-          setBookingError(t('property.detail.datesUnavailable'));
+          setBookingError(t('property.detail.datesJustBooked'));
           setSubmitStatus('error');
           setBookingCaptchaToken('');
           return;
@@ -819,7 +813,7 @@ export default function PropertyDetail() {
               pricingType={pricingType}
               guestPricingTiers={guestPricingTiers}
               blockedRanges={blockedRanges}
-              icalBlockedRanges={icalBlockedRanges}
+              icalBlockedRanges={NO_ICAL_RANGES}
               checkIn={checkIn}
               checkOut={checkOut}
               guests={guests}
