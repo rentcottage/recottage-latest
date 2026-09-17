@@ -13,8 +13,13 @@ const handler = createHandler({
   db: supabase,
   fetch: (input, init) => fetch(input, init),
   env: (name) => Deno.env.get(name),
-  envNames: () => Object.keys(Deno.env.toObject()),
   now: () => Date.now(),
+  getUserFromToken: async (token) => {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) return null;
+    const u = data.user;
+    return { id: u.id, email: u.email ?? null, emailConfirmed: Boolean(u.email_confirmed_at ?? u.confirmed_at) };
+  },
 });
 
 Deno.serve(handler);

@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHandler } from './handler.ts';
+import { BOG_TERMINAL_FAILURE_STATUSES, createHandler, receiptMatchesBooking, secretsEqual, type AuthUser } from './handler.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -173,21 +173,30 @@ function tables(): Record<string, Row[]> {
   };
 }
 
-interface H { db: FakeDb; net: FakeNet; handler: (r: Request) => Promise<Response> }
+const USERS: Record<string, AuthUser> = {
+  'tok-guest': { id: CUSTOMER_ID, email: GUEST_EMAIL, emailConfirmed: true },
+  'tok-unverified-phone': { id: 'cust-unverified', email: 'unverified@example.test', emailConfirmed: true },
+  'tok-no-profile': { id: 'cust-missing', email: 'noprofile@example.test', emailConfirmed: true },
+  'tok-unconfirmed': { id: CUSTOMER_ID, email: GUEST_EMAIL, emailConfirmed: false },
+  'tok-no-email': { id: CUSTOMER_ID, email: null, emailConfirmed: true },
+};
+const SESSION = { Authorization: 'Bearer tok-guest' };
+
+interface H { db: FakeDb; net: FakeNet; handler: (r: Request) => Promise<Response>; tokensChecked: string[] }
 
 function harness(envOverride: Record<string, string | undefined> = {}): H {
   const db = new FakeDb(tables());
   const net = new FakeNet();
   const env = { ...ENV, ...envOverride };
+  const tokensChecked: string[] = [];
   const handler = createHandler({
+    getUserFromToken: async (t) => { tokensChecked.push(t); return USERS[t] ?? null; },
     db,
     fetch: net.fetch,
     env: (n) => env[n],
-    envNames: () => Object.keys(env).filter((k) => env[k] !== undefined),
     now: () => NOW,
   });
-  LOGS.length = 0;
-  return { db, net, handler };
+  return { db, net, handler, tokensChecked };
 }
 
 const FN = 'https://proj.supabase.test/functions/v1/bog-payment';
@@ -223,7 +232,7 @@ async function call(h: H, method: string, query: string, body?: Row | string, he
   return { status: res.status, body: json, text };
 }
 
-const createOrder = (h: H, body: Row, headers: Record<string, string> = {}) => call(h, 'POST', '?action=create-order', body, headers);
+const createOrder = (h: H, body: Row, headers: Record<string, string> = SESSION) => call(h, 'POST', '?action=create-order', body, headers);
 
 function seedBooking(h: H, extra: Row = {}): Row {
   const row: Row = {
@@ -248,11 +257,12 @@ const receipt = (orderId: string, externalId: string, key: string, amount = '300
 // Characterization: routing
 // ═══════════════════════════════════════════════════════════════════════════════
 
-test('ROUTE OPTIONS → 200 ok; unknown action/method → 405', async () => {
+test('ROUTE OPTIONS → 200 ok; unknown action → 404; unsupported method → 405', async () => {
   const h = harness();
   const opt = await call(h, 'OPTIONS', '');
   assert.deepEqual([opt.status, opt.text], [200, 'ok']);
-  assert.equal((await call(h, 'GET', '?action=nope')).status, 405);
+  assert.deepEqual((await call(h, 'GET', '?action=nope')).body, { error: 'Not found' });
+  assert.equal((await call(h, 'POST', '?action=nope', {})).status, 404);
   assert.equal((await call(h, 'PUT', '?action=verify')).status, 405);
   assert.equal(h.db.writes.length, 0);
 });
@@ -282,23 +292,24 @@ test('CREATE captcha secret not configured → treated as failed (403)', async (
   assert.equal(h.db.writes.length, 0);
 });
 
-test('CREATE phone verification: no customer → 403; unverified or unknown profile → 403 PHONE_NOT_VERIFIED; nothing written', async () => {
+test('CREATE phone verification (of the session user): unverified or unknown profile → 403 PHONE_NOT_VERIFIED; nothing written', async () => {
   const h = harness();
-  assert.equal((await createOrder(h, orderBody({ customer_id: undefined }))).status, 403);
-  const unverified = await createOrder(h, orderBody({ customer_id: 'cust-unverified' }));
+  const unverified = await createOrder(h, orderBody(), { Authorization: 'Bearer tok-unverified-phone' });
   assert.deepEqual([unverified.status, unverified.body.error], [403, 'PHONE_NOT_VERIFIED']);
-  assert.equal((await createOrder(h, orderBody({ customer_id: 'cust-missing' }))).body.error, 'PHONE_NOT_VERIFIED');
+  assert.equal((await createOrder(h, orderBody(), { Authorization: 'Bearer tok-no-profile' })).body.error, 'PHONE_NOT_VERIFIED');
+  // A verified customer_id in the body does not help an unverified session user.
+  assert.equal((await createOrder(h, orderBody({ customer_id: CUSTOMER_ID }), { Authorization: 'Bearer tok-unverified-phone' })).body.error, 'PHONE_NOT_VERIFIED');
   assert.equal(h.db.writes.length, 0);
   assert.equal(h.net.bogCalls().length, 0);
 });
 
 test('CREATE required fields, dates and property checks → 400/404 before any write', async () => {
   const h = harness();
-  for (const f of ['user_email', 'property_title', 'check_in', 'check_out', 'total_price']) {
+  for (const f of ['property_title', 'check_in', 'check_out', 'total_price']) {
     const r = await createOrder(h, orderBody({ [f]: undefined }));
     assert.deepEqual([r.status, r.body.error], [400, `Missing required field: ${f}`], f);
   }
-  assert.equal((await createOrder(h, orderBody({ total_price: 'abc' }))).status, 400);
+  assert.deepEqual((await createOrder(h, orderBody({ total_price: 'abc' }))).body, { error: 'Invalid total_price value' });
   assert.equal((await createOrder(h, orderBody({ total_price: -5 }))).status, 400);
   assert.match((await createOrder(h, orderBody({ check_in: '2098-12-30', check_out: '2099-01-02' }))).body.error, /cannot be in the past/);
   assert.match((await createOrder(h, orderBody({ check_in: '2099-06-13', check_out: '2099-06-13' }))).body.error, /must be after check-in/);
@@ -566,9 +577,9 @@ const internal = (h: H, action: string, bookingId: string, key: string | null = 
   call(h, 'POST', `?action=${action}`, { bookingId }, key === null ? {} : { 'x-internal-key': key });
 
 test('INTERNAL capture → paid, release → canceled, refund → refund_pending; each calls the matching BOG endpoint for the stored order', async () => {
-  for (const [action, path, status] of [['internal-capture', 'authorization/approve', 'paid'], ['internal-release', 'authorization/cancel', 'canceled'], ['internal-refund', 'refund', 'refund_pending']]) {
+  for (const [action, path, status, from] of [['internal-capture', 'authorization/approve', 'paid', 'authorized'], ['internal-release', 'authorization/cancel', 'canceled', 'paid'], ['internal-refund', 'refund', 'refund_pending', 'paid']]) {
     const h = harness();
-    const b = seedBooking(h, { status: 'confirmed', payment_status: 'paid', payment_transaction_id: 'bog-order-i' });
+    const b = seedBooking(h, { status: 'confirmed', payment_status: from, payment_transaction_id: 'bog-order-i' });
     const r = await internal(h, action, b.id);
     assert.deepEqual([r.status, r.body], [200, { success: true, paymentStatus: status }], action);
     assert.equal(b.payment_status, status);
@@ -591,70 +602,298 @@ test('INTERNAL skips non-online bookings; missing booking → 404; missing booki
   assert.deepEqual(h.db.rows('booking_status_logs').map((l) => l.event_type), ['bog_internal-refund_failed']);
 });
 
-test('INTERNAL wrong, missing or unconfigured key → 403 with no BOG call and no write', async () => {
+test('INTERNAL wrong, missing or unconfigured key → 401 with no BOG call and no write', async () => {
   const h = harness();
   const b = seedBooking(h, { status: 'rejected', payment_status: 'paid' });
   for (const key of ['wrong', '', null, INTERNAL_KEY.slice(0, -1), INTERNAL_KEY + 'x']) {
     const r = await internal(h, 'internal-refund', b.id, key);
-    assert.deepEqual([r.status, r.body], [403, { error: 'Forbidden' }]);
+    assert.deepEqual([r.status, r.body], [401, { error: 'Unauthorized' }]);
   }
   const unconfigured = harness({ INTERNAL_API_KEY: undefined });
   const b2 = seedBooking(unconfigured, { status: 'rejected', payment_status: 'paid' });
-  assert.equal((await internal(unconfigured, 'internal-refund', b2.id, '')).status, 403);
+  assert.equal((await internal(unconfigured, 'internal-refund', b2.id, '')).status, 401);
   assert.equal(h.net.bogCalls().length + unconfigured.net.bogCalls().length, 0);
   assert.equal(h.db.bookingWrites().length, 0);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CURRENT (pre-hardening) behaviour, pinned so the security commit's changes are
-// explicit. Each of these is replaced by a SECURITY test in the next commit.
+// SECURITY
 // ═══════════════════════════════════════════════════════════════════════════════
 
-test('CURRENT debug-credentials is public: 200 with presence/length flags and env var names (no values)', async () => {
+test('SEC create-order without a verified session → 401 before captcha, DB or BOG (no side effects)', async () => {
   const h = harness();
-  const r = await call(h, 'GET', '?action=debug-credentials');
+  const variants: Record<string, string>[] = [
+    {},
+    { Authorization: 'Bearer ' },
+    { Authorization: 'Basic abc' },
+    { Authorization: 'Bearer invalid-token' },
+    { Authorization: 'Bearer tok-unconfirmed' },
+    { Authorization: 'Bearer tok-no-email' },
+  ];
+  for (const headers of variants) {
+    for (const method of ['pay_now', 'pay_at_property']) {
+      const r = await createOrder(h, orderBody({ payment_method: method }), headers);
+      assert.deepEqual([r.status, r.body], [401, { error: 'Please sign in to book.' }], JSON.stringify(headers));
+    }
+  }
+  assert.equal(h.db.writes.length, 0);
+  assert.equal(h.net.calls.length, 0, 'no hCaptcha, BOG or email call');
+});
+
+test('SEC create-order identity comes only from the session: body customer_id / user_email are ignored everywhere', async () => {
+  const h = harness();
+  const body = orderBody({ user_email: 'attacker@example.test', customer_id: 'someone-else', corporate_id: 'corp-other', payment_method: 'pay_at_property' });
+  const r = await createOrder(h, body);
   assert.equal(r.status, 200);
-  assert.equal(r.body.credentials['Test Secret Key present'], true);
-  for (const v of Object.values(ENV)) assert.ok(!r.text.includes(v));
+  const b = h.db.booking(r.body.bookingId)!;
+  assert.deepEqual([b.customer_id, b.user_email, b.corporate_id], [CUSTOMER_ID, GUEST_EMAIL, null]);
+  assert.ok(!h.net.emails().some((e) => e.to === 'attacker@example.test' || JSON.stringify(e).includes('attacker@example.test')));
+  assert.deepEqual(h.tokensChecked, ['tok-guest']);
+
+  // The session user's own approved agency still applies.
+  const own = await createOrder(h, orderBody({ customer_id: 'someone-else', corporate_id: 'corp-approved', payment_method: 'pay_at_property' }));
+  assert.equal(h.db.booking(own.body.bookingId)!.corporate_id, 'corp-approved');
+
+  // Pay now: the BOG order and stored booking also use the session identity.
+  const pn = await createOrder(h, orderBody({ user_email: 'attacker@example.test', customer_id: 'someone-else' }));
+  assert.deepEqual([h.db.booking(pn.body.bookingId)!.customer_id, h.db.booking(pn.body.bookingId)!.user_email], [CUSTOMER_ID, GUEST_EMAIL]);
 });
 
-test('CURRENT create-order trusts body customer_id and user_email; no Authorization header needed', async () => {
+test('SEC debug-credentials is gone: 404 for GET and POST, no env names, no BOG call', async () => {
   const h = harness();
-  const r = await createOrder(h, orderBody({ user_email: 'anyone@example.test', payment_method: 'pay_at_property' }));
-  assert.equal(r.status, 200);
-  assert.deepEqual([h.db.rows('bookings')[0].customer_id, h.db.rows('bookings')[0].user_email], [CUSTOMER_ID, 'anyone@example.test']);
+  for (const method of ['GET', 'POST']) {
+    const r = await call(h, method, '?action=debug-credentials', method === 'POST' ? {} : undefined);
+    assert.deepEqual([r.status, r.body], [404, { error: 'Not found' }]);
+    for (const name of Object.keys(ENV)) assert.ok(!r.text.includes(name));
+  }
+  assert.equal(h.net.calls.length, 0);
 });
 
-test('CURRENT mark-failed downgrades a booking BOG still reports as in progress', async () => {
+test('SEC mark-failed never fails an in-progress, unknown, unreachable or mismatched payment', async () => {
+  for (const key of ['created', 'processing', 'auth_requested', 'blocked', 'partial_completed', 'refund_requested', 'something_new', '']) {
+    const h = harness();
+    const b = seedBooking(h, { payment_transaction_id: 'bog-order-m' });
+    h.net.receipts['bog-order-m'] = receipt('bog-order-m', b.id, key);
+    const r = await call(h, 'GET', `?action=mark-failed&booking_id=${b.id}`);
+    assert.deepEqual([r.body.updated, b.status, b.payment_status], [false, 'pending_payment', 'pending_payment'], key);
+    assert.equal(h.db.bookingWrites().length, 0, key);
+  }
+  const cases: [string, (h: H, b: Row) => void][] = [
+    ['token down', (h) => { h.net.tokenOk = false; }],
+    ['receipt missing', () => { /* no receipt */ }],
+    ['no order id yet', (_h, b) => { b.payment_transaction_id = null; }],
+    ['receipt for another booking', (h, b) => { h.net.receipts['bog-order-m'] = receipt('bog-order-m', 'other-booking', 'rejected'); void b; }],
+    ['receipt for another order', (h, b) => { h.net.receipts['bog-order-m'] = receipt('bog-order-zzz', b.id, 'rejected'); }],
+  ];
+  for (const [label, setup] of cases) {
+    const h = harness();
+    const b = seedBooking(h, { payment_transaction_id: 'bog-order-m' });
+    setup(h, b);
+    await call(h, 'GET', `?action=mark-failed&booking_id=${b.id}`);
+    assert.deepEqual([b.status, b.payment_status], ['pending_payment', 'pending_payment'], label);
+    assert.equal(h.db.bookingWrites().length, 0, label);
+  }
+});
+
+test('SEC mark-failed applies every terminal BOG failure status (and still redirects paid ones)', async () => {
+  assert.deepEqual(BOG_TERMINAL_FAILURE_STATUSES, ['rejected', 'failed', 'error', 'cancelled', 'canceled', 'abandoned', 'expired']);
+  for (const key of BOG_TERMINAL_FAILURE_STATUSES) {
+    const h = harness();
+    const b = seedBooking(h, { payment_transaction_id: 'bog-order-t' });
+    h.net.receipts['bog-order-t'] = receipt('bog-order-t', b.id, key.toUpperCase());
+    const r = await call(h, 'GET', `?action=mark-failed&booking_id=${b.id}`);
+    assert.equal(r.body.updated, true, key);
+    assert.equal(b.status, 'payment_failed', key);
+    assert.ok(['payment_failed', 'canceled'].includes(b.payment_status), key);
+  }
   const h = harness();
-  const b = seedBooking(h, { payment_transaction_id: 'bog-order-inprog' });
-  h.net.receipts['bog-order-inprog'] = receipt('bog-order-inprog', b.id, 'processing');
-  await call(h, 'GET', `?action=mark-failed&booking_id=${b.id}`);
-  assert.equal(b.status, 'payment_failed');
+  const paid = seedBooking(h, { payment_transaction_id: 'bog-order-ok' });
+  h.net.receipts['bog-order-ok'] = receipt('bog-order-ok', paid.id, 'completed');
+  assert.equal((await call(h, 'GET', `?action=mark-failed&booking_id=${paid.id}`)).body.actualStatus, 'paid');
 });
 
-test('CURRENT forged callback: another completed order id + victim external_order_id marks the victim booking paid', async () => {
+test('SEC forged callbacks change nothing (other order, other booking, amount, currency, order mismatch, closed booking)', async () => {
+  const scenarios: [string, (h: H) => Row][] = [
+    ['cheap completed order named for a booking that has its own order', (h) => {
+      const v = seedBooking(h, { total_price: 5000, payment_transaction_id: 'bog-order-victim' });
+      h.net.receipts['bog-order-cheap'] = receipt('bog-order-cheap', 'attacker-booking', 'completed', '1');
+      return { v, body: callbackBody('bog-order-cheap', v.id) };
+    }],
+    ['booking without stored order + receipt of another booking', (h) => {
+      const v = seedBooking(h, { total_price: 5000, payment_transaction_id: null });
+      h.net.receipts['bog-order-cheap'] = receipt('bog-order-cheap', 'attacker-booking', 'completed', '5000');
+      return { v, body: callbackBody('bog-order-cheap', v.id) };
+    }],
+    ['booking without stored order + receipt with no external reference', (h) => {
+      const v = seedBooking(h, { total_price: 5000, payment_transaction_id: null });
+      const r = receipt('bog-order-cheap', '', 'completed', '5000');
+      delete r.external_order_id;
+      h.net.receipts['bog-order-cheap'] = r;
+      return { v, body: callbackBody('bog-order-cheap', v.id) };
+    }],
+    ['right order, lower amount', (h) => {
+      const v = seedBooking(h, { total_price: 5000, payment_transaction_id: 'bog-order-own' });
+      h.net.receipts['bog-order-own'] = receipt('bog-order-own', v.id, 'completed', '4999.5');
+      return { v, body: callbackBody('bog-order-own', v.id) };
+    }],
+    ['right order, other currency', (h) => {
+      const v = seedBooking(h, { total_price: 300, payment_transaction_id: 'bog-order-own' });
+      h.net.receipts['bog-order-own'] = receipt('bog-order-own', v.id, 'completed', '300', 'USD');
+      return { v, body: callbackBody('bog-order-own', v.id) };
+    }],
+    ['receipt reports a different order id', (h) => {
+      const v = seedBooking(h, { total_price: 300, payment_transaction_id: 'bog-order-own' });
+      h.net.receipts['bog-order-own'] = receipt('bog-order-other', v.id, 'completed', '300');
+      return { v, body: callbackBody('bog-order-own', v.id) };
+    }],
+    ['body says completed, BOG has no receipt', (h) => {
+      const v = seedBooking(h, { payment_transaction_id: 'bog-order-own' });
+      return { v, body: callbackBody('bog-order-own', v.id) };
+    }],
+    ['host-cancelled booking', (h) => {
+      const v = seedBooking(h, { status: 'cancelled_by_host', payment_status: 'cancelled', payment_transaction_id: 'bog-order-own' });
+      h.net.receipts['bog-order-own'] = receipt('bog-order-own', v.id, 'completed', '300');
+      return { v, body: callbackBody('bog-order-own', v.id) };
+    }],
+  ];
+  for (const [label, setup] of scenarios) {
+    const h = harness();
+    const { v, body } = setup(h);
+    const before = JSON.stringify(v);
+    const r = await call(h, 'POST', '?action=callback', body);
+    assert.deepEqual([r.status, r.text], [200, 'ok'], label);
+    assert.equal(JSON.stringify(v), before, label);
+    assert.equal(h.db.bookingWrites().length, 0, label);
+    assert.equal(h.net.emails().length, 0, label);
+    if (label.startsWith('cheap completed order named')) {
+      assert.equal(h.net.calls.filter((c) => c.url.includes('/receipt/')).length, 0, 'a mismatched order id is rejected before asking BOG');
+    }
+  }
+});
+
+test('SEC callback: genuine receipt without a stored order id is accepted and stored; duplicate delivery is a no-op', async () => {
   const h = harness();
-  const victim = seedBooking(h, { total_price: 5000, payment_transaction_id: 'bog-order-victim' });
-  h.net.receipts['bog-order-cheap'] = receipt('bog-order-cheap', 'some-other-booking', 'completed', '1');
-  await call(h, 'POST', '?action=callback', callbackBody('bog-order-cheap', victim.id));
-  assert.deepEqual([victim.payment_status, victim.status, victim.payment_transaction_id], ['paid', 'pending_host_approval', 'bog-order-cheap']);
+  const b = seedBooking(h, { payment_transaction_id: null });
+  h.net.receipts['bog-order-late'] = receipt('bog-order-late', b.id, 'completed', '300.00');
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-late', b.id));
+  assert.deepEqual([b.payment_status, b.status, b.payment_transaction_id], ['paid', 'pending_host_approval', 'bog-order-late']);
+  const writes = h.db.bookingWrites().length;
+  const emails = h.net.emails().length;
+  const deadline = b.approval_deadline;
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-late', b.id));
+  assert.equal(h.db.bookingWrites().length, writes, 'no second update');
+  assert.equal(h.net.emails().length, emails, 'no second emails');
+  assert.equal(b.approval_deadline, deadline);
 });
 
-test('CURRENT internal-refund is not idempotent: a second call refunds again at BOG', async () => {
+test('SEC callback mismatch leaves an audit log entry without changing the booking', async () => {
+  const h = harness();
+  const b = seedBooking(h, { total_price: 5000, payment_transaction_id: 'bog-order-own' });
+  h.net.receipts['bog-order-own'] = receipt('bog-order-own', b.id, 'completed', '1');
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-own', b.id));
+  assert.deepEqual(h.db.rows('booking_status_logs').map((l) => [l.event_type, l.from_status, l.to_status]), [['bog_callback_mismatch', 'pending_payment', 'pending_payment']]);
+  assert.equal(b.payment_status, 'pending_payment');
+});
+
+test('SEC verify does not sync a paid receipt that does not match the booking', async () => {
+  const h = harness();
+  const b = seedBooking(h, { total_price: 5000, payment_transaction_id: 'bog-order-vm' });
+  h.net.receipts['bog-order-vm'] = receipt('bog-order-vm', b.id, 'completed', '10');
+  const r = await call(h, 'GET', `?action=verify&booking_id=${b.id}`);
+  assert.deepEqual([r.body.source, r.body.verified, b.payment_status], ['bog_order_mismatch', false, 'pending_payment']);
+  h.net.receipts['bog-order-vm'] = receipt('bog-order-vm', 'other-booking', 'completed', '5000');
+  assert.equal((await call(h, 'GET', `?action=verify&booking_id=${b.id}`)).body.source, 'bog_order_mismatch');
+  assert.equal(h.db.bookingWrites().length, 0);
+});
+
+test('SEC internal actions are idempotent: a second refund / release / capture never reaches BOG', async () => {
   const h = harness();
   const b = seedBooking(h, { status: 'rejected', payment_status: 'paid', payment_transaction_id: 'bog-order-rf' });
+  assert.deepEqual((await internal(h, 'internal-refund', b.id)).body, { success: true, paymentStatus: 'refund_pending' });
+  const second = await internal(h, 'internal-refund', b.id);
+  assert.deepEqual([second.status, second.body], [200, { success: true, skipped: 'already_done', paymentStatus: 'refund_pending' }]);
+  b.payment_status = 'refunded';
   await internal(h, 'internal-refund', b.id);
-  await internal(h, 'internal-refund', b.id);
-  assert.equal(h.net.bogCalls().filter((c) => c.url.includes('/payment/refund/')).length, 2);
+  assert.equal(h.net.bogCalls().filter((c) => c.url.includes('/payment/refund/')).length, 1);
+
+  const rel = harness();
+  const b2 = seedBooking(rel, { payment_status: 'canceled', payment_transaction_id: 'bog-order-rl' });
+  assert.equal((await internal(rel, 'internal-release', b2.id)).body.skipped, 'already_done');
+  const b3 = seedBooking(rel, { payment_status: 'paid', payment_transaction_id: 'bog-order-cp' });
+  assert.equal((await internal(rel, 'internal-capture', b3.id)).body.skipped, 'already_done');
+  assert.equal(rel.net.bogCalls().length, 0);
 });
 
-test('CURRENT error responses and logs expose BOG detail and a partial client id', async () => {
+test('SEC secretsEqual: exact match only; empty expected never matches', async () => {
+  assert.equal(await secretsEqual(INTERNAL_KEY, INTERNAL_KEY), true);
+  for (const wrong of ['', 'x', INTERNAL_KEY.toUpperCase(), INTERNAL_KEY.slice(1), INTERNAL_KEY + ' ', ` ${INTERNAL_KEY}`]) {
+    assert.equal(await secretsEqual(wrong, INTERNAL_KEY), false, JSON.stringify(wrong));
+  }
+  assert.equal(await secretsEqual('', ''), false);
+});
+
+test('SEC receiptMatchesBooking rules', () => {
+  const booking = { id: 'bk-1', total_price: 300, payment_transaction_id: 'ord-1' };
+  const ok = receipt('ord-1', 'bk-1', 'completed', '300');
+  assert.equal(receiptMatchesBooking(ok, booking, 'ord-1', true), true);
+  assert.equal(receiptMatchesBooking(ok, booking, 'ord-2', true), false);
+  assert.equal(receiptMatchesBooking(receipt('ord-1', 'bk-2', 'completed', '300'), booking, 'ord-1', true), false);
+  assert.equal(receiptMatchesBooking(receipt('ord-1', 'bk-1', 'completed', '299'), booking, 'ord-1', true), false);
+  assert.equal(receiptMatchesBooking(receipt('ord-1', 'bk-1', 'rejected', '1'), booking, 'ord-1', false), true, 'amount only matters for paid');
+  assert.equal(receiptMatchesBooking(receipt('ord-1', 'bk-1', 'completed', 'abc'), booking, 'ord-1', true), false);
+  assert.equal(receiptMatchesBooking(receipt('ord-9', 'bk-1', 'completed', '300'), { ...booking, payment_transaction_id: null }, 'ord-9', true), true);
+  assert.equal(receiptMatchesBooking({ order_id: 'ord-9', purchase_units: { request_amount: '300', currency_code: 'GEL' } }, { ...booking, payment_transaction_id: null }, 'ord-9', true), false);
+  assert.equal(receiptMatchesBooking(ok, booking, '', true), false);
+});
+
+test('SEC create-order: if the BOG order id cannot be stored, no checkout URL is returned and the booking fails', async () => {
   const h = harness();
-  h.net.tokenOk = false;
+  let updates = 0;
+  h.db.failWhen = (t, op) => t === 'bookings' && op === 'update' && ++updates === 1;
   const r = await createOrder(h, orderBody());
-  assert.match(r.body.error, /secret-detail/);
-  const ok = harness();
-  await createOrder(ok, orderBody());
-  assert.ok(LOGS.some((l) => l.includes('client_id preview')));
+  assert.equal(r.status, 500);
+  assert.equal(r.body.checkoutUrl, undefined);
+  assert.equal(h.db.rows('bookings')[0].status, 'payment_failed');
+});
+
+test('SEC errors are generic and logs carry no keys, provider responses or personal data', async () => {
+  LOGS.length = 0;
+  const secrets = [...Object.values(ENV), 'bog-access-token-secret', GUEST_EMAIL, GUEST_NAME, HOST_EMAIL];
+  const leaky = ['secret-detail', 'internal-detail', 'bog action failed detail', 'secret_internal', '10.0.0.5', 'payload sent', 'client_id preview', 'bog-order-'];
+
+  const token = harness();
+  token.net.tokenOk = false;
+  const t = await createOrder(token, orderBody());
+  assert.deepEqual([t.status, t.body], [500, { error: 'Online payment is temporarily unavailable. Please try again later.' }]);
+
+  const order = harness();
+  order.net.orderCreateOk = false;
+  assert.deepEqual((await createOrder(order, orderBody())).body, { error: 'Online payment is temporarily unavailable. Please try again later.' });
+  assert.ok(!JSON.stringify(order.db.rows('booking_status_logs')).includes('internal-detail'));
+
+  const redirect = harness();
+  redirect.net.orderRedirect = null;
+  assert.deepEqual((await createOrder(redirect, orderBody())).body, { error: 'Online payment is temporarily unavailable. Please try again later.' });
+
+  const db = harness();
+  db.db.failWhen = (tb, op) => tb === 'bookings' && op === 'insert';
+  assert.deepEqual((await createOrder(db, orderBody({ payment_method: 'pay_at_property' }))).body, { error: 'Could not create the booking. Please try again.' });
+  assert.deepEqual((await createOrder(db, orderBody())).body, { error: 'Could not create the booking. Please try again.' });
+
+  const refund = harness();
+  const b = seedBooking(refund, { status: 'rejected', payment_status: 'paid', payment_transaction_id: 'bog-order-e' });
+  refund.net.actionOk.refund = false;
+  const rf = await internal(refund, 'internal-refund', b.id);
+  assert.deepEqual([rf.status, rf.body], [500, { error: 'Payment provider request failed' }]);
+  assert.deepEqual(refund.db.rows('booking_status_logs').map((l) => l.note), ['BOG request failed (400)']);
+
+  // A full happy path, then inspect everything that was logged by all of the above.
+  const all = harness();
+  await createOrder(all, orderBody());
+  const pb = all.db.rows('bookings')[0];
+  all.net.receipts[pb.payment_transaction_id] = receipt(pb.payment_transaction_id, pb.id, 'completed', '300');
+  await call(all, 'POST', '?action=callback', callbackBody(pb.payment_transaction_id, pb.id));
+  await call(all, 'GET', `?action=verify&booking_id=${pb.id}`);
+  const combined = [LOGS.join('\n'), t.text].join('\n');
+  for (const v of [...secrets, ...leaky]) assert.ok(!combined.includes(v), `leaked: ${v.slice(0, 12)}`);
 });

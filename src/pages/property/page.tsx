@@ -387,7 +387,6 @@ export default function PropertyDetail() {
     const trimmedClientName = corporateClientName.trim();
     // Agencies stamp the booking with the client's name; their own email stays so confirmations land with them.
     const fullName = corporateId && trimmedClientName ? trimmedClientName : ownName;
-    const email = user.email ?? '';
 
     setIsSubmitting(true);
     setSubmitStatus('idle');
@@ -401,10 +400,10 @@ export default function PropertyDetail() {
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY ?? '',
         },
+        // The booker's identity (customer id + email) comes from the session
+        // token above, verified server-side; it is not sent in the body.
         body: JSON.stringify({
-          user_email: email,
           user_name: fullName,
-          customer_id: user.id,
           property_id: property.id,
           property_title: property.title,
           property_location: property.location,

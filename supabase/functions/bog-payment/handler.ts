@@ -2,9 +2,21 @@
 // Free of Deno globals and network imports so it can be unit-tested
 // (handler.test.ts); index.ts wires in the Supabase client, fetch, env and clock.
 //
-// The module body below was moved verbatim from the former index.ts into
-// createHandler(). Inside it, `Deno.env`, `fetch`, `createClient` and the clock
-// are local bindings backed by the injected dependencies.
+// Inside createHandler(), `Deno.env`, `fetch`, `createClient` and the clock are
+// local bindings backed by the injected dependencies.
+//
+// SECURITY MODEL
+//   create-order  identity comes ONLY from the verified session (auth.getUser,
+//                 confirmed email); body customer_id / user_email are ignored.
+//   callback      body is never trusted: the BOG receipt is re-fetched and must
+//                 belong to this booking (stored order id / external_order_id)
+//                 and match its amount and currency before any state change.
+//   verify        same receipt consistency check before a paid sync.
+//   mark-failed   only mirrors a TERMINAL BOG failure; in-progress, unknown or
+//                 unreachable leave the booking untouched.
+//   internal-*    x-internal-key compared in constant time; idempotent.
+//   Errors returned to clients are generic; logs carry no keys, raw provider
+//   responses or personal data.
 import { findActivePromoForLocation, applyPromoDiscount } from '../_shared/promos.ts';
 import { findActiveOfferForStay, applyOfferToTotal, freeNightsFor } from '../_shared/hostOffers.ts';
 import { loadPromoContext, promoNoticeBlock, promoRows, type PromoContext } from '../_shared/promoEmail.ts';
@@ -19,10 +31,58 @@ export interface BogPaymentDeps {
   fetch: (input: string, init?: RequestInit) => Promise<Response>;
   /** Environment/secret lookup. */
   env: (name: string) => string | undefined;
-  /** Names of all environment variables (values are never exposed). */
-  envNames?: () => string[];
   /** Epoch milliseconds. */
   now?: () => number;
+  /** Verifies a user access token (auth.getUser). null for anon/service/invalid tokens. */
+  getUserFromToken: (token: string) => Promise<AuthUser | null>;
+}
+
+export interface AuthUser { id: string; email: string | null; emailConfirmed: boolean }
+
+/** Documented BOG terminal failure (`rejected`) plus the failure keys the status mapper already handles. */
+export const BOG_TERMINAL_FAILURE_STATUSES = ['rejected', 'failed', 'error', 'cancelled', 'canceled', 'abandoned', 'expired'];
+
+async function sha256(value: string): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+}
+
+/** Constant-time comparison of two secrets (hashed first, so length is not leaked). */
+export async function secretsEqual(provided: string, expected: string): Promise<boolean> {
+  if (!expected) return false;
+  const [a, b] = await Promise.all([sha256(provided), sha256(expected)]);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+/**
+ * A BOG receipt may only change a booking if it is that booking's order:
+ * the order id matches the one stored at create-order (or, if none was stored,
+ * BOG's external_order_id is this booking), and a completed payment is for the
+ * booking's amount in GEL.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function receiptMatchesBooking(receipt: Record<string, any>, booking: Record<string, any>, bogOrderId: string, requirePaidAmount: boolean): boolean {
+  const stored = booking.payment_transaction_id ? String(booking.payment_transaction_id) : '';
+  const receiptOrderId = receipt.order_id != null ? String(receipt.order_id) : '';
+  const external = receipt.external_order_id != null ? String(receipt.external_order_id) : '';
+  if (!bogOrderId) return false;
+  if (receiptOrderId && receiptOrderId !== bogOrderId) return false;
+  if (external && external !== String(booking.id)) return false;
+  if (stored) {
+    if (stored !== bogOrderId) return false;
+  } else if (external !== String(booking.id)) {
+    return false;
+  }
+  if (requirePaidAmount) {
+    const units = receipt.purchase_units ?? {};
+    const currency = units.currency_code ?? units.currency;
+    if (currency != null && String(currency).toUpperCase() !== 'GEL') return false;
+    const amount = Number(units.request_amount ?? units.transfer_amount ?? units.total_amount);
+    const expected = Number(booking.total_price);
+    if (!isFinite(amount) || !isFinite(expected) || Math.abs(amount - expected) > 0.01) return false;
+  }
+  return true;
 }
 
 export function createHandler(deps: BogPaymentDeps): (req: Request) => Promise<Response> {
@@ -31,7 +91,6 @@ const nowMs = deps.now ?? (() => Date.now());
 const Deno = {
   env: {
     get: (name: string): string | undefined => deps.env(name),
-    toObject: (): Record<string, string> => Object.fromEntries((deps.envNames?.() ?? []).map((n) => [n, ''])),
   },
 };
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -70,7 +129,7 @@ async function verifyHCaptcha(token: string): Promise<boolean> {
     const data = await res.json() as { success: boolean };
     return data.success === true;
   } catch (e) {
-    console.error('[hCaptcha] Verification error:', e);
+    console.error('[hCaptcha] verification request failed');
     return false;
   }
 }
@@ -100,11 +159,6 @@ function readBogCredentials(): { clientId: string; secretKey: string; missingVar
   const sanitize = (v: string) => v.replace(/[\r\n\t]/g, '').trim();
   const clientId  = sanitize(Deno.env.get('Test Public Key')  ?? '');
   const secretKey = sanitize(Deno.env.get('Test Secret Key') ?? '');
-  console.log(`[credentials] client_id   present=${clientId.length > 0}  len=${clientId.length}`);
-  console.log(`[credentials] client_secret present=${secretKey.length > 0} len=${secretKey.length}`);
-  if (clientId.length > 4) {
-    console.log(`[credentials] client_id preview: ${clientId.slice(0, 4)}...${clientId.slice(-2)}`);
-  }
   const missingVars: string[] = [];
   if (!clientId)  missingVars.push('"Test Public Key" is missing or empty in Supabase secrets');
   if (!secretKey) missingVars.push('"Test Secret Key" is missing or empty in Supabase secrets');
@@ -115,10 +169,9 @@ async function getBogToken(): Promise<{ token: string | null; errorDetail: strin
   const { clientId, secretKey, missingVars } = readBogCredentials();
   if (missingVars.length > 0) {
     const msg = `BOG credentials missing: ${missingVars.join(' | ')}. Go to Supabase → Settings → Edge Functions → Secrets and save both "Test Public Key" and "Test Secret Key" with those exact names.`;
-    console.error('[getBogToken]', msg);
+    console.error('[getBogToken] BOG credentials are not configured');
     return { token: null, errorDetail: msg };
   }
-  console.log(`[getBogToken] Requesting token → ${BOG_AUTH_URL}`);
   const formBody = new URLSearchParams();
   formBody.set('grant_type', 'client_credentials');
   const basicAuth = btoa(`${clientId}:${secretKey}`);
@@ -132,10 +185,9 @@ async function getBogToken(): Promise<{ token: string | null; errorDetail: strin
       body: formBody.toString(),
     });
     const responseText = await res.text();
-    console.log(`[getBogToken] HTTP ${res.status}`);
     if (!res.ok) {
       const detail = `BOG auth failed HTTP ${res.status}: ${responseText} | endpoint=${BOG_AUTH_URL} | client_id_len=${clientId.length} client_secret_len=${secretKey.length}`;
-      console.error('[getBogToken]', detail);
+      console.error(`[getBogToken] BOG auth failed: HTTP ${res.status}`);
       return { token: null, errorDetail: detail };
     }
     let data: Record<string, unknown>;
@@ -145,7 +197,6 @@ async function getBogToken(): Promise<{ token: string | null; errorDetail: strin
       return { token: null, errorDetail: `BOG auth HTTP OK but response not valid JSON: ${responseText}` };
     }
     if (data.access_token) {
-      console.log('[getBogToken] ✅ Token obtained successfully');
       return { token: String(data.access_token), errorDetail: '' };
     }
     return { token: null, errorDetail: `BOG auth HTTP OK but no access_token field in response: ${responseText}` };
@@ -252,12 +303,12 @@ async function getBogOrderDetails(token: string, bogOrderId: string): Promise<Re
       headers: { 'Authorization': `Bearer ${token}` },
     });
     if (!res.ok) {
-      console.error(`[getBogOrderDetails] HTTP ${res.status} for order ${bogOrderId}: ${await res.text()}`);
+      console.error(`[getBogOrderDetails] HTTP ${res.status}`);
       return null;
     }
     return await res.json();
   } catch (e) {
-    console.error('[getBogOrderDetails] Exception:', e);
+    console.error('[getBogOrderDetails] request failed');
     return null;
   }
 }
@@ -270,7 +321,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
       body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
     });
   } catch (e) {
-    console.error('[sendEmail] Exception:', e);
+    console.error('[sendEmail] request failed');
   }
 }
 
@@ -443,40 +494,13 @@ return async (req: Request) => {
   const url    = new URL(req.url);
   const action = url.searchParams.get('action');
 
-  // ── ACTION: debug-credentials ────────────────────────────────────────────
-  if (req.method === 'GET' && action === 'debug-credentials') {
-    const { clientId, secretKey } = readBogCredentials();
-    let allEnvNames: string[] = [];
-    try { allEnvNames = Object.keys(Deno.env.toObject()).sort(); } catch { /* ignore */ }
-    const bogRelated = allEnvNames.filter(n =>
-      n.toUpperCase().includes('BOG') ||
-      n.toUpperCase().includes('TEST') ||
-      n.toUpperCase().includes('PUBLIC') ||
-      n.toUpperCase().includes('SECRET'),
-    );
-    const { token, errorDetail: authError } = await getBogToken();
-    return jsonOk({
-      credentials: {
-        'Test Public Key present': clientId.length > 0,
-        'Test Public Key length':  clientId.length,
-        'Test Secret Key present': secretKey.length > 0,
-        'Test Secret Key length':  secretKey.length,
-        bothPresent: clientId.length > 0 && secretKey.length > 0,
-      },
-      authTest: { success: !!token, tokenReceived: !!token, error: token ? null : authError },
-      authEndpoint: BOG_AUTH_URL,
-      relevantEnvVarNames: bogRelated,
-      totalEnvVarCount: allEnvNames.length,
-    });
-  }
-
   // ── ACTION: mark-failed ───────────────────────────────────────────────────
   if (req.method === 'GET' && action === 'mark-failed') {
     const bookingId = url.searchParams.get('booking_id');
     if (!bookingId) return jsonErr('Missing booking_id');
     const { data: booking } = await supabase
       .from('bookings')
-      .select('id, status, payment_status, payment_transaction_id, payment_method')
+      .select('id, status, payment_status, payment_transaction_id, payment_method, total_price')
       .eq('id', bookingId)
       .maybeSingle();
     if (!booking) return jsonErr('Booking not found', 404);
@@ -486,27 +510,24 @@ return async (req: Request) => {
       return jsonOk({ bookingId, updated: false, paymentStatus: booking.payment_status, bookingStatus: booking.status, skipped: 'pay_at_property' });
     }
 
-    if (booking.payment_status === 'pending_payment') {
-      let finalPaymentStatus = 'payment_failed';
-      let finalBookingStatus = 'payment_failed';
-      if (booking.payment_transaction_id) {
-        const { token } = await getBogToken();
-        if (token) {
-          const orderDetails = await getBogOrderDetails(token, String(booking.payment_transaction_id));
-          if (orderDetails) {
-            const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
-            const mapped = mapBogPaymentStatus(bogStatus);
-            if (mapped.paymentStatus === 'paid') {
-              return jsonOk({ bookingId, updated: false, actualStatus: 'paid', message: 'Payment is actually successful — redirect to success page' });
-            }
-            if (mapped.paymentStatus !== 'pending_payment') {
-              finalPaymentStatus = mapped.paymentStatus;
-              finalBookingStatus = mapped.defaultBookingStatus;
-            }
-          }
-        }
+    if (booking.payment_status === 'pending_payment' && booking.status === 'pending_payment') {
+      // Only BOG's own terminal answer may fail a booking. In progress, unknown,
+      // unreachable or no order yet → untouched (the guest may still be paying).
+      const unchanged = () => jsonOk({ bookingId, updated: false, paymentStatus: booking.payment_status, bookingStatus: booking.status });
+      if (!booking.payment_transaction_id) return unchanged();
+      const { token } = await getBogToken();
+      if (!token) return unchanged();
+      const orderDetails = await getBogOrderDetails(token, String(booking.payment_transaction_id));
+      if (!orderDetails || !receiptMatchesBooking(orderDetails, booking, String(booking.payment_transaction_id), false)) return unchanged();
+      const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '').toLowerCase();
+      const mapped = mapBogPaymentStatus(bogStatus);
+      if (mapped.paymentStatus === 'paid') {
+        return jsonOk({ bookingId, updated: false, actualStatus: 'paid', message: 'Payment is actually successful — redirect to success page' });
       }
-      await supabase.from('bookings').update({ payment_status: finalPaymentStatus, status: finalBookingStatus }).eq('id', bookingId);
+      if (!BOG_TERMINAL_FAILURE_STATUSES.includes(bogStatus)) return unchanged();
+      const finalPaymentStatus = mapped.paymentStatus;
+      const finalBookingStatus = mapped.defaultBookingStatus;
+      await supabase.from('bookings').update({ payment_status: finalPaymentStatus, status: finalBookingStatus }).eq('id', bookingId).eq('status', 'pending_payment');
       await logEvent(supabase, bookingId, 'mark_failed_redirect', String(booking.status), finalBookingStatus, 'system', `User redirected to fail URL. payment_status set to: ${finalPaymentStatus}`);
       return jsonOk({ bookingId, updated: true, paymentStatus: finalPaymentStatus, bookingStatus: finalBookingStatus });
     }
@@ -520,7 +541,7 @@ return async (req: Request) => {
   if (req.method === 'POST' && (action === 'internal-capture' || action === 'internal-release' || action === 'internal-refund')) {
     const headerKey = req.headers.get('x-internal-key') ?? '';
     const expectedKey = Deno.env.get('INTERNAL_API_KEY') ?? '';
-    if (!expectedKey || headerKey !== expectedKey) return jsonErr('Forbidden', 403);
+    if (!(await secretsEqual(headerKey, expectedKey))) return jsonErr('Unauthorized', 401);
 
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch { return jsonErr('Invalid JSON body'); }
@@ -533,8 +554,18 @@ return async (req: Request) => {
       return jsonOk({ success: true, skipped: 'not_online_payment' });
     }
 
+    // Idempotent: never ask BOG to refund / release / capture twice.
+    const alreadyDone: Record<string, string[]> = {
+      'internal-refund': ['refund_pending', 'refunded'],
+      'internal-release': ['canceled'],
+      'internal-capture': ['paid'],
+    };
+    if (alreadyDone[action].includes(String(booking.payment_status))) {
+      return jsonOk({ success: true, skipped: 'already_done', paymentStatus: booking.payment_status });
+    }
+
     const { token } = await getBogToken();
-    if (!token) return jsonErr('Could not authenticate with BOG', 500);
+    if (!token) return jsonErr('Payment provider unavailable', 500);
 
     const orderId = String(booking.payment_transaction_id);
     let result: { ok: boolean; error?: string };
@@ -552,9 +583,10 @@ return async (req: Request) => {
     }
 
     if (!result.ok) {
-      console.error(`[${action}] BOG call failed for ${orderId}: ${result.error}`);
-      await logEvent(supabase, bookingId, `bog_${action}_failed`, booking.payment_status, booking.payment_status, 'system', String(result.error ?? '').slice(0, 500));
-      return jsonErr(`BOG ${action} failed: ${result.error}`, 500);
+      const httpStatus = /^HTTP (\d{3})/.exec(String(result.error ?? ''))?.[1] ?? 'network';
+      console.error(`[${action}] BOG call failed (${httpStatus})`);
+      await logEvent(supabase, bookingId, `bog_${action}_failed`, booking.payment_status, booking.payment_status, 'system', `BOG request failed (${httpStatus})`);
+      return jsonErr('Payment provider request failed', 500);
     }
 
     await supabase.from('bookings').update({ payment_status: newPaymentStatus }).eq('id', bookingId);
@@ -564,6 +596,16 @@ return async (req: Request) => {
 
   // ── ACTION: create-order ──────────────────────────────────────────────────
   if (req.method === 'POST' && action === 'create-order') {
+    // ── Step 0: Verified session — the ONLY source of the booker's identity ──
+    const bearer = /^Bearer\s+(.+)$/i.exec((req.headers.get('authorization') ?? '').trim());
+    let sessionUser: AuthUser | null = null;
+    if (bearer) {
+      try { sessionUser = await deps.getUserFromToken(bearer[1].trim()); } catch { sessionUser = null; }
+    }
+    if (!sessionUser || !sessionUser.id || !sessionUser.email || !sessionUser.emailConfirmed) {
+      return jsonErr('Please sign in to book.', 401);
+    }
+
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch { return jsonErr('Invalid JSON body'); }
 
@@ -578,10 +620,13 @@ return async (req: Request) => {
     }
 
     const {
-      user_email, user_name, customer_id, property_id, property_title,
+      user_name, property_id, property_title,
       property_location, check_in, check_out, guests, price_per_night,
       total_price, payment_method, corporate_id,
     } = body as Record<string, unknown>;
+    // Identity from the verified session; body customer_id / user_email are ignored.
+    const customer_id = sessionUser.id;
+    const user_email = sessionUser.email;
 
     // Validate corporate_id (if provided) refers to an approved agency owned by this customer.
     // The agency name comes from the same trusted row (never from the request body)
@@ -608,7 +653,7 @@ return async (req: Request) => {
     if (!total_price)    return jsonErr('Missing required field: total_price');
 
     let totalAmount = Number(total_price);
-    if (isNaN(totalAmount) || totalAmount <= 0) return jsonErr(`Invalid total_price value: ${total_price}`);
+    if (isNaN(totalAmount) || totalAmount <= 0) return jsonErr('Invalid total_price value');
 
     // ── Require a verified phone number before any cottage booking ──────────
     // profiles.phone_verified is set only by the phone-otp function after a real
@@ -774,7 +819,8 @@ return async (req: Request) => {
         .select().maybeSingle();
 
       if (dbError || !booking) {
-        return jsonErr(`Failed to create booking record. ${dbError?.message ?? 'Unknown DB error'}`, 500);
+        console.error('[create-order] booking insert failed');
+        return jsonErr('Could not create the booking. Please try again.', 500);
       }
 
       await logEvent(supabase, booking.id, 'created', null, initialBookingStatus, 'system',
@@ -829,14 +875,15 @@ return async (req: Request) => {
       .select().maybeSingle();
 
     if (dbError || !booking) {
-      return jsonErr(`Failed to create booking record. ${dbError?.message ?? 'Unknown DB error'}`, 500);
+      console.error('[create-order] booking insert failed');
+      return jsonErr('Could not create the booking. Please try again.', 500);
     }
     await logEvent(supabase, booking.id, 'payment_initiated', null, 'pending_payment', 'system');
 
-    const { token, errorDetail: tokenErr } = await getBogToken();
+    const { token } = await getBogToken();
     if (!token) {
       await supabase.from('bookings').update({ status: 'payment_failed', payment_status: 'payment_failed' }).eq('id', booking.id);
-      return jsonErr(`Payment gateway authentication failed: ${tokenErr}`, 500);
+      return jsonErr('Online payment is temporarily unavailable. Please try again later.', 500);
     }
 
     const fnUrl       = `${Deno.env.get('SUPABASE_URL')}/functions/v1/bog-payment`;
@@ -851,17 +898,26 @@ return async (req: Request) => {
 
     if (!bogOrder?.id) {
       await supabase.from('bookings').update({ status: 'payment_failed', payment_status: 'payment_failed' }).eq('id', booking.id);
-      await logEvent(supabase, booking.id, 'payment_failed', 'pending_payment', 'payment_failed', 'system', orderErr);
-      return jsonErr(`Failed to create BOG payment order: ${orderErr}`, 500);
+      const httpStatus = /HTTP (\d{3})/.exec(orderErr)?.[1] ?? 'network';
+      console.error(`[create-order] BOG order creation failed (${httpStatus})`);
+      await logEvent(supabase, booking.id, 'payment_failed', 'pending_payment', 'payment_failed', 'system', `BOG order creation failed (${httpStatus})`);
+      return jsonErr('Online payment is temporarily unavailable. Please try again later.', 500);
     }
 
-    await supabase.from('bookings').update({ payment_transaction_id: bogOrder.id }).eq('id', booking.id);
+    // The order id must be stored before the guest can pay: callbacks and
+    // verify only accept the stored order.
+    const { error: txErr } = await supabase.from('bookings').update({ payment_transaction_id: bogOrder.id }).eq('id', booking.id);
+    if (txErr) {
+      await supabase.from('bookings').update({ status: 'payment_failed', payment_status: 'payment_failed' }).eq('id', booking.id);
+      console.error('[create-order] could not store the BOG order id');
+      return jsonErr('Online payment is temporarily unavailable. Please try again later.', 500);
+    }
     const checkoutUrl = bogOrder._links?.redirect?.href ?? null;
 
     if (!checkoutUrl) {
       await supabase.from('bookings').update({ status: 'payment_failed', payment_status: 'payment_failed' }).eq('id', booking.id);
       await logEvent(supabase, booking.id, 'payment_failed', 'pending_payment', 'payment_failed', 'system', 'No checkout URL from BOG');
-      return jsonErr(`BOG did not return a checkout URL. Raw: ${JSON.stringify(bogOrder)}`, 500);
+      return jsonErr('Online payment is temporarily unavailable. Please try again later.', 500);
     }
 
     return jsonOk({ checkoutUrl, bookingId: booking.id, bogOrderId: bogOrder.id });
@@ -888,7 +944,6 @@ return async (req: Request) => {
     } else {
       try { rawBody = await req.json(); } catch { return new Response('ok', { status: 200, headers: corsHeaders }); }
     }
-    console.log(`[callback] received. action=${action} bodyKeys=${Object.keys(rawBody).join(',')}`);
 
     // BOG wraps the payment details inside { event, zoned_request_time, body: {...} }
     const innerBody = (rawBody.body && typeof rawBody.body === 'object')
@@ -911,27 +966,46 @@ return async (req: Request) => {
     }
     if (!bookingRow) return new Response('ok', { status: 200, headers: corsHeaders });
 
-    if (['confirmed', 'cancelled', 'rejected'].includes(String(bookingRow.status))) {
+    if (['confirmed', 'cancelled', 'rejected', 'cancelled_by_host'].includes(String(bookingRow.status))) {
+      return new Response('ok', { status: 200, headers: corsHeaders });
+    }
+
+    // Anyone can POST here. The body only says WHICH order to look at; it can
+    // never name a different order for a booking that already has one.
+    const storedOrderId = bookingRow.payment_transaction_id ? String(bookingRow.payment_transaction_id) : '';
+    if (storedOrderId && storedOrderId !== bogOrderId) {
+      console.error('[callback] order id does not match the booking — ignored');
       return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
     // ── CRITICAL: Always verify with BOG API — never trust callback body alone ──
     const { token } = await getBogToken();
     if (!token) {
-      console.error('[callback] Could not get BOG token for verification — rejecting callback');
+      console.error('[callback] BOG token unavailable — callback not applied');
       // Return 200 to prevent BOG retrying with same unverified data, but do NOT update booking
       return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
     const orderDetails = await getBogOrderDetails(token, bogOrderId);
     if (!orderDetails) {
-      console.error(`[callback] Could not fetch BOG order details for ${bogOrderId} — rejecting`);
+      console.error('[callback] BOG receipt unavailable — callback not applied');
       return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
     // Use BOG API response as the only source of truth — ignore callback body status
-    const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
-    console.log(`[callback] BOG verified status for order ${bogOrderId}: ${bogStatus}`);
+    const verifiedStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
+    const verifiedPaid = mapBogPaymentStatus(verifiedStatus).paymentStatus === 'paid';
+    if (!receiptMatchesBooking(orderDetails, bookingRow, bogOrderId, verifiedPaid)) {
+      console.error('[callback] BOG receipt does not match the booking — callback not applied');
+      await logEvent(supabase, String(bookingRow.id), 'bog_callback_mismatch', String(bookingRow.status), String(bookingRow.status), 'bog_callback', 'BOG receipt did not match this booking (order, reference, amount or currency); no change made');
+      return new Response('ok', { status: 200, headers: corsHeaders });
+    }
+    if (verifiedPaid && bookingRow.payment_status === 'paid') {
+      // Duplicate delivery of an already-applied payment: no second update or emails.
+      return new Response('ok', { status: 200, headers: corsHeaders });
+    }
+
+    const bogStatus = verifiedStatus;
 
     const { paymentStatus, defaultBookingStatus } = mapBogPaymentStatus(bogStatus);
     const prevStatus = String(bookingRow.status);
@@ -1054,9 +1128,9 @@ return async (req: Request) => {
       });
     }
 
-    const { token, errorDetail: tokenErr } = await getBogToken();
+    const { token } = await getBogToken();
     if (!token) {
-      console.error('[verify] Could not get BOG token:', tokenErr);
+      console.error('[verify] BOG token unavailable');
       // Cannot verify — return current DB status but flag as unverified
       return jsonOk({
         bookingId,
@@ -1070,7 +1144,7 @@ return async (req: Request) => {
 
     const orderDetails = await getBogOrderDetails(token, String(booking.payment_transaction_id));
     if (!orderDetails) {
-      console.error(`[verify] Could not fetch BOG order ${booking.payment_transaction_id}`);
+      console.error('[verify] BOG receipt unavailable');
       // Cannot verify — return current DB status but flag as unverified
       return jsonOk({
         bookingId,
@@ -1083,8 +1157,17 @@ return async (req: Request) => {
     }
 
     const bogStatus = String(orderDetails.order_status?.key ?? orderDetails.status ?? '');
-    console.log(`[verify] BOG live status for order ${booking.payment_transaction_id}: ${bogStatus}`);
     const { paymentStatus, defaultBookingStatus } = mapBogPaymentStatus(bogStatus);
+    if (!receiptMatchesBooking(orderDetails, booking, String(booking.payment_transaction_id), paymentStatus === 'paid')) {
+      console.error('[verify] BOG receipt does not match the booking — not applied');
+      return jsonOk({
+        bookingId,
+        paymentStatus: booking.payment_status,
+        bookingStatus: booking.status,
+        verified: false,
+        source: 'bog_order_mismatch',
+      });
+    }
 
     // If BOG says paid but DB doesn't reflect it yet — update DB proactively
     if (paymentStatus === 'paid' && booking.payment_status !== 'paid') {
@@ -1140,6 +1223,7 @@ return async (req: Request) => {
     });
   }
 
-  return jsonErr('Invalid action or method', 405);
+  if (req.method !== 'GET' && req.method !== 'POST') return jsonErr('Method not allowed', 405);
+  return jsonErr('Not found', 404);
 };
 }
