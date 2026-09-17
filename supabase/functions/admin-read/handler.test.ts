@@ -21,7 +21,14 @@ class FakeDb {
     { id: 'l2', booking_id: BOOKING_B, event_type: 'bog_paid_pending_approval', from_status: 'pending_payment', to_status: 'pending_host_approval', changed_by: 'bog_callback', note: 'note-b1', created_at: '2026-09-17T11:00:00Z' },
     { id: 'l3', booking_id: BOOKING_A, event_type: 'host_approved', from_status: 'pending_host_approval', to_status: 'confirmed', changed_by: 'host', note: null, created_at: '2026-09-17T12:00:00Z' },
   ];
+  /** Rows the shared admin gate writes (never a data table). */
+  failures: { ip_hash: string; function_name: string; failed_at: number }[] = [];
+
   from(table: string) {
+    // The throttle table belongs to the shared gate, not to an action: keep it
+    // out of `calls` so "no data call" assertions keep their meaning.
+    if (table === 'admin_auth_failures') return this.failureTable();
+
     const call: FakeDb['calls'][number] = { table, filters: [] };
     this.calls.push(call);
     let rows = [...this.rows];
@@ -43,6 +50,28 @@ class FakeDb {
     };
     return q;
   }
+
+  private failureTable() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const db = this;
+    let ip: string | null = null;
+    let since = 0;
+    const q = {
+      select(_c: string, _o: { count: string; head: boolean }) { return q; },
+      eq(_c: string, v: string) { ip = v; return q; },
+      gte(_c: string, v: string) { since = Date.parse(v); return q; },
+      then(resolve: (v: Row) => void) {
+        resolve({ count: db.failures.filter((f) => f.ip_hash === ip && f.failed_at >= since).length, error: null });
+      },
+    };
+    return {
+      ...q,
+      insert(row: { ip_hash: string; function_name: string }) {
+        db.failures.push({ ...row, failed_at: Date.now() });
+        return Promise.resolve({ error: null });
+      },
+    };
+  }
 }
 
 // Passing { adminPassword: undefined } explicitly simulates an unset secret
@@ -52,9 +81,17 @@ function harness(opts: { adminPassword?: string } = { adminPassword: PASSWORD })
   const db = new FakeDb();
   const logs: string[] = [];
   const handler = createHandler({ db, adminPassword, log: (e, f) => logs.push(`${e} ${JSON.stringify(f ?? {})}`) });
+  // Each call comes from a fresh client unless the test pins one, so the
+  // shared failure throttle (10 per client per 15 min) does not colour tests
+  // that are about something else.
+  let client = 0;
   const call = async (body: unknown, headers: Record<string, string> = { 'x-admin-password': PASSWORD }, method = 'POST') => {
     const res = await handler(new Request('https://fn.local/admin-read', {
-      method, headers: { 'Content-Type': 'application/json', Origin: 'https://rentcottage.ge', ...headers },
+      method,
+      headers: {
+        'Content-Type': 'application/json', Origin: 'https://rentcottage.ge',
+        'x-forwarded-for': `10.0.0.${++client}`, ...headers,
+      },
       body: method === 'POST' ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
     }));
     const text = await res.text();
@@ -175,4 +212,46 @@ test('PRIVACY the password and header never appear in logs or responses', async 
 
 test('ACTIONS registry contains exactly the read actions', () => {
   assert.deepEqual(Object.keys(ACTIONS).sort(), ['booking-history', 'payment-logs']);
+});
+
+// ── Shared throttle (_shared/adminAuth.ts) ───────────────────────────────────
+
+test('THROTTLE ten failures from one client → 429, and the right password is refused too', async () => {
+  const h = harness();
+  const client = { 'x-forwarded-for': '203.0.113.7' };
+  for (let i = 0; i < 10; i++) {
+    const r = await h.call({ action: 'booking-history', booking_id: BOOKING_A },
+      { ...client, 'x-admin-password': 'wrong' });
+    assert.deepEqual([r.status, r.body], [401, { error: 'Unauthorized' }], `attempt ${i + 1}`);
+  }
+  assert.equal(h.db.failures.length, 10);
+  assert.equal(h.db.calls.length, 0, 'a failed login must never reach a data table');
+
+  const blocked = await h.call({ action: 'booking-history', booking_id: BOOKING_A },
+    { ...client, 'x-admin-password': 'wrong' });
+  assert.deepEqual([blocked.status, blocked.body], [429, { error: 'Too many attempts' }]);
+
+  const withGoodPassword = await h.call({ action: 'booking-history', booking_id: BOOKING_A },
+    { ...client, 'x-admin-password': PASSWORD });
+  assert.deepEqual([withGoodPassword.status, withGoodPassword.body], [429, { error: 'Too many attempts' }]);
+  assert.equal(h.db.calls.length, 0);
+  assert.ok(h.logs.includes('throttled {}'));
+  assert.equal(h.db.failures.length, 10, 'throttled attempts must not extend the block');
+});
+
+test('THROTTLE a different client is unaffected and the throttle stores no raw IP', async () => {
+  const h = harness();
+  for (let i = 0; i < 10; i++) {
+    await h.call({ action: 'booking-history', booking_id: BOOKING_A },
+      { 'x-forwarded-for': '203.0.113.7', 'x-admin-password': 'wrong' });
+  }
+  const other = await h.call({ action: 'booking-history', booking_id: BOOKING_A },
+    { 'x-forwarded-for': '198.51.100.9', 'x-admin-password': PASSWORD });
+  assert.equal(other.status, 200);
+
+  for (const f of h.db.failures) {
+    assert.match(f.ip_hash, /^[0-9a-f]{64}$/);
+    assert.equal(f.ip_hash.includes('203.0.113'), false);
+    assert.equal(f.function_name, 'admin-read');
+  }
 });

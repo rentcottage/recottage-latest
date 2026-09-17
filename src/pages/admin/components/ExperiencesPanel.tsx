@@ -167,16 +167,29 @@ function ExperienceEditor({ initial, onClose, onSaved }: EditorProps) {
     });
   };
 
+  // The experience-photos bucket takes no anon writes any more. The
+  // password-gated function decides the path and the content type and hands
+  // back a short-lived signed upload URL; the browser uploads straight to
+  // storage with that token.
   const uploadEntry = async (entry: ImageEntry): Promise<string> => {
     if (!entry.file) return entry.url;
-    const safe = entry.file.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+    const res = await adminPost({
+      action: 'create-experience-photo-upload-url',
+      filename: entry.file.name,
+      contentType: entry.file.type,
+    });
+    if (!res.ok) {
+      const { error } = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error || t('admin.experiences.failedToSaveError'));
+    }
+    const { path, token, publicUrl } = (await res.json()) as {
+      path: string; token: string; publicUrl: string;
+    };
     const { error: upErr } = await supabase.storage
       .from(BUCKET)
-      .upload(path, entry.file, { contentType: entry.file.type, upsert: false });
+      .uploadToSignedUrl(path, token, entry.file, { contentType: entry.file.type });
     if (upErr) throw upErr;
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return data.publicUrl;
+    return publicUrl;
   };
 
   const handleSave = async () => {

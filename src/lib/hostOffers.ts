@@ -21,7 +21,8 @@ export type OfferType = 'free_nights' | 'discount';
 export interface HostOffer {
   id: string;
   property_id: string;
-  host_email: string;
+  /** Host dashboard rows only — the public view does not publish it. */
+  host_email?: string;
   title: string | null;
   offer_type: OfferType;
   /** 'free_nights' only. */
@@ -209,7 +210,7 @@ export async function fetchOffersForProperty(propertyId: string): Promise<HostOf
   try {
     if (!propertyId) return [];
     const { data, error } = await supabase
-      .from('host_offers')
+      .from('public_host_offers')
       .select('*')
       .eq('property_id', propertyId)
       .eq('active', true);
@@ -261,7 +262,7 @@ export type OfferByProperty = Record<string, CardOffer>;
 export async function fetchOfferedProperties(): Promise<OfferByProperty> {
   try {
     const { data, error } = await supabase
-      .from('host_offers')
+      .from('public_host_offers')
       .select('*')
       .eq('active', true);
     if (error || !data) return {};

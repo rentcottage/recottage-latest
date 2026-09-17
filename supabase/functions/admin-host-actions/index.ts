@@ -1,4 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authorizeAdmin } from '../_shared/adminAuth.ts';
+import {
+  ALLOWED_CONTENT_TYPES,
+  EXPERIENCE_BUCKET,
+  buildExperiencePhotoPath,
+} from './experiencePhoto.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const COMPANY_EMAIL = 'info.rentcottage@gmail.com';
@@ -148,20 +154,23 @@ Deno.serve(async (req: Request) => {
 
   // ── Admin authorization ───────────────────────────────────────────────────
   // Every action in this function is privileged (PII dumps, approve/reject/
-  // delete, sending host emails). Require the server-side admin secret — the
-  // same gate as admin-user-management; it is never shipped in the client bundle.
-  const ADMIN_PASSWORD = Deno.env.get('ADMIN_PANEL_PASSWORD') ?? '';
-  const provided = (body.adminPassword as string | undefined) ?? req.headers.get('x-admin-password') ?? '';
-  const timingSafeEqual = (a: string, b: string): boolean => {
-    if (a.length !== b.length || a.length === 0) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
-  };
-  if (!(ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD))) {
+  // delete, sending host emails). The server-side admin secret gates all of
+  // them; it is never shipped in the client bundle.
+  //
+  // The password is taken from the `x-admin-password` header ONLY — a password
+  // in the body is ignored — compared as SHA-256 digests in constant time, and
+  // every failure gets the same generic 401. Ten failures from one client in
+  // fifteen minutes turn into 429s (shared with admin-read; see
+  // _shared/adminAuth.ts).
+  const auth = await authorizeAdmin(req, {
+    db: supabase,
+    adminPassword: Deno.env.get('ADMIN_PANEL_PASSWORD'),
+    functionName: 'admin-host-actions',
+  });
+  if (!auth.ok) {
     return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: auth.status === 429 ? 'Too many attempts' : 'Unauthorized' }),
+      { status: auth.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
@@ -403,6 +412,52 @@ Deno.serve(async (req: Request) => {
     `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${PHOTO_BUCKET}/`;
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const MAX_PHOTOS = 30;
+
+  // ── Experience photos (admin) ─────────────────────────────────────────────
+  // The experience-photos bucket takes no anon writes any more. The panel asks
+  // for a signed upload URL here; the path and the content type are decided
+  // server-side from a validated filename (experiencePhoto.ts), and the signed
+  // URL is minted without upsert, so an upload can neither escape the
+  // `experiences/` prefix nor overwrite an existing object.
+  if (action === 'create-experience-photo-upload-url') {
+    const built = buildExperiencePhotoPath(
+      body.filename,
+      body.contentType,
+      Date.now(),
+      Math.random().toString(36).slice(2, 8),
+    );
+    if (!built.ok) {
+      return new Response(
+        JSON.stringify({ error: built.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data, error } = await supabase.storage
+      .from(EXPERIENCE_BUCKET)
+      .createSignedUploadUrl(built.path);
+
+    if (error || !data) {
+      console.error('[create-experience-photo-upload-url] Error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create upload URL' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: pub } = supabase.storage.from(EXPERIENCE_BUCKET).getPublicUrl(built.path);
+    return new Response(
+      JSON.stringify({
+        success: true,
+        path: built.path,
+        token: data.token,
+        signedUrl: data.signedUrl,
+        publicUrl: pub.publicUrl,
+        allowedContentTypes: ALLOWED_CONTENT_TYPES,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   if (action === 'create-photo-upload-url') {
     const filename = (body.filename as string | undefined) ?? '';

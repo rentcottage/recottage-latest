@@ -4,10 +4,12 @@
 // index.ts wires in the service-role Supabase client.
 //
 // SECURITY
-// - Every request must carry `x-admin-password`. It is compared with the
-//   ADMIN_PANEL_PASSWORD secret by SHA-256 + constant-time comparison; an unset
-//   secret denies everything. Failures get the same generic 401 and never
-//   reach the database.
+// - Every request must carry `x-admin-password` (header only — a password in
+//   the body is ignored). It is compared with the ADMIN_PANEL_PASSWORD secret
+//   by SHA-256 + constant-time comparison; an unset secret denies everything.
+//   Failures get the same generic 401 and never reach the data actions, and
+//   ten failures from one client in fifteen minutes turn into 429s — the same
+//   throttle admin-host-actions uses (_shared/adminAuth.ts).
 // - The password (and the header) is never logged or echoed.
 // - Read-only: every action is a SELECT with explicit columns and bounds.
 //   Database errors are reported as a generic 500.
@@ -15,6 +17,8 @@
 //
 // Adding an action: write a function (body, db) → Promise<Response> that
 // validates its own input, and register it in ACTIONS.
+
+import { authorizeAdmin } from '../_shared/adminAuth.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -55,18 +59,7 @@ function corsFor(req: Request): Record<string, string> {
   return headers;
 }
 
-async function sha256(value: string): Promise<Uint8Array> {
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
-}
-
-/** Constant-time comparison of the provided password with the configured one. */
-export async function passwordMatches(provided: string, expected: string | undefined): Promise<boolean> {
-  if (!expected) return false;
-  const [a, b] = await Promise.all([sha256(provided), sha256(expected)]);
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
-}
+export { passwordMatches } from '../_shared/adminAuth.ts';
 
 class HttpError extends Error {
   status: number;
@@ -124,9 +117,14 @@ export function createHandler(deps: AdminReadDeps): (req: Request) => Promise<Re
     if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: cors });
     if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-    if (!(await passwordMatches(req.headers.get('x-admin-password') ?? '', deps.adminPassword))) {
-      log('unauthorized');
-      return json({ error: 'Unauthorized' }, 401);
+    const auth = await authorizeAdmin(req, {
+      db: deps.db,
+      adminPassword: deps.adminPassword,
+      functionName: 'admin-read',
+    });
+    if (!auth.ok) {
+      log(auth.status === 429 ? 'throttled' : 'unauthorized');
+      return json({ error: auth.status === 429 ? 'Too many attempts' : 'Unauthorized' }, auth.status);
     }
 
     let body: Row;

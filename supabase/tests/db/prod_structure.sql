@@ -148,3 +148,85 @@ create policy hosts_read_own_ical_blocks on public.ical_blocked_dates as PERMISS
 create policy service_role_all_ical_blocks on public.ical_blocked_dates as PERMISSIVE for ALL to public using ((auth.role() = 'service_role'::text));
 alter table public.booking_status_logs enable row level security;
 create policy "Allow anon select on booking_status_logs" on public.booking_status_logs as PERMISSIVE for SELECT to public using (true);
+
+-- ── host_offers, property_activities, reviews (pre-hardening shape) ──────────
+create table public.host_offers (
+  id uuid default gen_random_uuid() not null primary key,
+  property_id uuid not null,
+  host_email text not null,
+  title text,
+  offer_type text not null,
+  buy_nights integer,
+  free_nights integer,
+  discount_percent numeric(5,2),
+  active boolean default true not null,
+  starts_at date,
+  ends_at date,
+  created_at timestamp with time zone default now() not null
+);
+alter table public.host_offers enable row level security;
+create policy host_offers_public_read on public.host_offers as PERMISSIVE for SELECT to anon, authenticated using (true);
+create policy host_offers_host_insert on public.host_offers as PERMISSIVE for INSERT to authenticated with check ((host_email = (auth.jwt() ->> 'email'::text)) and (property_id in (select property_applications.id from property_applications where property_applications.host_email = (auth.jwt() ->> 'email'::text))));
+create policy host_offers_host_update on public.host_offers as PERMISSIVE for UPDATE to authenticated using ((host_email = (auth.jwt() ->> 'email'::text))) with check ((host_email = (auth.jwt() ->> 'email'::text)));
+create policy host_offers_host_delete on public.host_offers as PERMISSIVE for DELETE to authenticated using ((host_email = (auth.jwt() ->> 'email'::text)));
+
+create table public.property_activities (
+  id uuid default gen_random_uuid() not null primary key,
+  property_id uuid not null,
+  host_email text not null,
+  title text not null,
+  description text,
+  category text not null,
+  price numeric,
+  price_unit text default 'per_person'::text not null,
+  duration_minutes integer,
+  image_url text,
+  active boolean default true not null,
+  display_order integer default 0 not null,
+  created_at timestamp with time zone default now() not null
+);
+alter table public.property_activities enable row level security;
+create policy property_activities_public_read on public.property_activities as PERMISSIVE for SELECT to anon, authenticated using (true);
+create policy property_activities_host_insert on public.property_activities as PERMISSIVE for INSERT to authenticated with check ((host_email = (auth.jwt() ->> 'email'::text)) and (property_id in (select property_applications.id from property_applications where property_applications.host_email = (auth.jwt() ->> 'email'::text))));
+create policy property_activities_host_update on public.property_activities as PERMISSIVE for UPDATE to authenticated using ((host_email = (auth.jwt() ->> 'email'::text))) with check ((host_email = (auth.jwt() ->> 'email'::text)));
+create policy property_activities_host_delete on public.property_activities as PERMISSIVE for DELETE to authenticated using ((host_email = (auth.jwt() ->> 'email'::text)));
+
+create table public.reviews (
+  id uuid default gen_random_uuid() not null primary key,
+  booking_id uuid,
+  property_id text not null,
+  guest_email text not null,
+  guest_name text,
+  rating integer not null,
+  review_text text,
+  created_at timestamp with time zone default now()
+);
+alter table public.reviews enable row level security;
+create policy public_read_reviews on public.reviews as PERMISSIVE for SELECT to public using (true);
+create policy guests_insert_own_reviews on public.reviews as PERMISSIVE for INSERT to public with check ((guest_email = (auth.jwt() ->> 'email'::text)));
+
+-- ── storage (minimal stand-in: the columns the policies touch) ───────────────
+create schema if not exists storage;
+grant usage on schema storage to anon, authenticated, service_role;
+create table storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean default false not null
+);
+create table storage.objects (
+  id uuid default gen_random_uuid() not null primary key,
+  bucket_id text not null references storage.buckets(id),
+  name text not null,
+  owner uuid,
+  created_at timestamp with time zone default now()
+);
+grant select, insert, update, delete on storage.objects to anon, authenticated, service_role;
+grant select on storage.buckets to anon, authenticated, service_role;
+insert into storage.buckets (id, name, public) values
+  ('property-photos', 'property-photos', true),
+  ('experience-photos', 'experience-photos', true),
+  ('avatars', 'avatars', true);
+alter table storage.objects enable row level security;
+create policy exp_photo_all on storage.objects as PERMISSIVE for ALL to public using ((bucket_id = 'experience-photos'::text)) with check ((bucket_id = 'experience-photos'::text));
+create policy anon_upload_property_photos on storage.objects as PERMISSIVE for INSERT to public with check ((bucket_id = 'property-photos'::text));
+create policy public_read_property_photos on storage.objects as PERMISSIVE for SELECT to public using ((bucket_id = 'property-photos'::text));

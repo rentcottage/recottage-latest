@@ -3,15 +3,16 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
 import { useT } from '../../../i18n';
 
+// Exactly the columns public.public_reviews publishes: no guest_email, no
+// booking_id. `display_name` is the "First L." the page has always rendered,
+// now computed in the view instead of from the guest's full name.
 interface Review {
   id: string;
-  booking_id: string | null;
   property_id: string;
-  guest_email: string;
-  guest_name: string | null;
   rating: number;
   review_text: string | null;
   created_at: string;
+  display_name: string;
 }
 
 interface Props {
@@ -65,10 +66,10 @@ function timeAgo(d: string, t: (key: string, vars?: Record<string, string | numb
 
 // Static mock reviews for mock properties
 const MOCK_REVIEWS: Review[] = [
-  { id: 'm1', booking_id: null, property_id: 'mock', guest_email: 'sarah@example.com', guest_name: 'Sarah M.', rating: 5, review_text: 'Absolutely magical place! The views were breathtaking and the host was incredibly welcoming. Every detail was perfect — from the cozy fireplace to the fresh mountain air.', created_at: new Date(Date.now() - 30 * 86400000).toISOString() },
-  { id: 'm2', booking_id: null, property_id: 'mock', guest_email: 'james@example.com', guest_name: 'James R.', rating: 5, review_text: 'Perfect getaway spot. Very clean, well-equipped, and the location is ideal for exploring the surrounding area. We loved every minute of our stay.', created_at: new Date(Date.now() - 60 * 86400000).toISOString() },
-  { id: 'm3', booking_id: null, property_id: 'mock', guest_email: 'maria@example.com', guest_name: 'Maria L.', rating: 4, review_text: 'Beautiful cottage with authentic Georgian charm. Highly recommend for a peaceful retreat. The local food recommendations from the host were a bonus!', created_at: new Date(Date.now() - 90 * 86400000).toISOString() },
-  { id: 'm4', booking_id: null, property_id: 'mock', guest_email: 'david@example.com', guest_name: 'David K.', rating: 5, review_text: 'Exceeded our expectations in every way. The photos don\'t do it justice — even more beautiful in person. Will definitely be back next summer!', created_at: new Date(Date.now() - 120 * 86400000).toISOString() },
+  { id: 'm1', property_id: 'mock', display_name: 'Sarah M.', rating: 5, review_text: 'Absolutely magical place! The views were breathtaking and the host was incredibly welcoming. Every detail was perfect — from the cozy fireplace to the fresh mountain air.', created_at: new Date(Date.now() - 30 * 86400000).toISOString() },
+  { id: 'm2', property_id: 'mock', display_name: 'James R.', rating: 5, review_text: 'Perfect getaway spot. Very clean, well-equipped, and the location is ideal for exploring the surrounding area. We loved every minute of our stay.', created_at: new Date(Date.now() - 60 * 86400000).toISOString() },
+  { id: 'm3', property_id: 'mock', display_name: 'Maria L.', rating: 4, review_text: 'Beautiful cottage with authentic Georgian charm. Highly recommend for a peaceful retreat. The local food recommendations from the host were a bonus!', created_at: new Date(Date.now() - 90 * 86400000).toISOString() },
+  { id: 'm4', property_id: 'mock', display_name: 'David K.', rating: 5, review_text: 'Exceeded our expectations in every way. The photos don\'t do it justice — even more beautiful in person. Will definitely be back next summer!', created_at: new Date(Date.now() - 120 * 86400000).toISOString() },
 ];
 
 export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
@@ -96,7 +97,7 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
       return;
     }
     const { data } = await supabase
-      .from('reviews')
+      .from('public_reviews')
       .select('*')
       .eq('property_id', propertyId)
       .order('created_at', { ascending: false });
@@ -339,11 +340,11 @@ export default function PropertyReviews({ propertyId, isDbProperty }: Props) {
                   <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-xs md:text-sm font-bold text-gray-600">
-                        {(review.guest_name || review.guest_email).charAt(0).toUpperCase()}
+                        {review.display_name.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-xs md:text-sm">{review.guest_name || review.guest_email.split('@')[0]}</p>
+                      <p className="font-medium text-gray-900 text-xs md:text-sm">{review.display_name}</p>
                       <p className="text-xs text-gray-400">{timeAgo(review.created_at, t)}</p>
                     </div>
                   </div>

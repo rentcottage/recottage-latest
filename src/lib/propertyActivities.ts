@@ -23,7 +23,8 @@ export type PriceUnit = 'per_person' | 'per_group' | 'free' | 'on_request';
 export interface PropertyActivity {
   id: string;
   property_id: string;
-  host_email: string;
+  /** Host dashboard rows only — the public view does not publish it. */
+  host_email?: string;
   title: string;
   description: string | null;
   category: ActivityCategory;
@@ -85,7 +86,7 @@ export async function fetchActivitiesForProperty(propertyId: string): Promise<Pr
   try {
     if (!propertyId) return [];
     const { data, error } = await supabase
-      .from('property_activities')
+      .from('public_property_activities')
       .select('*')
       .eq('property_id', propertyId)
       .eq('active', true)
