@@ -519,6 +519,7 @@ function buildAutoConfirmHostBogHtml(booking: Record<string, any>, hostFirstName
 // ── Main handler ─────────────────────────────────────────────────────────
 // ── Double-booking helpers ─────────────────────────────────────────────────
 const DATES_UNAVAILABLE_NOTE = 'DATES_UNAVAILABLE_AFTER_PAYMENT';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isDatesConflict(err: any): boolean {
@@ -709,7 +710,7 @@ return async (req: Request) => {
     }
 
     const {
-      user_name, property_id, property_title,
+      user_name, property_id: rawPropertyId, property_title,
       property_location, check_in, check_out, guests, price_per_night,
       total_price, payment_method, corporate_id,
     } = body as Record<string, unknown>;
@@ -779,7 +780,11 @@ return async (req: Request) => {
     // against BOTH totals so a client that doesn't show promos (feature flag off,
     // cached bundle) still books at full price with no false PRICE_MISMATCH —
     // the guest is always charged exactly the amount they were shown.
-    if (!property_id) return jsonErr('Missing required field: property_id', 400);
+    if (!rawPropertyId) return jsonErr('Missing required field: property_id', 400);
+    // Canonical lowercase uuid text only: bookings.property_id is text and the
+    // overlap lock/check/constraint compare it exactly.
+    const property_id = typeof rawPropertyId === 'string' ? rawPropertyId.trim().toLowerCase() : '';
+    if (!UUID_RE.test(property_id)) return jsonErr('Invalid property_id', 400);
     let appliedPromo: { id: string; discount_percent: number } | null = null;
     let appliedOffer: { id: string; free_nights: number; discount_percent: number | null } | null = null;
     let preDiscountTotal = 0;

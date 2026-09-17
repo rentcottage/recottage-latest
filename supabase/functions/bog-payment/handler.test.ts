@@ -204,8 +204,8 @@ const GUEST_EMAIL = 'guest.private@example.test';
 const GUEST_NAME = 'Private Guest';
 const HOST_EMAIL = 'host.private@example.test';
 const CUSTOMER_ID = 'cust-1111-4111-8111-111111111111';
-const PROP = 'prop-2222-4222-8222-222222222222';
-const PROP_PAP = 'prop-3333-4333-8333-333333333333';
+const PROP = '22222222-2222-4222-8222-222222222222';
+const PROP_PAP = '33333333-3333-4333-8333-333333333333';
 
 function tables(): Record<string, Row[]> {
   return {
@@ -370,7 +370,7 @@ test('CREATE required fields, dates and property checks → 400/404 before any w
   assert.match((await createOrder(h, orderBody({ check_in: '2098-12-30', check_out: '2099-01-02' }))).body.error, /cannot be in the past/);
   assert.match((await createOrder(h, orderBody({ check_in: '2099-06-13', check_out: '2099-06-13' }))).body.error, /must be after check-in/);
   assert.deepEqual((await createOrder(h, orderBody({ property_id: undefined }))).body, { error: 'Missing required field: property_id' });
-  const nf = await createOrder(h, orderBody({ property_id: 'prop-missing' }));
+  const nf = await createOrder(h, orderBody({ property_id: '99999999-9999-4999-8999-999999999999' }));
   assert.deepEqual([nf.status, nf.body.error], [404, 'Property not found.']);
   assert.equal(h.db.writes.length, 0);
   assert.equal(h.net.bogCalls().length, 0);
@@ -1118,4 +1118,36 @@ test('OVERLAP an in-progress callback never re-occupies a released booking', asy
   await call(h, 'POST', '?action=callback', callbackBody('bog-order-pr', b.id));
   assert.deepEqual([b.status, b.payment_status], ['payment_failed', 'payment_failed']);
   assert.equal(h.db.bookingWrites().length, 0);
+});
+
+test('PROPERTY_ID upper-case id is normalized to canonical lowercase for pricing, checks and the stored booking', async () => {
+  const HEX = 'abcdef12-3456-4abc-8def-abcdef123456';   // contains letters, so case matters
+  const withHexProperty = () => {
+    const h = harness();
+    h.db.rows('property_applications').push({ ...h.db.rows('property_applications')[0], id: HEX });
+    return h;
+  };
+  const h = withHexProperty();
+  const r = await createOrder(h, orderBody({ property_id: `  ${HEX.toUpperCase()}  `, payment_method: 'pay_at_property' }));
+  assert.equal(r.status, 200);
+  assert.equal(h.db.rpcCalls[0].args.p_booking.property_id, HEX);
+  assert.equal(h.db.booking(r.body.bookingId)!.property_id, HEX);
+
+  // …so it collides with an existing lowercase booking instead of slipping past it.
+  const taken = withHexProperty();
+  seedBooking(taken, { property_id: HEX, status: 'confirmed', check_in: '2099-06-11', check_out: '2099-06-12' });
+  const c = await createOrder(taken, orderBody({ property_id: HEX.toUpperCase() }));
+  assert.deepEqual([c.status, c.body], [409, { error: 'DATES_UNAVAILABLE' }]);
+  assert.equal(taken.net.bogCalls().length, 0);
+});
+
+test('PROPERTY_ID non-canonical or non-uuid ids → 400 Invalid property_id before any booking, RPC or BOG call', async () => {
+  for (const bad of ['not-a-uuid', `{${PROP}}`, PROP.replace(/-/g, ''), `${PROP}x`, 12345, ['x'], { id: PROP }]) {
+    const h = harness();
+    const r = await createOrder(h, orderBody({ property_id: bad }));
+    assert.deepEqual([r.status, r.body], [400, { error: 'Invalid property_id' }], JSON.stringify(bad));
+    assert.equal(h.db.rpcCalls.length, 0);
+    assert.equal(h.db.writes.length, 0);
+    assert.equal(h.net.bogCalls().length, 0);
+  }
 });
