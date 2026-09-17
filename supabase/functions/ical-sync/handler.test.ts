@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  checkCalendarUrl, createHandler, isPublicIPv4, isPublicIPv6, safeFetchCalendar,
+  checkCalendarUrl, createHandler, isICalendarBody, isPublicIPv4, isPublicIPv6, safeFetchCalendar,
   type AuthUser, type HandlerDeps, type NetDeps, type Transport,
 } from './handler.ts';
 
@@ -567,4 +567,66 @@ test('REG export behaviour unchanged: public GET, bookings + manual blocks, same
   const opt = await h.handler(new Request('https://fn.local/', { method: 'OPTIONS' }));
   assert.equal(opt.status, 200);
   assert.equal((await h.handler(new Request('https://fn.local/', { method: 'PUT' }))).status, 405);
+});
+
+// ─── Non-iCalendar bodies never wipe blocks ───────────────────────────────────
+
+const deletes = (h: H) => h.db.writes.filter((w) => w.table === 'ical_blocked_dates' && (w.op === 'delete' || w.op === 'insert'));
+
+test('GUARD 200 responses that are not a complete VCALENDAR (HTML, empty, truncated) → no delete, blocks kept, bad_response', async () => {
+  const bodies: [string, string][] = [
+    ['html', '<!DOCTYPE html><html><body>Sign in</body></html>'],
+    ['empty', ''],
+    ['whitespace', ' \r\n\t'],
+    ['truncated', ICS_OK.slice(0, ICS_OK.indexOf('END:VCALENDAR'))],
+    ['json problem', '{"title":"Bad Request","status":400}'],
+  ];
+  for (const [label, body] of bodies) {
+    const h = harness();
+    h.net.servers['93.184.216.34'] = { response: http(200, body, { 'Content-Type': label === 'html' ? 'text/html' : 'text/calendar' }) };
+    const r = await post(h, { action: 'sync-calendar', calendar_id: 'cal-a' }, as('tok-host-a'));
+    assert.deepEqual([r.status, r.body], [502, { success: false, error: 'Could not fetch the calendar' }], label);
+    assert.deepEqual(deletes(h), [], `${label}: no delete or insert`);
+    assert.deepEqual(h.db.rows('ical_blocked_dates').filter((b) => b.calendar_id === 'cal-a').map((b) => b.id), ['blk-a1'], `${label}: blocks kept`);
+    const cal = h.db.rows('external_calendars').find((c) => c.id === 'cal-a');
+    assert.deepEqual([cal?.sync_status, cal?.sync_error], ['error', 'bad_response'], label);
+  }
+});
+
+test('GUARD valid calendar with zero future events (also with BOM/leading whitespace) clears blocks and inserts 0', async () => {
+  const empty = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'END:VCALENDAR'].join('\r\n');
+  const pastOnly = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:p', 'DTSTART;VALUE=DATE:20250101', 'DTEND;VALUE=DATE:20250102', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  for (const body of [empty, String.fromCharCode(0xfeff) + '\r\n  ' + empty, pastOnly]) {
+    const h = harness();
+    h.net.servers['93.184.216.34'] = { response: http(200, body) };
+    const r = await post(h, { action: 'sync-calendar', calendar_id: 'cal-a' }, as('tok-host-a'));
+    assert.deepEqual([r.status, r.body.success, r.body.imported], [200, true, 0]);
+    assert.equal(h.db.writes.filter((w) => w.table === 'ical_blocked_dates' && w.op === 'delete').length, 1);
+    assert.equal(h.db.writes.filter((w) => w.table === 'ical_blocked_dates' && w.op === 'insert').length, 0);
+    assert.equal(h.db.rows('ical_blocked_dates').filter((b) => b.calendar_id === 'cal-a').length, 0);
+    assert.equal(h.db.rows('external_calendars').find((c) => c.id === 'cal-a')?.sync_status, 'synced');
+  }
+});
+
+test('GUARD sync-all: a bad feed keeps its blocks while a valid feed on the same property syncs', async () => {
+  const h = harness();
+  h.db.rows('external_calendars').push({ id: 'cal-a2', property_id: 'prop-a', host_email: HOST_A, platform: 'booking_com', ical_url: 'https://admin.booking.test/a2.ics', sync_status: 'synced' });
+  h.db.rows('ical_blocked_dates').push({ id: 'blk-a2', property_id: 'prop-a', calendar_id: 'cal-a2', start_date: '2027-08-01', end_date: '2027-08-03', summary: GUEST, host_email: HOST_A });
+  h.net.servers['151.101.1.1'] = { response: http(200, '<html>error</html>', { 'Content-Type': 'text/html' }) };
+  const r = await post(h, { action: 'sync-all', property_id: 'prop-a' }, as('tok-host-a'));
+  assert.deepEqual([r.status, r.body.success, r.body.synced, r.body.total_imported], [200, true, 2, 2]);
+  assert.deepEqual(r.body.results.map((x: Row) => [x.calendar_id, x.success, x.error ?? null]), [['cal-a', true, null], ['cal-a2', false, 'Could not fetch the calendar']]);
+  assert.deepEqual(h.db.rows('ical_blocked_dates').filter((b) => b.calendar_id === 'cal-a2').map((b) => b.id), ['blk-a2'], 'bad feed blocks kept');
+  assert.equal(h.db.rows('ical_blocked_dates').filter((b) => b.calendar_id === 'cal-a').length, 2, 'valid feed synced');
+  const a2 = h.db.rows('external_calendars').find((c) => c.id === 'cal-a2');
+  assert.deepEqual([a2?.sync_status, a2?.sync_error], ['error', 'bad_response']);
+  assert.equal(h.db.writes.filter((w) => w.table === 'ical_blocked_dates' && w.op === 'delete').length, 1, 'only the valid feed deleted');
+});
+
+test('GUARD isICalendarBody helper', () => {
+  assert.equal(isICalendarBody(ICS_OK), true);
+  assert.equal(isICalendarBody(String.fromCharCode(0xfeff) + ' \r\n' + ICS_OK), true);
+  for (const bad of ['', '   ', '<html>BEGIN:VCALENDAR END:VCALENDAR</html>', 'BEGIN:VCALENDAR\r\nVERSION:2.0', 'END:VCALENDAR', 'X' + ICS_OK]) {
+    assert.equal(isICalendarBody(bad), false, JSON.stringify(bad.slice(0, 20)));
+  }
 });

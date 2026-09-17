@@ -323,6 +323,12 @@ function decodeChunked(body: Uint8Array): Uint8Array | null {
   return null;
 }
 
+/** True only for a complete iCalendar document: BEGIN:VCALENDAR first (after a BOM/whitespace) and END:VCALENDAR present. */
+export function isICalendarBody(text: string): boolean {
+  const body = text.replace(/^\uFEFF/, '').trimStart();
+  return body.startsWith('BEGIN:VCALENDAR') && body.includes('END:VCALENDAR');
+}
+
 /**
  * Fetches an iCal URL without following redirects, pinned to a vetted public
  * address, with a hard deadline and a byte cap on the whole response.
@@ -501,6 +507,16 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
       log('calendar_fetch_failed', { calendarId: calId, reason: fetched.reason });
       await db.from('external_calendars')
         .update({ sync_status: 'error', sync_error: fetched.reason, last_synced: now().toISOString() })
+        .eq('id', calId);
+      return { success: false, error: 'Could not fetch the calendar' };
+    }
+
+    // A 200 that is not an iCalendar document (HTML error page, empty or
+    // truncated body) would parse to zero events and wipe every block below.
+    if (!isICalendarBody(fetched.text)) {
+      log('calendar_fetch_failed', { calendarId: calId, reason: 'bad_response' });
+      await db.from('external_calendars')
+        .update({ sync_status: 'error', sync_error: 'bad_response', last_synced: now().toISOString() })
         .eq('id', calId);
       return { success: false, error: 'Could not fetch the calendar' };
     }
