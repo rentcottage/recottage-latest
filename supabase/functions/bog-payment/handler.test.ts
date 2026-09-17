@@ -836,11 +836,43 @@ test('SEC callback: genuine receipt without a stored order id is accepted and st
   assert.deepEqual([b.payment_status, b.status, b.payment_transaction_id], ['paid', 'pending_host_approval', 'bog-order-late']);
   const writes = h.db.bookingWrites().length;
   const emails = h.net.emails().length;
+  const logs = h.db.rows('booking_status_logs').length;
   const deadline = b.approval_deadline;
+  const paidRpcCalls = () => h.db.rpcCalls.filter((c) => c.name === 'apply_paid_status').length;
+  assert.equal(paidRpcCalls(), 1);
   await call(h, 'POST', '?action=callback', callbackBody('bog-order-late', b.id));
+  assert.equal(paidRpcCalls(), 1, 'the duplicate delivery never reaches apply_paid_status');
   assert.equal(h.db.bookingWrites().length, writes, 'no second update');
   assert.equal(h.net.emails().length, emails, 'no second emails');
+  assert.equal(h.db.rows('booking_status_logs').length, logs, 'no second log entry');
   assert.equal(b.approval_deadline, deadline);
+});
+
+test('SEC late/forged callbacks for CLOSED bookings change nothing, for every closed status and every receipt outcome', async () => {
+  const closed: Row[] = [
+    { status: 'cancelled_by_host', payment_status: 'cancelled' },
+    { status: 'cancelled', payment_status: 'refund_pending' },
+    { status: 'rejected', payment_status: 'refund_pending', canceled_by: 'host' },
+    { status: 'rejected', payment_status: 'paid', canceled_by: 'system', rejection_note: 'DATES_UNAVAILABLE_AFTER_PAYMENT' },
+    { status: 'confirmed', payment_status: 'paid' },
+  ];
+  for (const state of closed) {
+    for (const key of ['completed', 'rejected', 'failed', 'expired', 'cancelled', 'refunded', 'refunded_partially', 'processing']) {
+      const label = `${state.status}/${state.payment_status} + ${key}`;
+      const h = harness();
+      const b = seedBooking(h, { ...state, payment_transaction_id: 'bog-order-closed' });
+      h.net.receipts['bog-order-closed'] = receipt('bog-order-closed', b.id, key, '300');
+      const before = JSON.stringify(b);
+      const r = await call(h, 'POST', '?action=callback', callbackBody('bog-order-closed', b.id, key));
+      assert.deepEqual([r.status, r.text], [200, 'ok'], label);
+      assert.equal(JSON.stringify(b), before, `${label}: booking unchanged`);
+      assert.equal(h.db.bookingWrites().length, 0, `${label}: no booking write`);
+      assert.equal(h.db.rows('booking_status_logs').length, 0, `${label}: no log entry`);
+      assert.equal(h.db.rpcCalls.length, 0, `${label}: no apply_paid_status`);
+      assert.equal(h.net.bogCalls().filter((c) => c.url.includes('/payment/')).length, 0, `${label}: no refund/capture/release`);
+      assert.equal(h.net.emails().length, 0, `${label}: no email`);
+    }
+  }
 });
 
 test('SEC callback mismatch leaves an audit log entry without changing the booking', async () => {
