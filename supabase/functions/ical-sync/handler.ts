@@ -4,7 +4,7 @@
 // Deno.resolveDns and Deno.connect/startTls.
 //
 // SECURITY MODEL
-//   POST actions (add-calendar, remove-calendar, sync-calendar, sync-all)
+//   POST actions (add-calendar, remove-calendar, sync-calendar, sync-all, export-token)
 //     • require `Authorization: Bearer <user access token>`, verified with
 //       auth.getUser(); the anon key, service keys and invalid tokens → 401.
 //     • identity = verified user email (confirmed); body host_email is ignored.
@@ -12,7 +12,10 @@
 //       equals the verified email; calendars are owned through their property.
 //     • remove-calendar verifies ownership before deleting anything.
 //   Legacy save-url / import / refresh and unknown actions → 400.
-//   GET export: unchanged (gateway JWT verification still applies).
+//   export-token returns the property's secret ical-export URL (mode get creates
+//     it if missing; mode rotate replaces it). The token is never logged.
+//   GET export (?action=export&property_id=…) was removed: it exposed any
+//     property's booking dates by id. OTAs use the ical-export function instead.
 //
 // SSRF BOUNDARY (safeFetchCalendar)
 //   https only, default port, no credentials, no localhost/internal names;
@@ -75,60 +78,6 @@ export function parseICalDate(icalDate: string): string {
   return icalDate;
 }
 
-
-// ─── iCal generator (export from our website) ────────────────────────────────
-export function generateICS(
-  propertyTitle: string,
-  bookings: Array<{ check_in: string; check_out: string; id: string }>,
-  blockedDates: Array<{ start_date: string; end_date: string; id: string; platform: string }>
-): string {
-  const now = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-  const lines: string[] = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//RentCottage.Ge//Booking Calendar//EN",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    `X-WR-CALNAME:${propertyTitle} - RentCottage.Ge`,
-    "X-WR-TIMEZONE:Asia/Tbilisi",
-  ];
-
-  for (const b of bookings) {
-    const startDate = b.check_in.replace(/-/g, "");
-    const endD = new Date(b.check_out + "T00:00:00");
-    endD.setDate(endD.getDate() + 1);
-    const endDate = endD.toISOString().slice(0, 10).replace(/-/g, "");
-    lines.push(
-      "BEGIN:VEVENT",
-      `UID:rentcottage-booking-${b.id}@rentcottage.ge`,
-      `DTSTAMP:${now}`,
-      `DTSTART;VALUE=DATE:${startDate}`,
-      `DTEND;VALUE=DATE:${endDate}`,
-      "SUMMARY:Reserved - RentCottage.Ge",
-      "END:VEVENT"
-    );
-  }
-
-  // Also include manually blocked dates in export
-  for (const bd of blockedDates) {
-    const startDate = bd.start_date.replace(/-/g, "");
-    const endD = new Date(bd.end_date + "T00:00:00");
-    endD.setDate(endD.getDate() + 1);
-    const endDate = endD.toISOString().slice(0, 10).replace(/-/g, "");
-    lines.push(
-      "BEGIN:VEVENT",
-      `UID:rentcottage-block-${bd.id}@rentcottage.ge`,
-      `DTSTAMP:${now}`,
-      `DTSTART;VALUE=DATE:${startDate}`,
-      `DTEND;VALUE=DATE:${endDate}`,
-      "SUMMARY:Not available - RentCottage.Ge",
-      "END:VEVENT"
-    );
-  }
-
-  lines.push("END:VCALENDAR");
-  return lines.join("\r\n");
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Safe calendar fetching (SSRF boundary)
@@ -434,6 +383,10 @@ export interface HandlerDeps extends NetDeps {
   /** Verifies a user access token (auth.getUser). null for anon/service/invalid tokens. */
   getUserFromToken: (token: string) => Promise<AuthUser | null>;
   now?: () => Date;
+  /** Public base URL of the ical-export function, e.g. https://<ref>.supabase.co/functions/v1/ical-export */
+  exportBaseUrl: string;
+  /** 32 random bytes, base64url (43 chars). Injected for tests. */
+  randomToken?: () => string;
   /** Server-side diagnostics: ids and categories only. */
   log?: (event: string, fields?: Record<string, string | number | boolean | null>) => void;
 }
@@ -441,10 +394,20 @@ export interface HandlerDeps extends NetDeps {
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const SUPPORTED_ACTIONS = new Set(['add-calendar', 'remove-calendar', 'sync-calendar', 'sync-all']);
+const SUPPORTED_ACTIONS = new Set(['add-calendar', 'remove-calendar', 'sync-calendar', 'sync-all', 'export-token']);
+const EXPORT_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+
+/** 32 bytes from the platform CSPRNG, base64url without padding (43 chars). */
+export function generateExportToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 const ID_RE = /^[A-Za-z0-9-]{1,64}$/;
 
 class HttpError extends Error {
@@ -466,6 +429,8 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
   const db = deps.db;
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? (() => {});
+  const randomToken = deps.randomToken ?? generateExportToken;
+  const exportBaseUrl = String(deps.exportBaseUrl ?? '').replace(/\/+$/, '');
 
   async function requireUser(req: Request): Promise<AuthUser & { email: string }> {
     const m = /^Bearer\s+(.+)$/i.exec((req.headers.get('authorization') ?? '').trim());
@@ -563,39 +528,39 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
     };
   }
 
-  async function handleExport(propertyId: string): Promise<Response> {
-    // Behaviour unchanged from the previous implementation, except that a server
-    // error no longer echoes the raw error text.
-    try {
-      const { data: prop } = await db.from('property_applications').select('id, title').eq('id', propertyId).maybeSingle();
-      if (!prop) return new Response('Property not found', { status: 404, headers: corsHeaders });
-      const [{ data: bookings }, { data: blockedDates }] = await Promise.all([
-        db.from('bookings').select('id, check_in, check_out').eq('property_id', propertyId)
-          .in('status', ['confirmed', 'pending', 'pending_host_approval']).order('check_in', { ascending: true }),
-        db.from('blocked_dates').select('id, start_date, end_date').eq('property_id', propertyId).order('start_date', { ascending: true }),
-      ]);
-      const ics = generateICS(prop.title, bookings ?? [], (blockedDates ?? []).map((bd: Row) => ({ ...bd, platform: 'manual' })));
-      return new Response(ics, {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'text/calendar; charset=utf-8',
-          'Content-Disposition': `attachment; filename="rentcottage-${propertyId}.ics"`,
-          'Cache-Control': 'no-cache',
-        },
-      });
-    } catch {
-      log('export_failed');
-      return json({ error: 'Request failed' }, 500);
+  /** Returns the property's export token, creating (mode get, if missing) or replacing (mode rotate) it. */
+  async function exportToken(propertyId: string, mode: 'get' | 'rotate'): Promise<string> {
+    const newToken = () => {
+      const t = randomToken();
+      if (!EXPORT_TOKEN_RE.test(t)) throw new HttpError(500, 'Request failed');
+      return t;
+    };
+    const { data: existing, error } = await db.from('ical_export_tokens').select('token').eq('property_id', propertyId).maybeSingle();
+    if (error) throw new HttpError(500, 'Request failed');
+
+    if (mode === 'get' && existing && EXPORT_TOKEN_RE.test(String(existing.token))) return String(existing.token);
+
+    const token = newToken();
+    if (existing) {
+      const { error: upErr } = await db.from('ical_export_tokens').update({ token, rotated_at: now().toISOString() }).eq('property_id', propertyId);
+      if (upErr) throw new HttpError(500, 'Request failed');
+      return token;
     }
+    const { error: insErr } = await db.from('ical_export_tokens').insert({ property_id: propertyId, token });
+    if (insErr) {
+      // A concurrent `get` may have created it first: return the stored token.
+      const { data: again } = await db.from('ical_export_tokens').select('token').eq('property_id', propertyId).maybeSingle();
+      if (mode === 'get' && again && EXPORT_TOKEN_RE.test(String(again.token))) return String(again.token);
+      throw new HttpError(500, 'Request failed');
+    }
+    return token;
   }
 
   return async (req: Request): Promise<Response> => {
     if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-    const url = new URL(req.url);
-    if (req.method === 'GET' && url.searchParams.get('action') === 'export' && url.searchParams.get('property_id')) {
-      return handleExport(url.searchParams.get('property_id') as string);
-    }
+    // The former GET export is gone; OTAs use the ical-export function.
+    if (req.method === 'GET') return json({ error: 'Unsupported action' }, 400);
     if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
     let body: Row;
@@ -657,6 +622,17 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
         const { cal, property } = await requireOwnedCalendar(user, calendarId);
         const result = await syncCalendar(cal, String(property.host_email));
         return json(result, result.success ? 200 : 502);
+      }
+
+      if (action === 'export-token') {
+        const propertyId = idFrom(body.property_id, 'property_id');
+        const mode = body.mode === undefined ? 'get' : body.mode;
+        if (mode !== 'get' && mode !== 'rotate') return json({ error: 'Invalid mode' }, 400);
+        await requireOwnedProperty(user, propertyId);
+        if (!exportBaseUrl) { log('export_token_failed', { propertyId, stage: 'config' }); return json({ error: 'Request failed' }, 500); }
+        const token = await exportToken(propertyId, mode);
+        log('export_token', { propertyId, mode });   // never the token
+        return json({ success: true, url: `${exportBaseUrl}/${token}.ics` });
       }
 
       // sync-all

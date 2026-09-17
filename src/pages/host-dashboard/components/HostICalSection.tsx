@@ -408,6 +408,8 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [exportUrl, setExportUrl] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'import' | 'export' | 'blocked'>('import');
 
@@ -552,9 +554,38 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
     }
   };
 
-  const exportUrl = selectedPropertyId
-    ? `${ICAL_FUNCTION_URL}?action=export&property_id=${selectedPropertyId}`
-    : '';
+  // The export URL carries a secret per-property token; it is fetched from
+  // ical-sync (owner only) on demand and never derived from the property id.
+  useEffect(() => {
+    setExportUrl('');
+    setCopied(false);
+  }, [selectedPropertyId]);
+
+  const requestExportLink = async (mode: 'get' | 'rotate') => {
+    if (!selectedPropertyId || !user?.email) return;
+    setExportLoading(true);
+    try {
+      const res = await fetch(ICAL_FUNCTION_URL, {
+        method: 'POST',
+        headers: await icalSessionHeaders(),
+        body: JSON.stringify({ action: 'export-token', property_id: selectedPropertyId, mode }),
+      });
+      const data = await res.json();
+      if (!data.success || typeof data.url !== 'string') throw new Error('export link unavailable');
+      setExportUrl(data.url);
+      setCopied(false);
+      if (mode === 'rotate') showToast(t('host.ical.exportLinkRegeneratedToast'), 'success');
+    } catch {
+      showToast(t('host.ical.exportLinkErrorToast'), 'error');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleRegenerateExportUrl = async () => {
+    if (!window.confirm(t('host.ical.exportRegenerateConfirm'))) return;
+    await requestExportLink('rotate');
+  };
 
   const handleCopyExportUrl = async () => {
     if (!exportUrl) return;
@@ -782,27 +813,56 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
             </div>
           </div>
 
-          {/* Export URL */}
+          {/* Export URL (secret per-property link) */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-2">{t('host.ical.exportUrlLabel')}</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={exportUrl}
-                className="flex-1 min-w-0 text-xs border border-line rounded-lg px-3 py-2.5 bg-gray-50 font-mono text-gray-600 truncate"
-              />
+            <p className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
+              {t('host.ical.exportOldLinkNotice')}
+            </p>
+            {exportUrl ? (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={exportUrl}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="flex-1 min-w-0 text-xs border border-line rounded-lg px-3 py-2.5 bg-gray-50 font-mono text-gray-600 truncate"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCopyExportUrl}
+                    disabled={!exportUrl || exportLoading}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <div className="w-4 h-4 flex items-center justify-center">
+                      <i className={copied ? 'ri-check-line text-emerald-600' : 'ri-clipboard-line'}></i>
+                    </div>
+                    {copied ? t('host.ical.copied') : t('host.ical.copy')}
+                  </button>
+                  <button
+                    onClick={handleRegenerateExportUrl}
+                    disabled={exportLoading}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <div className="w-4 h-4 flex items-center justify-center">
+                      <i className={exportLoading ? 'ri-loader-4-line animate-spin' : 'ri-refresh-line'}></i>
+                    </div>
+                    {t('host.ical.exportRegenerate')}
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
-                onClick={handleCopyExportUrl}
-                disabled={!exportUrl}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                onClick={() => requestExportLink('get')}
+                disabled={!selectedPropertyId || exportLoading}
+                className="flex items-center gap-1.5 px-3 py-2.5 border border-line hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
               >
                 <div className="w-4 h-4 flex items-center justify-center">
-                  <i className={copied ? 'ri-check-line text-emerald-600' : 'ri-clipboard-line'}></i>
+                  <i className={exportLoading ? 'ri-loader-4-line animate-spin' : 'ri-link'}></i>
                 </div>
-                {copied ? t('host.ical.copied') : t('host.ical.copy')}
+                {exportLoading ? t('host.ical.exportLinkLoading') : t('host.ical.exportShowLink')}
               </button>
-            </div>
+            )}
           </div>
 
           {/* Instructions for each platform */}

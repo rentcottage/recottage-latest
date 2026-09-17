@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  checkCalendarUrl, createHandler, isICalendarBody, isPublicIPv4, isPublicIPv6, safeFetchCalendar,
+  checkCalendarUrl, createHandler, generateExportToken, isICalendarBody, isPublicIPv4, isPublicIPv6, safeFetchCalendar,
   type AuthUser, type HandlerDeps, type NetDeps, type Transport,
 } from './handler.ts';
 
@@ -173,6 +173,14 @@ function tables(): Record<string, Row[]> {
   };
 }
 
+const EXPORT_BASE = 'https://proj.supabase.test/functions/v1/ical-export';
+let tokenCounter = 0;
+/** Deterministic, correctly formatted 43-char base64url tokens for tests. */
+function nextToken(): string {
+  tokenCounter += 1;
+  return (`T${tokenCounter}_` + 'aB3-xY9_'.repeat(6)).slice(0, 43);
+}
+
 interface H { db: FakeDb; net: FakeNet; logs: { event: string; fields?: Row }[]; handler: (r: Request) => Promise<Response> }
 
 function harness(netExtra: Partial<NetDeps> = {}): H {
@@ -187,6 +195,8 @@ function harness(netExtra: Partial<NetDeps> = {}): H {
     db,
     getUserFromToken: async (t) => USERS[t] ?? null,
     now: () => new Date('2026-09-17T10:00:00Z'),
+    exportBaseUrl: EXPORT_BASE,
+    randomToken: () => nextToken(),
     log: (event, fields) => logs.push({ event, fields }),
   };
   return { db, net, logs, handler: createHandler(deps) };
@@ -549,24 +559,19 @@ test('REG remove-calendar deletes the owned calendar and only its blocks', async
   assert.equal(h.db.rows('ical_blocked_dates').some((b) => b.calendar_id === 'cal-b'), true);
 });
 
-test('REG export behaviour unchanged: public GET, bookings + manual blocks, same headers', async () => {
+test('REMOVED GET export (?action=export&property_id=…) no longer serves any calendar', async () => {
   const h = harness();
-  const res = await h.handler(new Request('https://fn.local/functions/v1/ical-sync?action=export&property_id=prop-a'));
-  assert.equal(res.status, 200);
-  assert.equal(res.headers.get('content-type'), 'text/calendar; charset=utf-8');
-  assert.equal(res.headers.get('content-disposition'), 'attachment; filename="rentcottage-prop-a.ics"');
-  const ics = await res.text();
-  assert.match(ics, /^BEGIN:VCALENDAR\r\nVERSION:2\.0\r\nPRODID:-\/\/RentCottage\.Ge\/\/Booking Calendar\/\/EN/);
-  assert.match(ics, /X-WR-CALNAME:Alpha Cottage - RentCottage\.Ge/);
-  assert.match(ics, /UID:rentcottage-booking-bk-1@rentcottage\.ge/);
-  assert.ok(!ics.includes('bk-2'), 'cancelled booking excluded');
-  assert.match(ics, /UID:rentcottage-block-bd-1@rentcottage\.ge/);
-  assert.ok(!ics.includes('guest@example.test'));
-  const missing = await h.handler(new Request('https://fn.local/functions/v1/ical-sync?action=export&property_id=nope'));
-  assert.deepEqual([missing.status, await missing.text()], [404, 'Property not found']);
+  for (const u of ['https://fn.local/functions/v1/ical-sync?action=export&property_id=prop-a', 'https://fn.local/functions/v1/ical-sync?action=export&property_id=nope', 'https://fn.local/functions/v1/ical-sync']) {
+    const res = await h.handler(new Request(u));
+    const text = await res.text();
+    assert.deepEqual([res.status, text], [400, '{"error":"Unsupported action"}'], u);
+    assert.ok(!/VCALENDAR|Alpha Cottage|bk-1|bd-1/.test(text));
+  }
   const opt = await h.handler(new Request('https://fn.local/', { method: 'OPTIONS' }));
   assert.equal(opt.status, 200);
+  assert.equal(opt.headers.get('access-control-allow-methods'), 'POST, OPTIONS');
   assert.equal((await h.handler(new Request('https://fn.local/', { method: 'PUT' }))).status, 405);
+  assert.deepEqual(h.db.writes, []);
 });
 
 // ─── Non-iCalendar bodies never wipe blocks ───────────────────────────────────
@@ -629,4 +634,106 @@ test('GUARD isICalendarBody helper', () => {
   for (const bad of ['', '   ', '<html>BEGIN:VCALENDAR END:VCALENDAR</html>', 'BEGIN:VCALENDAR\r\nVERSION:2.0', 'END:VCALENDAR', 'X' + ICS_OK]) {
     assert.equal(isICalendarBody(bad), false, JSON.stringify(bad.slice(0, 20)));
   }
+});
+
+// ─── export-token (secret ical-export URL) ────────────────────────────────────
+
+const tokenRows = (h: H) => h.db.rows('ical_export_tokens');
+const URL_RE = /^https:\/\/proj\.supabase\.test\/functions\/v1\/ical-export\/([A-Za-z0-9_-]{43})\.ics$/;
+
+test('EXPORT-TOKEN requires a verified session: none, anon, invalid, unconfirmed → 401, nothing stored', async () => {
+  const h = harness();
+  for (const headers of [{}, as(ANON_JWT), as('garbage'), as('tok-unconfirmed'), as('tok-no-email')]) {
+    for (const mode of ['get', 'rotate']) {
+      const r = await post(h, { action: 'export-token', property_id: 'prop-a', mode, host_email: HOST_A }, headers);
+      assert.deepEqual([r.status, r.body], [401, { error: 'Unauthorized' }]);
+    }
+  }
+  assert.deepEqual(tokenRows(h), []);
+});
+
+test('EXPORT-TOKEN ownership: another host\'s property → 403 (body host_email ignored), missing → 404, bad input → 400; nothing stored', async () => {
+  const h = harness();
+  h.db.tables.ical_export_tokens = [{ property_id: 'prop-b', token: 'existing-token-of-host-b-xxxxxxxxxxxxxxxxxx' }];
+  for (const mode of ['get', 'rotate']) {
+    const r = await post(h, { action: 'export-token', property_id: 'prop-b', mode, host_email: HOST_B }, as('tok-host-a'));
+    assert.deepEqual([r.status, r.body], [403, { error: 'Forbidden' }]);
+    assert.ok(!r.text.includes('existing-token-of-host-b'));
+  }
+  assert.deepEqual([(await post(h, { action: 'export-token', property_id: 'nope' }, as('tok-host-a'))).status], [404]);
+  assert.deepEqual((await post(h, { action: 'export-token' }, as('tok-host-a'))).status, 400);
+  assert.deepEqual((await post(h, { action: 'export-token', property_id: 'prop-a', mode: 'delete' }, as('tok-host-a'))).body, { error: 'Invalid mode' });
+  assert.deepEqual(tokenRows(h).map((r) => [r.property_id, r.token]), [['prop-b', 'existing-token-of-host-b-xxxxxxxxxxxxxxxxxx']]);
+  assert.equal(h.db.writes.length, 0);
+});
+
+test('EXPORT-TOKEN get creates once and then returns the same URL; rotate replaces it', async () => {
+  const h = harness();
+  const first = await post(h, { action: 'export-token', property_id: 'prop-a' }, as('tok-host-a'));
+  assert.equal(first.status, 200);
+  assert.equal(first.body.success, true);
+  const m1 = URL_RE.exec(first.body.url);
+  assert.ok(m1, 'url format');
+  assert.deepEqual(Object.keys(first.body).sort(), ['success', 'url']);
+  assert.deepEqual(tokenRows(h).map((r) => [r.property_id, r.token]), [['prop-a', m1![1]]]);
+
+  const again = await post(h, { action: 'export-token', property_id: 'prop-a', mode: 'get' }, as('tok-host-a-upper'));
+  assert.equal(again.body.url, first.body.url);
+  assert.equal(tokenRows(h).length, 1);
+
+  const rotated = await post(h, { action: 'export-token', property_id: 'prop-a', mode: 'rotate' }, as('tok-host-a'));
+  const m2 = URL_RE.exec(rotated.body.url);
+  assert.ok(m2);
+  assert.notEqual(m2![1], m1![1]);
+  assert.equal(tokenRows(h).length, 1);
+  assert.equal(tokenRows(h)[0].token, m2![1]);
+  assert.equal(tokenRows(h)[0].rotated_at, '2026-09-17T10:00:00.000Z');
+  assert.ok(!JSON.stringify(h.db.tables).includes(m1![1]), 'old token gone');
+  assert.equal((await post(h, { action: 'export-token', property_id: 'prop-a' }, as('tok-host-a'))).body.url, rotated.body.url);
+
+  const fresh = harness();
+  const r = await post(fresh, { action: 'export-token', property_id: 'prop-a', mode: 'rotate' }, as('tok-host-a'));
+  assert.ok(URL_RE.test(r.body.url));
+  assert.equal(tokenRows(fresh).length, 1);
+});
+
+test('EXPORT-TOKEN never logs the token; failures are generic and store nothing', async () => {
+  const h = harness();
+  const r = await post(h, { action: 'export-token', property_id: 'prop-a' }, as('tok-host-a'));
+  const token = URL_RE.exec(r.body.url)![1];
+  await post(h, { action: 'export-token', property_id: 'prop-a', mode: 'rotate' }, as('tok-host-a'));
+  const logText = JSON.stringify(h.logs);
+  assert.ok(!logText.includes(token));
+  assert.ok(!logText.includes(tokenRows(h)[0].token));
+  assert.ok(!logText.includes('ical-export/'));
+
+  const badRandom = harness();
+  const bad = await createHandler({ ...(badRandom as unknown as { db: FakeDb }), db: badRandom.db, getUserFromToken: async (t) => USERS[t] ?? null, exportBaseUrl: EXPORT_BASE, randomToken: () => 'short', resolveDns: async () => [], openTls: async () => { throw new Error('no'); } })(
+    new Request('https://fn.local/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...as('tok-host-a') }, body: JSON.stringify({ action: 'export-token', property_id: 'prop-a' }) }));
+  assert.deepEqual([bad.status, await bad.json()], [500, { error: 'Request failed' }]);
+  assert.deepEqual(tokenRows(badRandom), []);
+
+  const noBase = harness();
+  const nb = await createHandler({ db: noBase.db, getUserFromToken: async (t) => USERS[t] ?? null, exportBaseUrl: '', randomToken: nextToken, resolveDns: async () => [], openTls: async () => { throw new Error('no'); } })(
+    new Request('https://fn.local/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...as('tok-host-a') }, body: JSON.stringify({ action: 'export-token', property_id: 'prop-a' }) }));
+  assert.equal(nb.status, 500);
+  assert.deepEqual(tokenRows(noBase), []);
+
+  const dbFail = harness();
+  dbFail.db.failWhen = (t, op) => t === 'ical_export_tokens' && op === 'insert';
+  const f = await post(dbFail, { action: 'export-token', property_id: 'prop-a' }, as('tok-host-a'));
+  assert.deepEqual([f.status, f.body], [500, { error: 'Request failed' }]);
+  assert.ok(!f.text.includes('secret_internal_table'));
+});
+
+test('EXPORT-TOKEN generateExportToken: 32 random bytes as 43-char base64url, unique', () => {
+  const seen = new Set<string>();
+  for (let i = 0; i < 200; i++) {
+    const t = generateExportToken();
+    assert.match(t, /^[A-Za-z0-9_-]{43}$/);
+    seen.add(t);
+  }
+  assert.equal(seen.size, 200);
+  const decoded = Buffer.from(generateExportToken(), 'base64url');
+  assert.equal(decoded.length, 32);
 });

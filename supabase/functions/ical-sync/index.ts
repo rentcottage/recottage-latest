@@ -12,6 +12,9 @@ const supabase = createClient(
 const handler = createHandler({
   db: supabase,
 
+  // Public feed URL handed to hosts for Airbnb/Booking.com (token appended).
+  exportBaseUrl: `${(Deno.env.get("SUPABASE_URL") ?? "").replace(/\/+$/, "")}/functions/v1/ical-export`,
+
   getUserFromToken: async (token) => {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) return null;

@@ -473,6 +473,13 @@ export const hostEn = {
     calendarRemovedToast: 'Calendar removed',
     removeFailedToast: 'Failed to remove: {error}',
     exportLinkCopiedToast: 'Export link copied to clipboard!',
+    exportShowLink: 'Show link',
+    exportLinkLoading: 'Loading…',
+    exportRegenerate: 'Regenerate link',
+    exportRegenerateConfirm: 'Regenerate the export link? The current link stops working immediately, and Airbnb/Booking.com will not receive your availability until you paste the new link there.',
+    exportLinkRegeneratedToast: 'New export link created. Paste it into Airbnb and Booking.com.',
+    exportLinkErrorToast: 'Could not load the export link. Please try again.',
+    exportOldLinkNotice: 'Old export links never worked — paste this new link into Airbnb/Booking.com.',
   },
 
   propertyEditModal: {
@@ -1211,6 +1218,13 @@ export const hostKa: HostNs = {
     calendarRemovedToast: 'კალენდარი წაიშალა',
     removeFailedToast: 'წაშლა ვერ მოხერხდა: {error}',
     exportLinkCopiedToast: 'ექსპორტის ბმული დაკოპირდა!',
+    exportShowLink: 'ბმულის ჩვენება',
+    exportLinkLoading: 'იტვირთება…',
+    exportRegenerate: 'ბმულის განახლება',
+    exportRegenerateConfirm: 'განაახლოთ ექსპორტის ბმული? ამჟამინდელი ბმული მაშინვე შეწყვეტს მუშაობას და Airbnb/Booking.com არ მიიღებს თქვენს ხელმისაწვდომობას, სანამ ახალ ბმულს იქ არ ჩასვამთ.',
+    exportLinkRegeneratedToast: 'ახალი ექსპორტის ბმული შეიქმნა. ჩასვით ის Airbnb-სა და Booking.com-ში.',
+    exportLinkErrorToast: 'ექსპორტის ბმულის ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.',
+    exportOldLinkNotice: 'ძველი ექსპორტის ბმულები არასოდეს მუშაობდა — ჩასვით ეს ახალი ბმული Airbnb/Booking.com-ში.',
   },
 
   propertyEditModal: {
@@ -1947,6 +1961,13 @@ export const hostRu: HostNs = {
     calendarRemovedToast: 'Календарь удалён',
     removeFailedToast: 'Не удалось удалить: {error}',
     exportLinkCopiedToast: 'Ссылка для экспорта скопирована в буфер обмена!',
+    exportShowLink: 'Показать ссылку',
+    exportLinkLoading: 'Загрузка…',
+    exportRegenerate: 'Создать новую ссылку',
+    exportRegenerateConfirm: 'Создать новую ссылку экспорта? Текущая ссылка сразу перестанет работать, и Airbnb/Booking.com не будут получать вашу доступность, пока вы не вставите туда новую ссылку.',
+    exportLinkRegeneratedToast: 'Новая ссылка экспорта создана. Вставьте её в Airbnb и Booking.com.',
+    exportLinkErrorToast: 'Не удалось загрузить ссылку экспорта. Попробуйте ещё раз.',
+    exportOldLinkNotice: 'Старые ссылки экспорта никогда не работали — вставьте эту новую ссылку в Airbnb/Booking.com.',
   },
 
   propertyEditModal: {

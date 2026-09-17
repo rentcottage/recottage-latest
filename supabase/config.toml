@@ -61,6 +61,13 @@ verify_jwt = false
 # Host calendar import/export. POST actions authorize in code with the user's
 # verified session (auth.getUser) plus property/calendar ownership; the gateway
 # check stays on as an additional layer (the anon key alone passes it, so it is
-# not relied on). GET export keeps its current gateway behaviour.
+# not relied on). The former GET export was removed; OTAs use ical-export.
 [functions.ical-sync]
 verify_jwt = true
+
+# Public OTA availability feed. Airbnb/Booking.com cannot send Authorization
+# headers, so gateway JWT verification is off; the function itself requires a
+# per-property secret token in the path (/ical-export/<token>.ics) and returns
+# an identical 404 for anything else.
+[functions.ical-export]
+verify_jwt = false
