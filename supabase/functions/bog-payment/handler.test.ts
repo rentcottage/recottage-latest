@@ -19,6 +19,8 @@ for (const k of ['log', 'error', 'warn'] as const) {
   (console as any)[k] = (...args: unknown[]) => { LOGS.push(args.map((a) => (a instanceof Error ? `${a.name}: ${a.message}` : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); };
 }
 
+const NOW = Date.parse('2099-01-01T08:00:00Z');
+
 // ─── Fake Supabase ────────────────────────────────────────────────────────────
 
 class FakeDb {
@@ -30,6 +32,61 @@ class FakeDb {
   from(table: string) { if (!this.tables[table]) this.tables[table] = []; return new FakeQuery(this, table); }
   rows(t: string) { return this.tables[t] ?? []; }
   booking(id: string) { return this.rows('bookings').find((b) => b.id === id); }
+
+  // ── In-memory emulation of the SQL functions in *_booking_no_overlap.sql ──
+  // (the real functions are exercised against Postgres in supabase/tests/db).
+  nowMs = NOW;
+  rpcCalls: { name: string; args: Row }[] = [];
+  rpcFail: (name: string) => boolean = () => false;
+  rpc(name: string, args: Row) {
+    this.rpcCalls.push({ name, args });
+    const out = (() => {
+      if (this.rpcFail(name)) return { data: null, error: { message: 'connection reset internal-detail', code: 'XX000' } };
+      if (name === 'create_booking_checked') return this.createBookingChecked(args.p_booking);
+      if (name === 'apply_paid_status') return this.applyPaidStatus(String(args.p_booking_id), args.p_updates);
+      return { data: null, error: { message: `unknown rpc ${name}` } };
+    })();
+    return Promise.resolve(out);
+  }
+  static OCCUPYING = ['confirmed', 'pending', 'pending_host_approval', 'pending_payment'];
+  releaseExpiredHolds(propertyId: string, except?: string) {
+    for (const b of this.rows('bookings')) {
+      if (b.property_id !== propertyId || b.status !== 'pending_payment' || b.id === except) continue;
+      if (Date.parse(b.created_at ?? '1970-01-01') < this.nowMs - 20 * 60_000) {
+        Object.assign(b, { status: 'payment_failed', payment_status: 'payment_failed' });
+        this.rows('booking_status_logs').push({ booking_id: b.id, event_type: 'payment_hold_expired', from_status: 'pending_payment', to_status: 'payment_failed', changed_by: 'system' });
+      }
+    }
+  }
+  datesFree(propertyId: string, ci: string, co: string, except?: string) {
+    const busy = this.rows('bookings').some((b) => b.property_id === propertyId && b.id !== except && FakeDb.OCCUPYING.includes(b.status) && b.check_in < co && b.check_out > ci);
+    const blocked = ['blocked_dates', 'ical_blocked_dates'].some((t) => this.rows(t).some((d) => d.property_id === propertyId && d.start_date <= co && d.end_date >= ci));
+    return !busy && !blocked;
+  }
+  createBookingChecked(p: Row) {
+    if (!p.property_id || !p.check_in || !p.check_out || p.check_out <= p.check_in || !FakeDb.OCCUPYING.includes(p.status)) return { data: null, error: { message: 'INVALID_BOOKING', code: 'P0001' } };
+    this.releaseExpiredHolds(String(p.property_id));
+    if (!this.datesFree(String(p.property_id), p.check_in, p.check_out)) return { data: null, error: { message: 'DATES_UNAVAILABLE', code: 'P0001' } };
+    this.seq += 1;
+    const row: Row = { id: `bk-${String(this.seq).padStart(4, '0')}-0000-4000-8000-000000000000`, created_at: new Date(this.nowMs).toISOString(), ...p };
+    this.rows('bookings').push(row);
+    this.writes.push({ table: 'bookings', op: 'insert', payload: { ...p }, filters: 'rpc:create_booking_checked' });
+    return { data: { ...row }, error: null };
+  }
+  applyPaidStatus(id: string, u: Row) {
+    const b = this.booking(id);
+    if (!b) return { data: { result: 'noop', booking: null }, error: null };
+    if (!['pending_payment', 'payment_failed'].includes(b.status)) return { data: { result: 'noop', booking: { ...b } }, error: null };
+    this.releaseExpiredHolds(String(b.property_id), id);
+    if (b.property_id && !this.datesFree(String(b.property_id), b.check_in, b.check_out, id)) {
+      Object.assign(b, { status: 'rejected', payment_status: 'paid', payment_transaction_id: u.payment_transaction_id ?? b.payment_transaction_id, canceled_by: 'system', canceled_at: new Date(this.nowMs).toISOString(), rejection_note: 'DATES_UNAVAILABLE_AFTER_PAYMENT' });
+      this.writes.push({ table: 'bookings', op: 'update', payload: { status: 'rejected' }, filters: `rpc:apply_paid_status:${id}` });
+      return { data: { result: 'conflict', booking: { ...b } }, error: null };
+    }
+    Object.assign(b, { payment_status: u.payment_status ?? b.payment_status, status: u.status, payment_transaction_id: u.payment_transaction_id ?? b.payment_transaction_id, ...('approval_deadline' in u ? { approval_deadline: u.approval_deadline } : {}) });
+    this.writes.push({ table: 'bookings', op: 'update', payload: { ...u }, filters: `rpc:apply_paid_status:${id}` });
+    return { data: { result: 'applied', booking: { ...b } }, error: null };
+  }
   bookingWrites() { return this.writes.filter((w) => w.table === 'bookings'); }
 }
 
@@ -132,7 +189,6 @@ class FakeNet {
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-const NOW = Date.parse('2099-01-01T08:00:00Z');
 const INTERNAL_KEY = 'internal-key-0123456789abcdef';
 const ENV: Record<string, string> = {
   'Test Public Key': 'bog-client-id-secret',
@@ -339,9 +395,10 @@ test('PRICE server total = nightly × nights; ±1 GEL tolerance; client value ov
 test('PRICE per-guest tiers pick the matching tier (or the last tier when none matches)', async () => {
   const h = harness();
   const base = { property_id: PROP_PAP, property_title: 'Beta House', payment_method: 'pay_at_property', check_in: '2099-07-01', check_out: '2099-07-03' };
+  // Separate stays (same length) so the bookings don't overlap.
   assert.equal((await createOrder(h, orderBody({ ...base, guests: 2, total_price: 160 }))).status, 200);
-  assert.equal((await createOrder(h, orderBody({ ...base, guests: 4, total_price: 240 }))).status, 200);
-  assert.equal((await createOrder(h, orderBody({ ...base, guests: 9, total_price: 240 }))).status, 200);
+  assert.equal((await createOrder(h, orderBody({ ...base, check_in: '2099-08-01', check_out: '2099-08-03', guests: 4, total_price: 240 }))).status, 200);
+  assert.equal((await createOrder(h, orderBody({ ...base, check_in: '2099-09-01', check_out: '2099-09-03', guests: 9, total_price: 240 }))).status, 200);
   assert.equal((await createOrder(h, orderBody({ ...base, guests: 4, total_price: 160 }))).body.error?.startsWith('PRICE_MISMATCH'), true);
   assert.deepEqual(h.db.rows('bookings').map((b) => b.total_price), [160, 240, 240]);
 });
@@ -350,7 +407,7 @@ test('PRICE promo: discounted total accepted and recorded; full price still acce
   const h = harness();
   h.db.tables.promos = [{ id: 'promo-1', active: true, discount_percent: 10, location: 'Batumi', starts_at: null, ends_at: null, created_at: '2026-01-01', title: 'Sea' }];
   assert.equal((await createOrder(h, orderBody({ total_price: 270 }))).status, 200);
-  assert.equal((await createOrder(h, orderBody({ total_price: 300 }))).status, 200);
+  assert.equal((await createOrder(h, orderBody({ total_price: 300, check_in: '2099-06-20', check_out: '2099-06-23' }))).status, 200);
   const [disc, full] = h.db.rows('bookings');
   assert.deepEqual([disc.total_price, disc.promo_id, disc.promo_discount_percent, disc.pre_discount_total], [270, 'promo-1', 10, 300]);
   assert.deepEqual([full.total_price, full.promo_id, full.pre_discount_total], [300, null, null]);
@@ -361,7 +418,7 @@ test('PRICE host offer (free nights) vs promo: cheapest single discount is match
   h.db.tables.promos = [{ id: 'promo-1', active: true, discount_percent: 10, location: 'Batumi', starts_at: null, ends_at: null, created_at: '2026-01-01' }];
   h.db.tables.host_offers = [{ id: 'offer-1', property_id: PROP, active: true, offer_type: 'free_nights', buy_nights: 2, free_nights: 1, discount_percent: null, starts_at: null, ends_at: null, created_at: '2026-01-01' }];
   assert.equal((await createOrder(h, orderBody({ total_price: 200 }))).status, 200);          // 3 nights, 1 free
-  assert.equal((await createOrder(h, orderBody({ total_price: 270 }))).status, 200);          // promo candidate still valid
+  assert.equal((await createOrder(h, orderBody({ total_price: 270, check_in: '2099-06-20', check_out: '2099-06-23' }))).status, 200); // promo candidate still valid
   assert.equal((await createOrder(h, orderBody({ total_price: 180 }))).body.error?.startsWith('PRICE_MISMATCH'), true); // stacked
   const [offer, promo] = h.db.rows('bookings');
   assert.deepEqual([offer.total_price, offer.host_offer_id, offer.host_offer_free_nights, offer.host_offer_discount_percent, offer.promo_id, offer.pre_discount_total], [200, 'offer-1', 1, null, null, 300]);
@@ -401,8 +458,8 @@ test('PAP auto-confirm: confirmed, no deadline; agency name only from an approve
   const h = harness();
   const base = { property_id: PROP_PAP, property_title: 'Beta House', payment_method: 'pay_at_property', guests: 2, total_price: 240 };
   const r1 = await createOrder(h, orderBody({ ...base, corporate_id: 'corp-approved' }));
-  const r2 = await createOrder(h, orderBody({ ...base, corporate_id: 'corp-pending' }));
-  const r3 = await createOrder(h, orderBody({ ...base, corporate_id: 'corp-other' }));
+  const r2 = await createOrder(h, orderBody({ ...base, check_in: '2099-07-10', check_out: '2099-07-13', corporate_id: 'corp-pending' }));
+  const r3 = await createOrder(h, orderBody({ ...base, check_in: '2099-08-10', check_out: '2099-08-13', corporate_id: 'corp-other' }));
   const [b1, b2, b3] = [r1, r2, r3].map((r) => h.db.booking(r.body.bookingId)!);
   assert.deepEqual([b1.status, b1.approval_deadline, b1.corporate_id, b2.corporate_id, b3.corporate_id], ['confirmed', null, 'corp-approved', null, null]);
   const hostMails = h.net.emails().filter((e) => e.to === HOST_EMAIL);
@@ -651,11 +708,11 @@ test('SEC create-order identity comes only from the session: body customer_id / 
   assert.deepEqual(h.tokensChecked, ['tok-guest']);
 
   // The session user's own approved agency still applies.
-  const own = await createOrder(h, orderBody({ customer_id: 'someone-else', corporate_id: 'corp-approved', payment_method: 'pay_at_property' }));
+  const own = await createOrder(h, orderBody({ customer_id: 'someone-else', corporate_id: 'corp-approved', payment_method: 'pay_at_property', check_in: '2099-07-10', check_out: '2099-07-13' }));
   assert.equal(h.db.booking(own.body.bookingId)!.corporate_id, 'corp-approved');
 
   // Pay now: the BOG order and stored booking also use the session identity.
-  const pn = await createOrder(h, orderBody({ user_email: 'attacker@example.test', customer_id: 'someone-else' }));
+  const pn = await createOrder(h, orderBody({ user_email: 'attacker@example.test', customer_id: 'someone-else', check_in: '2099-08-10', check_out: '2099-08-13' }));
   assert.deepEqual([h.db.booking(pn.body.bookingId)!.customer_id, h.db.booking(pn.body.bookingId)!.user_email], [CUSTOMER_ID, GUEST_EMAIL]);
 });
 
@@ -876,7 +933,7 @@ test('SEC errors are generic and logs carry no keys, provider responses or perso
   assert.deepEqual((await createOrder(redirect, orderBody())).body, { error: 'Online payment is temporarily unavailable. Please try again later.' });
 
   const db = harness();
-  db.db.failWhen = (tb, op) => tb === 'bookings' && op === 'insert';
+  db.db.rpcFail = (name) => name === 'create_booking_checked';
   assert.deepEqual((await createOrder(db, orderBody({ payment_method: 'pay_at_property' }))).body, { error: 'Could not create the booking. Please try again.' });
   assert.deepEqual((await createOrder(db, orderBody())).body, { error: 'Could not create the booking. Please try again.' });
 
@@ -896,4 +953,137 @@ test('SEC errors are generic and logs carry no keys, provider responses or perso
   await call(all, 'GET', `?action=verify&booking_id=${pb.id}`);
   const combined = [LOGS.join('\n'), t.text].join('\n');
   for (const v of [...secrets, ...leaky]) assert.ok(!combined.includes(v), `leaked: ${v.slice(0, 12)}`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOUBLE BOOKING (create_booking_checked / apply_paid_status)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const iso = (msAgo: number) => new Date(NOW - msAgo).toISOString();
+
+test('OVERLAP create-order on taken dates → 409 DATES_UNAVAILABLE, no BOG call, no email, no row (both modes)', async () => {
+  for (const method of ['pay_now', 'pay_at_property']) {
+    const h = harness();
+    seedBooking(h, { status: 'confirmed', payment_status: 'paid', check_in: '2099-06-12', check_out: '2099-06-15' });
+    const before = h.db.rows('bookings').length;
+    const r = await createOrder(h, orderBody({ payment_method: method }));
+    assert.deepEqual([r.status, r.body], [409, { error: 'DATES_UNAVAILABLE' }], method);
+    assert.equal(h.db.rows('bookings').length, before);
+    assert.equal(h.net.bogCalls().length, 0, 'no BOG token or order before the dates are secured');
+    assert.equal(h.net.emails().length, 0);
+    assert.deepEqual(h.db.rpcCalls.map((c) => c.name), ['create_booking_checked']);
+  }
+});
+
+test('OVERLAP create-order goes through create_booking_checked with the verified identity and status', async () => {
+  const h = harness();
+  const r = await createOrder(h, orderBody());
+  assert.equal(r.status, 200);
+  const call0 = h.db.rpcCalls[0];
+  assert.equal(call0.name, 'create_booking_checked');
+  assert.deepEqual([call0.args.p_booking.status, call0.args.p_booking.customer_id, call0.args.p_booking.user_email, call0.args.p_booking.total_price], ['pending_payment', CUSTOMER_ID, GUEST_EMAIL, 300]);
+  assert.equal(h.db.writes.filter((w) => w.table === 'bookings' && w.op === 'insert' && !w.filters.startsWith('rpc:')).length, 0, 'no direct booking insert');
+});
+
+test('OVERLAP host and imported blocks use today\'s rule (a block starting on check-out day blocks)', async () => {
+  for (const table of ['blocked_dates', 'ical_blocked_dates']) {
+    const h = harness();
+    h.db.tables[table] = [{ id: 'blk', property_id: PROP, start_date: '2099-06-13', end_date: '2099-06-13' }];
+    assert.equal((await createOrder(h, orderBody())).status, 409, table);
+    const free = harness();
+    free.db.tables[table] = [{ id: 'blk', property_id: PROP, start_date: '2099-06-14', end_date: '2099-06-20' }];
+    assert.equal((await createOrder(free, orderBody())).status, 200, table);
+  }
+});
+
+test('OVERLAP back-to-back stays succeed; a hold older than 20 minutes is released, a younger hold blocks', async () => {
+  const h = harness();
+  seedBooking(h, { status: 'confirmed', check_in: '2099-06-05', check_out: '2099-06-10' });
+  assert.equal((await createOrder(h, orderBody())).status, 200, 'check-in on previous check-out day');
+
+  const expired = harness();
+  const old = seedBooking(expired, { created_at: iso(21 * 60_000) });
+  assert.equal((await createOrder(expired, orderBody())).status, 200);
+  assert.deepEqual([old.status, old.payment_status], ['payment_failed', 'payment_failed']);
+
+  const young = harness();
+  const hold = seedBooking(young, { created_at: iso(19 * 60_000) });
+  assert.equal((await createOrder(young, orderBody())).status, 409);
+  assert.equal(hold.status, 'pending_payment');
+});
+
+test('OVERLAP BOG order is created with ttl = 15 minutes', async () => {
+  const h = harness();
+  await createOrder(h, orderBody());
+  assert.equal(JSON.parse(h.net.orderCreates()[0].body).ttl, 15);
+});
+
+test('OVERLAP late paid callback on taken dates → rejected (system), exactly one refund, guest + admin email, no host email', async () => {
+  const h = harness();
+  const late = seedBooking(h, { status: 'payment_failed', payment_status: 'payment_failed', payment_transaction_id: 'bog-order-late', created_at: iso(40 * 60_000) });
+  seedBooking(h, { status: 'confirmed', payment_status: 'paid', payment_transaction_id: 'bog-order-other', check_in: '2099-06-11', check_out: '2099-06-14' });
+  h.net.receipts['bog-order-late'] = receipt('bog-order-late', late.id, 'completed', '300');
+
+  assert.equal((await call(h, 'POST', '?action=callback', callbackBody('bog-order-late', late.id))).text, 'ok');
+  assert.deepEqual([late.status, late.canceled_by, late.rejection_note, late.payment_status], ['rejected', 'system', 'DATES_UNAVAILABLE_AFTER_PAYMENT', 'refund_pending']);
+  const refunds = () => h.net.bogCalls().filter((c) => c.url.includes('/payment/refund/'));
+  assert.deepEqual(refunds().map((c) => c.url), ['https://api.bog.ge/payments/v1/payment/refund/bog-order-late']);
+  const mails = h.net.emails();
+  assert.deepEqual(mails.map((e) => e.to).sort(), ['info.rentcottage@gmail.com', GUEST_EMAIL].sort());
+  assert.match(mails.find((e) => e.to === GUEST_EMAIL)!.subject, /no longer available — full refund issued/);
+  assert.match(mails.find((e) => e.to === GUEST_EMAIL)!.html, /full refund has been issued/i);
+  assert.ok(!mails.some((e) => e.to === HOST_EMAIL));
+  assert.deepEqual(h.db.rows('booking_status_logs').map((l) => l.event_type), ['bog_internal-refund_ok', 'paid_dates_unavailable']);
+
+  // Duplicate callback and a verify poll: no second refund, no more emails.
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-late', late.id));
+  const v = await call(h, 'GET', `?action=verify&booking_id=${late.id}`);
+  assert.deepEqual([v.body.source, v.body.bookingStatus, v.body.verified], ['dates_unavailable', 'rejected', false]);
+  assert.equal(refunds().length, 1);
+  assert.equal(h.net.emails().length, 2);
+});
+
+test('OVERLAP verify detects the conflict first → one refund; a later callback does not refund again', async () => {
+  const h = harness();
+  const late = seedBooking(h, { status: 'pending_payment', payment_transaction_id: 'bog-order-v2', created_at: iso(10 * 60_000) });
+  h.db.tables.ical_blocked_dates = [{ id: 'ical-new', property_id: PROP, start_date: '2099-06-12', end_date: '2099-06-14' }];
+  h.net.receipts['bog-order-v2'] = receipt('bog-order-v2', late.id, 'completed', '300');
+  const v = await call(h, 'GET', `?action=verify&booking_id=${late.id}`);
+  assert.deepEqual([v.body.source, v.body.bookingStatus, v.body.paymentStatus, v.body.verified], ['dates_unavailable', 'rejected', 'refund_pending', false]);
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-v2', late.id));
+  await call(h, 'GET', `?action=verify&booking_id=${late.id}`);
+  assert.equal(h.net.bogCalls().filter((c) => c.url.includes('/payment/refund/')).length, 1);
+  assert.equal(h.net.emails().filter((e) => e.to === GUEST_EMAIL).length, 1);
+});
+
+test('OVERLAP expired hold whose dates are still free is re-occupied by a late payment (normal paid flow)', async () => {
+  const h = harness();
+  const late = seedBooking(h, { status: 'payment_failed', payment_status: 'payment_failed', payment_transaction_id: 'bog-order-free', created_at: iso(40 * 60_000) });
+  h.net.receipts['bog-order-free'] = receipt('bog-order-free', late.id, 'completed', '300');
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-free', late.id));
+  assert.deepEqual([late.status, late.payment_status, late.approval_deadline], ['pending_host_approval', 'paid', new Date(NOW + 86_400_000).toISOString()]);
+  assert.equal(h.net.bogCalls().filter((c) => c.url.includes('/payment/refund/')).length, 0);
+  assert.deepEqual(h.db.rows('booking_status_logs').map((l) => l.event_type), ['bog_paid_pending_approval']);
+  assert.ok(h.net.emails().some((e) => e.to === HOST_EMAIL));
+});
+
+test('OVERLAP refund failure on a conflict is surfaced to the admin and logged for manual refund', async () => {
+  const h = harness();
+  const late = seedBooking(h, { status: 'payment_failed', payment_status: 'payment_failed', payment_transaction_id: 'bog-order-rf', created_at: iso(40 * 60_000) });
+  seedBooking(h, { status: 'confirmed', check_in: '2099-06-10', check_out: '2099-06-13' });
+  h.net.receipts['bog-order-rf'] = receipt('bog-order-rf', late.id, 'completed', '300');
+  h.net.actionOk.refund = false;
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-rf', late.id));
+  assert.deepEqual([late.status, late.payment_status], ['rejected', 'paid']);
+  assert.match(h.net.emails().find((e) => e.to === 'info.rentcottage@gmail.com')!.subject, /REFUND FAILED/);
+  assert.match(h.db.rows('booking_status_logs').find((l) => l.event_type === 'paid_dates_unavailable')!.note, /manual refund required/);
+});
+
+test('OVERLAP an in-progress callback never re-occupies a released booking', async () => {
+  const h = harness();
+  const b = seedBooking(h, { status: 'payment_failed', payment_status: 'payment_failed', payment_transaction_id: 'bog-order-pr', created_at: iso(40 * 60_000) });
+  h.net.receipts['bog-order-pr'] = receipt('bog-order-pr', b.id, 'processing');
+  await call(h, 'POST', '?action=callback', callbackBody('bog-order-pr', b.id));
+  assert.deepEqual([b.status, b.payment_status], ['payment_failed', 'payment_failed']);
+  assert.equal(h.db.bookingWrites().length, 0);
 });

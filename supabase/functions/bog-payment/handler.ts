@@ -15,6 +15,17 @@
 //   mark-failed   only mirrors a TERMINAL BOG failure; in-progress, unknown or
 //                 unreachable leave the booking untouched.
 //   internal-*    x-internal-key compared in constant time; idempotent.
+//
+// DOUBLE-BOOKING PREVENTION (migration *_booking_no_overlap.sql)
+//   create-order  inserts through create_booking_checked() (per-property lock,
+//                 blocks + overlapping bookings checked, expired 20-minute
+//                 payment holds released) BEFORE any BOG order exists;
+//                 a conflict → 409 {"error":"DATES_UNAVAILABLE"}.
+//   callback /    a verified payment is applied through apply_paid_status();
+//   verify        if the dates were taken meanwhile the booking is rejected
+//                 (canceled_by = system), refunded once through the same
+//                 idempotent refund path as internal-refund, and the guest and
+//                 admin are emailed.
 //   Errors returned to clients are generic; logs carry no keys, raw provider
 //   responses or personal data.
 import { findActivePromoForLocation, applyPromoDiscount } from '../_shared/promos.ts';
@@ -224,6 +235,9 @@ async function createBogOrder(
   const payload = {
     callback_url: callbackUrl,
     external_order_id: shopOrderId,
+    // Minutes (BOG: 2–1440, default 15). Unpaid orders expire before our
+    // 20-minute date hold is released.
+    ttl: 15,
     application_type: 'web',
     redirect_urls: { success: successUrl, fail: failUrl },
     purchase_units: {
@@ -392,6 +406,25 @@ function buildAutoConfirmCustomerPayAtPropertyHtml(booking: Record<string, any>)
     </div>`);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDatesUnavailableRefundHtml(booking: Record<string, any>): string {
+  return emailWrapper(`
+    <h2 style="color:#dc2626;margin-top:0">Your dates are no longer available</h2>
+    <p style="color:#374151;line-height:1.6">Hi <strong>${booking.user_name ?? 'there'}</strong>,</p>
+    <p style="color:#374151;line-height:1.6">We're sorry — while your payment was being confirmed, the dates you chose at <strong>${booking.property_title}</strong> were booked by someone else, so we could not complete your booking.</p>
+    <p style="color:#374151;line-height:1.6"><strong>A full refund has been issued</strong> to your card. Banks usually show it within 5–10 business days.</p>
+    ${bookingTable([
+      ['Booking ID', String(booking.id)],
+      ['Cottage', String(booking.property_title)],
+      ['Check-in', String(booking.check_in)],
+      ['Check-out', String(booking.check_out)],
+      ['Refund', 'Full amount'],
+    ])}
+    <div style="text-align:center;margin:24px 0">
+      <a href="${SITE_URL}" style="display:inline-block;background:#e53e3e;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:15px">Find other dates</a>
+    </div>`);
+}
+
 // ─── Agency booking notice (host-facing) ─────────────────────────────────────
 // Bookings placed by an approved travel agency on behalf of their client. The
 // host is told which agency it came from so they know who they are dealing with.
@@ -484,6 +517,104 @@ function buildAutoConfirmHostBogHtml(booking: Record<string, any>, hostFirstName
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────
+// ── Double-booking helpers ─────────────────────────────────────────────────
+const DATES_UNAVAILABLE_NOTE = 'DATES_UNAVAILABLE_AFTER_PAYMENT';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isDatesConflict(err: any): boolean {
+  return Boolean(err) && (err.code === '23P01' || /DATES_UNAVAILABLE/.test(String(err.message ?? '')));
+}
+
+function datesUnavailable() {
+  return jsonErr('DATES_UNAVAILABLE', 409);
+}
+
+/**
+ * The single capture / release / refund implementation (used by internal-* and
+ * by the paid-conflict path). Idempotent: an already refunded, released or
+ * captured booking never reaches BOG again.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function performBogAction(supabase: any, bookingId: string, action: 'internal-capture' | 'internal-release' | 'internal-refund'): Promise<{ status: number; body: Record<string, unknown> }> {
+  const { data: booking } = await supabase.from('bookings').select('id, payment_transaction_id, payment_status, payment_method').eq('id', bookingId).maybeSingle();
+  if (!booking) return { status: 404, body: { error: 'Booking not found' } };
+  if (booking.payment_method !== 'pay_now' || !booking.payment_transaction_id) {
+    return { status: 200, body: { success: true, skipped: 'not_online_payment' } };
+  }
+
+  // Idempotent: never ask BOG to refund / release / capture twice.
+  const alreadyDone: Record<string, string[]> = {
+    'internal-refund': ['refund_pending', 'refunded'],
+    'internal-release': ['canceled'],
+    'internal-capture': ['paid'],
+  };
+  if (alreadyDone[action].includes(String(booking.payment_status))) {
+    return { status: 200, body: { success: true, skipped: 'already_done', paymentStatus: booking.payment_status } };
+  }
+
+  const { token } = await getBogToken();
+  if (!token) return { status: 500, body: { error: 'Payment provider unavailable' } };
+
+  const orderId = String(booking.payment_transaction_id);
+  let result: { ok: boolean; error?: string };
+  let newPaymentStatus = booking.payment_status as string;
+
+  if (action === 'internal-capture') {
+    result = await bogCapturePayment(token, orderId);
+    if (result.ok) newPaymentStatus = 'paid';
+  } else if (action === 'internal-release') {
+    result = await bogReleasePayment(token, orderId);
+    if (result.ok) newPaymentStatus = 'canceled';
+  } else {
+    result = await bogRefundPayment(token, orderId);
+    if (result.ok) newPaymentStatus = 'refund_pending';
+  }
+
+  if (!result.ok) {
+    const httpStatus = /^HTTP (\d{3})/.exec(String(result.error ?? ''))?.[1] ?? 'network';
+    console.error(`[${action}] BOG call failed (${httpStatus})`);
+    await logEvent(supabase, bookingId, `bog_${action}_failed`, booking.payment_status, booking.payment_status, 'system', `BOG request failed (${httpStatus})`);
+    return { status: 500, body: { error: 'Payment provider request failed' } };
+  }
+
+  await supabase.from('bookings').update({ payment_status: newPaymentStatus }).eq('id', bookingId);
+  await logEvent(supabase, bookingId, `bog_${action}_ok`, booking.payment_status, newPaymentStatus, 'system');
+  return { status: 200, body: { success: true, paymentStatus: newPaymentStatus } };
+}
+
+/** Applies a verified payment under the per-property lock. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function applyPaid(supabase: any, bookingId: string, updates: Record<string, unknown>): Promise<{ result: 'applied' | 'conflict' | 'noop' | 'error'; booking: Record<string, any> | null }> {
+  const { data, error } = await supabase.rpc('apply_paid_status', { p_booking_id: bookingId, p_updates: updates });
+  if (error || !data || typeof data.result !== 'string') {
+    console.error('[apply_paid_status] failed');
+    return { result: 'error', booking: null };
+  }
+  return { result: data.result, booking: data.booking ?? null };
+}
+
+/** Paid, but the dates were taken meanwhile: booking already rejected by apply_paid_status → refund once + emails. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handlePaidDatesConflict(supabase: any, booking: Record<string, any>, source: 'bog_callback' | 'verify'): Promise<string> {
+  const bookingId = String(booking.id);
+  const refund = await performBogAction(supabase, bookingId, 'internal-refund');
+  const refunded = refund.status === 200;
+  await logEvent(supabase, bookingId, 'paid_dates_unavailable', 'pending_payment', 'rejected', source,
+    refunded ? 'Dates became unavailable before the payment was confirmed; booking rejected and full refund requested'
+             : 'Dates became unavailable before the payment was confirmed; booking rejected; REFUND FAILED — manual refund required');
+  await sendEmail(String(booking.user_email), `Dates no longer available — full refund issued – ${booking.property_title}`, buildDatesUnavailableRefundHtml(booking));
+  await sendEmail(COMPANY_EMAIL, `ACTION CHECK: paid booking rejected — dates unavailable (${refunded ? 'refund requested' : 'REFUND FAILED'})`,
+    emailWrapper(`<h2 style="color:#dc2626;margin-top:0">Paid booking rejected — dates were no longer available</h2>${bookingTable([
+      ['Booking ID', bookingId],
+      ['Cottage', String(booking.property_title)],
+      ['Check-in', String(booking.check_in)],
+      ['Check-out', String(booking.check_out)],
+      ['Detected by', source],
+      ['Refund', refunded ? 'Requested automatically (BOG)' : 'FAILED — refund manually in BOG'],
+    ])}`));
+  return String((refund.body.paymentStatus as string | undefined) ?? booking.payment_status ?? 'paid');
+}
+
 return async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -548,50 +679,8 @@ return async (req: Request) => {
     const bookingId = String(body.bookingId ?? '');
     if (!bookingId) return jsonErr('Missing bookingId');
 
-    const { data: booking } = await supabase.from('bookings').select('id, payment_transaction_id, payment_status, payment_method').eq('id', bookingId).maybeSingle();
-    if (!booking) return jsonErr('Booking not found', 404);
-    if (booking.payment_method !== 'pay_now' || !booking.payment_transaction_id) {
-      return jsonOk({ success: true, skipped: 'not_online_payment' });
-    }
-
-    // Idempotent: never ask BOG to refund / release / capture twice.
-    const alreadyDone: Record<string, string[]> = {
-      'internal-refund': ['refund_pending', 'refunded'],
-      'internal-release': ['canceled'],
-      'internal-capture': ['paid'],
-    };
-    if (alreadyDone[action].includes(String(booking.payment_status))) {
-      return jsonOk({ success: true, skipped: 'already_done', paymentStatus: booking.payment_status });
-    }
-
-    const { token } = await getBogToken();
-    if (!token) return jsonErr('Payment provider unavailable', 500);
-
-    const orderId = String(booking.payment_transaction_id);
-    let result: { ok: boolean; error?: string };
-    let newPaymentStatus = booking.payment_status as string;
-
-    if (action === 'internal-capture') {
-      result = await bogCapturePayment(token, orderId);
-      if (result.ok) newPaymentStatus = 'paid';
-    } else if (action === 'internal-release') {
-      result = await bogReleasePayment(token, orderId);
-      if (result.ok) newPaymentStatus = 'canceled';
-    } else {
-      result = await bogRefundPayment(token, orderId);
-      if (result.ok) newPaymentStatus = 'refund_pending';
-    }
-
-    if (!result.ok) {
-      const httpStatus = /^HTTP (\d{3})/.exec(String(result.error ?? ''))?.[1] ?? 'network';
-      console.error(`[${action}] BOG call failed (${httpStatus})`);
-      await logEvent(supabase, bookingId, `bog_${action}_failed`, booking.payment_status, booking.payment_status, 'system', `BOG request failed (${httpStatus})`);
-      return jsonErr('Payment provider request failed', 500);
-    }
-
-    await supabase.from('bookings').update({ payment_status: newPaymentStatus }).eq('id', bookingId);
-    await logEvent(supabase, bookingId, `bog_${action}_ok`, booking.payment_status, newPaymentStatus, 'system');
-    return jsonOk({ success: true, paymentStatus: newPaymentStatus });
+    const r = await performBogAction(supabase, bookingId, action);
+    return r.status === 200 ? jsonOk(r.body) : jsonErr(String(r.body.error), r.status);
   }
 
   // ── ACTION: create-order ──────────────────────────────────────────────────
@@ -795,9 +884,9 @@ return async (req: Request) => {
       const initialBookingStatus = isAutoConfirm ? 'confirmed' : 'pending_host_approval';
       const approvalDeadline   = !isAutoConfirm ? new Date(nowMs() + 24 * 60 * 60 * 1000).toISOString() : null;
 
-      const { data: booking, error: dbError } = await supabase
-        .from('bookings')
-        .insert({
+      // Dates are checked and the row inserted atomically under a per-property lock.
+      const { data: booking, error: dbError } = await supabase.rpc('create_booking_checked', {
+        p_booking: {
           user_email, user_name: user_name ?? null, customer_id: customer_id ?? null,
           property_id: property_id ?? null, property_title,
           property_location: property_location ?? null, check_in, check_out,
@@ -815,9 +904,10 @@ return async (req: Request) => {
           host_offer_id: appliedOffer?.id ?? null,
           host_offer_free_nights: appliedOffer?.free_nights ?? null,
           host_offer_discount_percent: appliedOffer?.discount_percent ?? null,
-        })
-        .select().maybeSingle();
+        },
+      });
 
+      if (isDatesConflict(dbError)) return datesUnavailable();
       if (dbError || !booking) {
         console.error('[create-order] booking insert failed');
         return jsonErr('Could not create the booking. Please try again.', 500);
@@ -852,9 +942,9 @@ return async (req: Request) => {
     }
 
     // ── PAY NOW — Bank of Georgia ─────────────────────────────────────────
-    const { data: booking, error: dbError } = await supabase
-      .from('bookings')
-      .insert({
+    // Booking (and its 20-minute date hold) is created BEFORE any BOG order.
+    const { data: booking, error: dbError } = await supabase.rpc('create_booking_checked', {
+      p_booking: {
         user_email, user_name: user_name ?? null, customer_id: customer_id ?? null,
         property_id: property_id ?? null, property_title,
         property_location: property_location ?? null, check_in, check_out,
@@ -871,9 +961,10 @@ return async (req: Request) => {
         host_offer_id: appliedOffer?.id ?? null,
         host_offer_free_nights: appliedOffer?.free_nights ?? null,
         host_offer_discount_percent: appliedOffer?.discount_percent ?? null,
-      })
-      .select().maybeSingle();
+      },
+    });
 
+    if (isDatesConflict(dbError)) return datesUnavailable();
     if (dbError || !booking) {
       console.error('[create-order] booking insert failed');
       return jsonErr('Could not create the booking. Please try again.', 500);
@@ -1011,6 +1102,8 @@ return async (req: Request) => {
     const prevStatus = String(bookingRow.status);
 
     if (paymentStatus !== 'paid') {
+      // In progress / unknown: no information, and never re-occupy dates here.
+      if (defaultBookingStatus === 'pending_payment') return new Response('ok', { status: 200, headers: corsHeaders });
       await supabase.from('bookings').update({
         payment_status: paymentStatus,
         status: defaultBookingStatus,
@@ -1056,12 +1149,17 @@ return async (req: Request) => {
     const finalBookingStatus = isAutoConfirm ? 'confirmed' : 'pending_host_approval';
     const approvalDeadline  = !isAutoConfirm ? new Date(nowMs() + 24 * 60 * 60 * 1000).toISOString() : null;
 
-    await supabase.from('bookings').update({
+    const applied = await applyPaid(supabase, String(bookingRow.id), {
       payment_status: 'paid',
       status: finalBookingStatus,
       payment_transaction_id: bogOrderId,
       approval_deadline: approvalDeadline,
-    }).eq('id', bookingRow.id);
+    });
+    if (applied.result === 'conflict') {
+      await handlePaidDatesConflict(supabase, applied.booking ?? bookingRow, 'bog_callback');
+      return new Response('ok', { status: 200, headers: corsHeaders });
+    }
+    if (applied.result !== 'applied') return new Response('ok', { status: 200, headers: corsHeaders });
 
     await logEvent(supabase, String(bookingRow.id),
       isAutoConfirm ? 'bog_paid_auto_confirmed' : 'bog_paid_pending_approval',
@@ -1099,11 +1197,15 @@ return async (req: Request) => {
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('id, property_id, status, payment_status, payment_transaction_id, payment_method, property_title, check_in, check_out, guests, total_price, property_location')
+      .select('id, property_id, status, payment_status, payment_transaction_id, payment_method, property_title, check_in, check_out, guests, total_price, property_location, rejection_note, user_email, user_name')
       .eq('id', bookingId)
       .maybeSingle();
 
     if (error || !booking) return jsonErr('Booking not found', 404);
+
+    if (booking.status === 'rejected' && booking.rejection_note === DATES_UNAVAILABLE_NOTE) {
+      return jsonOk({ bookingId, paymentStatus: booking.payment_status, bookingStatus: 'rejected', verified: false, source: 'dates_unavailable' });
+    }
 
     // pay_at_property — no BOG transaction, trust DB
     if (booking.payment_method === 'pay_at_property') {
@@ -1184,11 +1286,18 @@ return async (req: Request) => {
       const finalBookingStatus = isAutoConfirm ? 'confirmed' : 'pending_host_approval';
       const approvalDeadline = !isAutoConfirm ? new Date(nowMs() + 24 * 60 * 60 * 1000).toISOString() : null;
 
-      await supabase.from('bookings').update({
+      const applied = await applyPaid(supabase, bookingId, {
         payment_status: 'paid',
         status: finalBookingStatus,
         approval_deadline: approvalDeadline,
-      }).eq('id', bookingId);
+      });
+      if (applied.result === 'conflict') {
+        const refundStatus = await handlePaidDatesConflict(supabase, applied.booking ?? booking, 'verify');
+        return jsonOk({ bookingId, paymentStatus: refundStatus, bookingStatus: 'rejected', verified: false, source: 'dates_unavailable' });
+      }
+      if (applied.result !== 'applied') {
+        return jsonOk({ bookingId, paymentStatus: booking.payment_status, bookingStatus: booking.status, verified: false, source: 'bog_api_live', bogStatus });
+      }
 
       await logEvent(supabase, bookingId, 'verify_paid_sync', booking.status, finalBookingStatus, 'system',
         `verify endpoint synced: BOG status=${bogStatus}, callback was delayed`);
