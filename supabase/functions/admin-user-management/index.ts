@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { gate } from './gate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,28 +46,27 @@ Deno.serve(async (req: Request) => {
   const { action } = body as { action?: string };
 
   // ── Admin authorization ─────────────────────────────────────────────────────
-  // Sensitive actions require the server-side admin secret, which is NOT shipped
-  // in the client bundle. Only `check-email` (used by the public signup flow) and
-  // `verify-admin` (the login check) are reachable without it.
-  const ADMIN_PASSWORD = Deno.env.get('ADMIN_PANEL_PASSWORD') ?? '';
-  const provided = (body.adminPassword as string | undefined) ?? req.headers.get('x-admin-password') ?? '';
+  // Sensitive actions AND the `verify-admin` login check require the
+  // server-side admin secret, which is NOT shipped in the client bundle. Only
+  // `check-email` and `check-availability` (the public signup flow) are
+  // reachable without it.
+  //
+  // The gate lives in gate.ts on top of _shared/adminAuth.ts: header-only
+  // password (a password in the body is ignored), SHA-256 constant-time
+  // comparison with no length check, fail closed, one generic 401, and the
+  // client-keyed 10-in-15-minutes throttle shared with admin-read and
+  // admin-host-actions.
+  const denied = await gate(req, action, {
+    db: supabase,
+    adminPassword: Deno.env.get('ADMIN_PANEL_PASSWORD'),
+    jsonErr,
+  });
+  if (denied) return denied;
 
-  const timingSafeEqual = (a: string, b: string): boolean => {
-    if (a.length !== b.length || a.length === 0) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
-  };
-  const isAdmin = ADMIN_PASSWORD.length > 0 && timingSafeEqual(provided, ADMIN_PASSWORD);
-
-  // Login check used by the admin gate — returns whether the password is valid.
+  // The login check the admin gate calls: reaching this line already means the
+  // password was correct, so there is nothing left to compare.
   if (action === 'verify-admin') {
-    return isAdmin ? jsonOk({ success: true }) : jsonErr('Invalid password', 401);
-  }
-
-  // Everything except the public signup checks requires admin.
-  if (action !== 'check-email' && action !== 'check-availability' && !isAdmin) {
-    return jsonErr('Unauthorized', 401);
+    return jsonOk({ success: true });
   }
 
   // ── Fetch all users ────────────────────────────────────────────────────────

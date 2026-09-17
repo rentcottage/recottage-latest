@@ -55,11 +55,23 @@ export default function AdminGate({ children }: Props) {
 
     setVerifying(true);
     try {
+      // The password travels in the header, never in the body: bodies end up in
+      // logs and proxies far more often than headers do, and the server ignores
+      // a body password outright.
       const res = await fetch(ADMIN_FN_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify-admin', adminPassword: value }),
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': value },
+        body: JSON.stringify({ action: 'verify-admin' }),
       });
+
+      // The server throttles failed attempts per client (10 in 15 minutes) and
+      // then refuses everything, correct password included, until the window
+      // passes. That is a different situation from a wrong password, so say so.
+      if (res.status === 429) {
+        setValue('');
+        setError(t('admin.gate.serverLockout'));
+        return;
+      }
 
       if (res.ok) {
         // Hold the password (session-scoped) so the panel can authorize its calls.

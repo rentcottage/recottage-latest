@@ -5,6 +5,7 @@ import type { Widen } from './_widen';
 export const adminEn = {
   gate: {
     tooManyAttempts: 'Too many failed attempts. Access locked for 2 minutes.',
+    serverLockout: 'Too many failed attempts. The server has locked admin sign-in for about 15 minutes.',
     incorrectPasswordPrefix: 'Incorrect password.',
     attemptsRemainingCount: {
       one: '{count} attempt remaining.',
@@ -782,6 +783,7 @@ export type AdminNs = Widen<typeof adminEn>;
 export const adminKa: AdminNs = {
   gate: {
     tooManyAttempts: 'ძალიან ბევრი წარუმატებელი ცდილება. წვდომა დაბლოკილია 2 წუთით.',
+    serverLockout: 'ძალიან ბევრი წარუმატებელი მცდელობა. სერვერმა ადმინისტრატორის შესვლა დაახლოებით 15 წუთით დაბლოკა.',
     incorrectPasswordPrefix: 'არასწორი პაროლი.',
     attemptsRemainingCount: {
       one: 'დარჩენილია {count} ცდა.',
@@ -1557,6 +1559,7 @@ export const adminKa: AdminNs = {
 export const adminRu: AdminNs = {
   gate: {
     tooManyAttempts: 'Слишком много неудачных попыток. Доступ заблокирован на 2 минуты.',
+    serverLockout: 'Слишком много неудачных попыток. Сервер заблокировал вход администратора примерно на 15 минут.',
     incorrectPasswordPrefix: 'Неверный пароль.',
     attemptsRemainingCount: {
       one: 'Осталась {count} попытка.',
