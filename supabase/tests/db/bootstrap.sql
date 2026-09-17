@@ -16,3 +16,5 @@ alter default privileges in schema public grant execute on functions to anon, au
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 -- Stub for a table referenced only inside a bookings RLS policy.
 create table if not exists public.corporate_applications (id uuid primary key default gen_random_uuid(), user_id uuid, status text, agency_name text);
+-- Stub of auth.users (only the columns the ownership helper reads).
+create table if not exists auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
