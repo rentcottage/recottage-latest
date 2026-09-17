@@ -20,6 +20,7 @@ type Row = Record<string, any>;
 class FakeDb {
   tables: Record<string, Row[]>;
   failOn = new Set<string>(); // "table:op"
+  failError: Record<string, Row> = {}; // "table:op" → error object (e.g. { code: '23P01' })
   writes: { table: string; op: string; payload: Row }[] = [];
   constructor(tables: Record<string, Row[]>) {
     this.tables = tables;
@@ -27,6 +28,27 @@ class FakeDb {
   from(table: string) {
     if (!this.tables[table]) this.tables[table] = [];
     return new FakeQuery(this, table);
+  }
+  // In-memory emulation of apply_date_change() from *_booking_no_overlap.sql
+  // (the real function is exercised against Postgres in supabase/tests/db).
+  rpcCalls: { name: string; args: Row }[] = [];
+  rpc(name: string, args: Row) {
+    this.rpcCalls.push({ name, args });
+    const err = (message: string, code = 'P0001') => Promise.resolve({ data: null, error: { message, code } });
+    if (this.failOn.has(`rpc:${name}`)) return err('simulated failure mentioning secret-host@example.test', 'XX000');
+    if (name !== 'apply_date_change') return err(`unknown rpc ${name}`);
+    const bk = this.rows('bookings').find((r) => String(r.id) === String(args.p_booking_id));
+    if (!bk || bk.date_change_status !== 'pending') return err('NO_PENDING_CHANGE');
+    const ci = bk.requested_check_in; const co = bk.requested_check_out;
+    if (!ci || !co || co <= ci) return err('INVALID_DATES');
+    if (['cancelled', 'cancelled_by_host', 'rejected'].includes(bk.status)) return err('BOOKING_CLOSED');
+    const occupying = ['confirmed', 'pending', 'pending_host_approval', 'pending_payment'];
+    const busy = this.rows('bookings').some((o) => o !== bk && o.property_id === bk.property_id && occupying.includes(o.status) && o.check_in < co && o.check_out > ci);
+    const blocked = ['blocked_dates', 'ical_blocked_dates'].some((tb) => this.rows(tb).some((d) => d.property_id === bk.property_id && d.start_date <= co && d.end_date >= ci));
+    if (busy || blocked) return err('DATES_UNAVAILABLE');
+    Object.assign(bk, { check_in: ci, check_out: co, total_price: args.p_total_price, requested_total_price: args.p_total_price, date_change_status: 'approved' });
+    this.writes.push({ table: 'bookings', op: 'update', payload: { rpc: name } });
+    return Promise.resolve({ data: { ...bk }, error: null });
   }
   rows(table: string) {
     return this.tables[table] ?? [];
@@ -73,6 +95,7 @@ class FakeQuery {
   }
 
   private execute(): { data: unknown; error: unknown } {
+    if (this.db.failError[`${this.table}:${this.op}`]) return { data: null, error: this.db.failError[`${this.table}:${this.op}`] };
     if (this.db.failOn.has(`${this.table}:${this.op}`)) return { data: null, error: { message: 'simulated failure mentioning secret-host@example.test' } };
     const rows = this.db.tables[this.table];
     const match = () => rows.filter((r) => this.filters.every((f) => f(r)));
@@ -894,4 +917,52 @@ test('T53 host date-change actions stay host-only; admin date-change actions sta
   assert.equal((await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-guest-1'))).status, 404, 'the guest is not the host');
   assert.equal(b(h, 'b-datechange').date_change_status, 'pending');
   assertNoLeaks(h);
+});
+
+// ─── Double-booking prevention (apply_date_change / bookings_no_overlap) ──────
+
+test('T60 date-change approval goes through apply_date_change with the server price; no direct date update', async () => {
+  const h = harness();
+  const r = await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-host-a'));
+  assert.equal(r.status, 200);
+  assert.deepEqual(h.db.rpcCalls, [{ name: 'apply_date_change', args: { p_booking_id: 'b-datechange', p_total_price: 400 } }]);
+  assert.ok(!h.db.writes.some((w) => w.table === 'bookings' && w.op === 'update' && ('check_in' in w.payload || 'check_out' in w.payload)));
+});
+
+test('T61 apply_date_change conflicts map to 409 (DATES_UNAVAILABLE, 23P01, no pending change, closed); other errors → generic 500; nothing sent', async () => {
+  const cases: [string, Row | null, number, string][] = [
+    ['dates', { message: 'DATES_UNAVAILABLE', code: 'P0001' }, 409, 'Selected dates are not available'],
+    ['constraint', { message: 'conflicting key value violates exclusion constraint "bookings_no_overlap"', code: '23P01' }, 409, 'Selected dates are not available'],
+    ['no pending', { message: 'NO_PENDING_CHANGE', code: 'P0001' }, 409, 'No pending date change request'],
+    ['closed', { message: 'BOOKING_CLOSED', code: 'P0001' }, 409, 'This booking can no longer be changed'],
+    ['invalid', { message: 'INVALID_DATES', code: 'P0001' }, 409, 'The requested dates are invalid'],
+    ['other', { message: 'deadlock detected near secret-host@example.test', code: '40P01' }, 500, 'Request failed'],
+  ];
+  for (const [label, error, status, message] of cases) {
+    const h = harness();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (h.db as any).rpc = async () => ({ data: null, error });
+    const r = await call(h, { action: 'admin-approve-dates', bookingId: 'b-datechange' }, admin);
+    assert.deepEqual([r.status, r.body], [status, { error: message }], label);
+    assert.equal(b(h, 'b-datechange').date_change_status, 'pending', label);
+    assert.ok(!h.emails.some((e) => e.subject.startsWith('Date Change Approved')), label);
+    assert.ok(!h.db.rows('booking_status_logs').some((l) => l.event_type === 'dates_approved'), label);
+  }
+});
+
+test('T62 a pending_payment hold on the requested dates blocks a date change', async () => {
+  const h = harness();
+  h.db.rows('bookings').push(booking('b-hold', { status: 'pending_payment', payment_status: 'pending_payment', check_in: '2027-04-12', check_out: '2027-04-13', user_email: GUEST_2 }));
+  const r = await call(h, { action: 'host-approve-dates', bookingId: 'b-datechange' }, bearer('tok-host-a'));
+  assert.deepEqual([r.status, r.body], [409, { error: 'Selected dates are not available' }]);
+});
+
+test('T63 confirming a booking that hits the overlap constraint → 409, no confirmation email', async () => {
+  const h = harness();
+  const pending = h.db.rows('bookings').find((r) => r.status === 'pending_host_approval');
+  assert.ok(pending, 'fixture has a pending_host_approval booking');
+  h.db.failError['bookings:update'] = { message: 'conflicting key value violates exclusion constraint "bookings_no_overlap"', code: '23P01' };
+  const r = await call(h, { action: 'admin-confirm-booking', bookingId: pending!.id }, admin);
+  assert.deepEqual([r.status, r.body], [409, { error: 'Selected dates are not available' }]);
+  assert.ok(!h.emails.some((e) => /confirmed/i.test(e.subject)));
 });

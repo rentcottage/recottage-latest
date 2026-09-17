@@ -111,6 +111,12 @@ const CONFIRMABLE_STATUSES = ['pending_host_approval', 'pending'];
 /** Statuses that occupy a property's nights (same set the iCal export publishes). */
 const OCCUPYING_STATUSES = ['confirmed', 'pending', 'pending_host_approval'];
 
+/** 23P01 = bookings_no_overlap exclusion constraint; DATES_UNAVAILABLE = raised by the booking SQL functions. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isDatesConflict(err: any): boolean {
+  return Boolean(err) && (err.code === '23P01' || /DATES_UNAVAILABLE/.test(String(err.message ?? '')));
+}
+
 const BOOKING_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -236,6 +242,9 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
    */
   async function claim(id: string, expectedStatus: string, updates: Row): Promise<boolean> {
     const { data, error } = await db.from('bookings').update(updates).eq('id', id).eq('status', expectedStatus).select('id');
+    // The bookings_no_overlap constraint (23P01) guards every write that keeps or
+    // puts a booking in an occupying status.
+    if (isDatesConflict(error)) throw new HttpError(409, 'Selected dates are not available');
     if (error) throw new HttpError(500, 'Request failed');
     return Array.isArray(data) && data.length === 1;
   }
@@ -599,16 +608,20 @@ export function createHandler(deps: HandlerDeps): (req: Request) => Promise<Resp
     if (!isValidDate(ci) || !isValidDate(co) || co <= ci) throw new HttpError(409, 'The requested dates are invalid');
     if (CLOSED_STATUSES.includes(booking.status)) throw new HttpError(409, 'This booking can no longer be changed');
 
-    // Re-validate at approval time: dates may have been taken since the request,
-    // and requests made before this fix carry a browser-supplied price.
-    await assertDatesAvailable(booking, ci, co);
+    // Requests made before the pricing fix carry a browser-supplied price, so
+    // re-price. Availability is re-checked by apply_date_change() under the
+    // per-property lock (bookings + host/imported blocks), atomically with the update.
     const price = await quoteStay(booking, ci, co);
 
-    const { data, error } = await db.from('bookings')
-      .update({ check_in: ci, check_out: co, total_price: price, requested_total_price: price, date_change_status: 'approved' })
-      .eq('id', id).eq('date_change_status', 'pending').select('id');
-    if (error) throw new HttpError(500, 'Request failed');
-    if (!Array.isArray(data) || data.length !== 1) throw new HttpError(409, 'No pending date change request');
+    const { error } = await db.rpc('apply_date_change', { p_booking_id: id, p_total_price: price });
+    if (error) {
+      const msg = String(error.message ?? '');
+      if (isDatesConflict(error)) throw new HttpError(409, 'Selected dates are not available');
+      if (msg.includes('NO_PENDING_CHANGE')) throw new HttpError(409, 'No pending date change request');
+      if (msg.includes('INVALID_DATES')) throw new HttpError(409, 'The requested dates are invalid');
+      if (msg.includes('BOOKING_CLOSED')) throw new HttpError(409, 'This booking can no longer be changed');
+      throw new HttpError(500, 'Request failed');
+    }
     await logEvent(id, 'dates_approved', booking.status, booking.status, changedBy);
     await sendEmail(booking.user_email, `Date Change Approved – ${booking.property_title}`, buildDateChangeApprovedEmailHtml(safeRecord(booking), ci, co, '₾' + price), 'date_change_approved', id);
   }
