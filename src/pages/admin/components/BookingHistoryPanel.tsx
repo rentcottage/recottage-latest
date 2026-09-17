@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { adminRead } from '../../../lib/adminRead';
 import { useT } from '../../../i18n';
 
 interface LogEntry {
@@ -133,17 +133,16 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [unauthorized, setUnauthorized] = useState(false);
 
   useEffect(() => {
     if (!isOpen || fetched) return;
     setLoading(true);
-    supabase
-      .from('booking_status_logs')
-      .select('*')
-      .eq('booking_id', bookingId)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        setLogs((data as LogEntry[]) ?? []);
+    // Status logs are admin-only; read through the password-gated function.
+    adminRead<{ logs: LogEntry[] }>('booking-history', { booking_id: bookingId })
+      .then((r) => {
+        setLogs(r.ok ? r.data.logs ?? [] : []);
+        setUnauthorized(!r.ok && r.status === 401);
         setLoading(false);
         setFetched(true);
       });
@@ -168,6 +167,13 @@ export default function BookingHistoryPanel({ bookingId, isOpen }: Props) {
             <i className="ri-loader-4-line text-sm"></i>
           </div>
           <span className="text-xs">{t('admin.bookingHistory.loadingHistory')}</span>
+        </div>
+      ) : unauthorized ? (
+        <div className="flex items-center gap-2 text-red-500 py-3 pl-2">
+          <div className="w-4 h-4 flex items-center justify-center">
+            <i className="ri-lock-line text-sm"></i>
+          </div>
+          <span className="text-xs">{t('admin.bookingHistory.sessionExpired')}</span>
         </div>
       ) : logs.length === 0 ? (
         <div className="flex items-center gap-2 text-gray-400 py-3 pl-2">

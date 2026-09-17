@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { adminRead } from '@/lib/adminRead';
 import { useT } from '../../../i18n';
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
@@ -408,18 +408,17 @@ export default function PaymentLogsPanel() {
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [newCount, setNewCount] = useState(0);
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [unauthorized, setUnauthorized] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchLogs = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    const { data, error } = await supabase
-      .from('booking_status_logs')
-      .select(`
-        id, booking_id, event_type, from_status, to_status, changed_by, note, created_at,
-        booking:bookings(user_email, user_name, property_title, total_price, payment_status, payment_method)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(200);
+    // Status logs are admin-only; read through the password-gated function
+    // (same fields and bookings join as before, newest first, 200 max).
+    const result = await adminRead<{ logs: StatusLog[] }>('payment-logs', { limit: 200 });
+    const error = !result.ok;
+    const data = result.ok ? result.data.logs ?? [] : null;
+    setUnauthorized(!result.ok && result.status === 401);
 
     if (!error && data) {
       if (silent) {
@@ -622,6 +621,12 @@ export default function PaymentLogsPanel() {
         </div>
 
         {/* Log table */}
+        {unauthorized && (
+          <div className="flex items-center gap-2 px-6 py-3 text-sm text-red-600 bg-red-50 border-b border-red-100">
+            <i className="ri-lock-line"></i>
+            <span>{t('admin.paymentLogs.sessionExpired')}</span>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex items-center gap-3 text-gray-400">

@@ -41,6 +41,7 @@ export const adminEn = {
   },
 
   bookingHistory: {
+    sessionExpired: 'Admin session expired or password changed. Reload the page and sign in again.',
     eventCreated: 'Booking Created',
     eventConfirmed: 'Confirmed by Admin',
     eventHostApproved: 'Approved by Host',
@@ -536,6 +537,7 @@ export const adminEn = {
   },
 
   paymentLogs: {
+    sessionExpired: 'Admin session expired or password changed. Reload the page and sign in again.',
     bogCallback: 'BOG Callback',
     paymentVerified: 'Payment Verified',
     paymentFailed: 'Payment Failed',
@@ -816,6 +818,7 @@ export const adminKa: AdminNs = {
   },
 
   bookingHistory: {
+    sessionExpired: 'ადმინის სესია ამოიწურა ან პაროლი შეიცვალა. გადატვირთეთ გვერდი და ხელახლა შედით.',
     eventCreated: 'ჯავშანი შეიქმნა',
     eventConfirmed: 'დაადასტურა ადმინისტრაციამ',
     eventHostApproved: 'დაადასტურა მასპინძელმა',
@@ -1311,6 +1314,7 @@ export const adminKa: AdminNs = {
   },
 
   paymentLogs: {
+    sessionExpired: 'ადმინის სესია ამოიწურა ან პაროლი შეიცვალა. გადატვირთეთ გვერდი და ხელახლა შედით.',
     bogCallback: 'BOG გამოძახება',
     paymentVerified: 'გადახდა დადასტურებული',
     paymentFailed: 'გადახდა ვერ შესრულდა',
@@ -1589,6 +1593,7 @@ export const adminRu: AdminNs = {
   },
 
   bookingHistory: {
+    sessionExpired: 'Сеанс администратора истёк или пароль изменён. Перезагрузите страницу и войдите снова.',
     eventCreated: 'Бронирование создано',
     eventConfirmed: 'Подтверждено администратором',
     eventHostApproved: 'Одобрено хостом',
@@ -2084,6 +2089,7 @@ export const adminRu: AdminNs = {
   },
 
   paymentLogs: {
+    sessionExpired: 'Сеанс администратора истёк или пароль изменён. Перезагрузите страницу и войдите снова.',
     bogCallback: 'Callback BOG',
     paymentVerified: 'Платёж подтверждён',
     paymentFailed: 'Платёж не прошёл',
