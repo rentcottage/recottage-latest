@@ -17,6 +17,26 @@
 
 create extension if not exists btree_gist with schema extensions;
 
+-- ── Canonical property ids ────────────────────────────────────────────────────
+-- property_id is text in these tables while property_applications.id is uuid.
+-- Locks, overlap checks and the exclusion constraint compare text, so every
+-- row must use the same spelling: lowercase canonical uuid text.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'bookings_property_id_canonical' and conrelid = 'public.bookings'::regclass) then
+    alter table public.bookings add constraint bookings_property_id_canonical
+      check (property_id is null or property_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'blocked_dates_property_id_canonical' and conrelid = 'public.blocked_dates'::regclass) then
+    alter table public.blocked_dates add constraint blocked_dates_property_id_canonical
+      check (property_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'ical_blocked_dates_property_id_canonical' and conrelid = 'public.ical_blocked_dates'::regclass) then
+    alter table public.ical_blocked_dates add constraint ical_blocked_dates_property_id_canonical
+      check (property_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+  end if;
+end $$;
+
 -- ── Exclusion constraint ──────────────────────────────────────────────────────
 do $$
 begin
@@ -132,13 +152,22 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_property text := nullif(p_booking ->> 'property_id', '');
+  v_property text;
   v_check_in date := (p_booking ->> 'check_in')::date;
   v_check_out date := (p_booking ->> 'check_out')::date;
   v_status text := p_booking ->> 'status';
   v_cols text;
   v_row jsonb;
 begin
+  -- Normalize any uuid spelling (case, braces, no hyphens) to canonical text;
+  -- anything that is not a uuid is rejected.
+  begin
+    v_property := (nullif(pg_catalog.btrim(p_booking ->> 'property_id'), ''))::uuid::text;
+  exception when invalid_text_representation then
+    raise exception 'INVALID_BOOKING' using errcode = 'P0001';
+  end;
+  p_booking := pg_catalog.jsonb_set(p_booking, '{property_id}', pg_catalog.to_jsonb(v_property));
+
   if v_property is null or v_check_in is null or v_check_out is null or v_check_out <= v_check_in then
     raise exception 'INVALID_BOOKING' using errcode = 'P0001';
   end if;

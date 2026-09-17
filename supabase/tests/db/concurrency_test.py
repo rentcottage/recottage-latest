@@ -116,7 +116,7 @@ def direct_insert(prop, ci, co, status, created_ago='0 minutes', extra_cols='', 
 
 
 def new_prop():
-    return 'prop-' + uuid.uuid4().hex[:12]
+    return str(uuid.uuid4())  # lowercase canonical uuid text, as production stores it
 
 
 # ── Scenarios ─────────────────────────────────────────────────────────────────
@@ -301,7 +301,66 @@ def s_i(i):
     check(q(f"select count(*) from public.bookings where property_id='{prop}'") == '0', f'i#{i}: rows written')
 
 
-SCENARIOS = [s_a, s_b, s_c, s_d, s_d2, s_e, s_f, s_g, s_h, s_i]
+@scenario('b2) booking vs concurrent ical_blocked_dates insert (imported OTA block) → serialized')
+def s_b2(i):
+    prop = new_prop()
+    booking = ("begin;\n" + create_sql(prop, '2099-07-20', '2099-07-23') +
+               "\nselect pg_sleep(0.05);\nselect 'T_PRECOMMIT=' || extract(epoch from clock_timestamp());\ncommit;")
+    block = (f"begin;\ninsert into public.ical_blocked_dates (property_id, start_date, end_date, host_email, platform) values ('{prop}', '2099-07-21', '2099-07-24', 'host@example.test', 'airbnb');\n"
+             "select 'T_INSERTED=' || extract(epoch from clock_timestamp());\nselect pg_sleep(0.05);\ncommit;")
+    order = [booking, block] if i % 2 else [block, booking]
+    res = parallel(order)
+    rb, rk = (res[0], res[1]) if i % 2 else (res[1], res[0])
+    check(ok(rk), f'b2#{i}: ical block insert failed: {rk[2][:120]}')
+    if ok(rb):
+        t_pre = float(rb[1].split('T_PRECOMMIT=')[1].split()[0])
+        t_ins = float(rk[1].split('T_INSERTED=')[1].split()[0])
+        check(t_ins > t_pre, f'b2#{i}: ical block inserted before the booking committed (race)')
+    else:
+        check(err_has(rb, 'DATES_UNAVAILABLE'), f'b2#{i}: unexpected booking error {rb[2][:120]}')
+
+
+@scenario('k) property_id spelled in different case/format is the SAME property (lock key, check and constraint)')
+def s_k(i):
+    canon = str(uuid.uuid4())
+    variants = [canon.upper(), canon.title(), ' ' + canon, canon + ' ', '{' + canon + '}', canon.replace('-', '')]
+    variant = variants[i % len(variants)]
+    first = parallel([create_sql(canon, '2099-11-01', '2099-11-04')])[0]
+    check(ok(first), f'k#{i}: canonical booking failed')
+    second = parallel([create_sql(variant, '2099-11-02', '2099-11-05')])[0]
+    check(err_has(second, 'DATES_UNAVAILABLE') or err_has(second, 'INVALID_BOOKING'), f'k#{i}: booking with property_id variant {variant!r} was not rejected: {second[2][:100]}')
+    # A variant spelling on FREE dates is stored canonically (never a second spelling).
+    free = parallel([create_sql(variant, '2099-12-01', '2099-12-03')])[0]
+    if ok(free):
+        check(q(f"select property_id from public.bookings where id='{free[1]}'") == canon, f'k#{i}: variant stored non-canonically')
+    else:
+        check(err_has(free, 'INVALID_BOOKING'), f'k#{i}: unexpected error {free[2][:100]}')
+    check(q(f"select count(*) from public.bookings where property_id <> lower(property_id) or property_id !~ '^[0-9a-f-]{{36}}$'") == '0', f'k#{i}: non-canonical property_id stored')
+    # Non-uuid ids are rejected outright.
+    bad = parallel([create_sql('not-a-uuid', '2099-12-10', '2099-12-12')])[0]
+    check(err_has(bad, 'INVALID_BOOKING'), f'k#{i}: non-uuid property_id accepted')
+
+
+@scenario('l) CHECK: non-canonical property_id rejected on direct insert into bookings, blocked_dates and ical_blocked_dates')
+def s_l(i):
+    canon = str(uuid.uuid4())
+    variants = [canon.upper(), '{' + canon + '}', canon.replace('-', ''), ' ' + canon, 'prop-' + canon[:8], '']
+    v = variants[i % len(variants)]
+    inserts = {
+        'bookings': f"insert into public.bookings (property_id, check_in, check_out, status, user_email, property_title, total_price) values ('{v}', '2099-01-10', '2099-01-12', 'cancelled', 'g@example.test', 'T', 1);",
+        'blocked_dates': f"insert into public.blocked_dates (property_id, start_date, end_date, host_email) values ('{v}', '2099-01-10', '2099-01-12', 'host@example.test');",
+        'ical_blocked_dates': f"insert into public.ical_blocked_dates (property_id, start_date, end_date, host_email, platform) values ('{v}', '2099-01-10', '2099-01-12', 'host@example.test', 'airbnb');",
+    }
+    res = parallel(list(inserts.values()))
+    for (table, _), r in zip(inserts.items(), res):
+        check(r[0] != 0 and f'{table}_property_id_canonical' in r[2], f'l#{i}: {table} accepted property_id {v!r}')
+    ok_res = parallel([sql.replace(f"'{v}'", f"'{canon}'") for sql in inserts.values()])
+    check(all(ok(r) for r in ok_res), f'l#{i}: canonical ids rejected: {[r[2][:80] for r in ok_res if not ok(r)]}')
+    null_ok = parallel(["insert into public.bookings (property_id, check_in, check_out, status, user_email, property_title, total_price) values (null, '2099-01-10', '2099-01-12', 'cancelled', 'g@example.test', 'T', 1);"])[0]
+    check(ok(null_ok), f'l#{i}: null property_id on bookings must stay allowed')
+
+
+SCENARIOS = [s_a, s_b, s_b2, s_c, s_d, s_d2, s_e, s_f, s_g, s_h, s_i, s_k, s_l]
 
 
 def main():
