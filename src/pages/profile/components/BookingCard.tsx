@@ -104,11 +104,11 @@ export default function BookingCard({ booking, onRefresh }: BookingCardProps) {
   // Fetch host contact details — only when it's time to reveal them
   useEffect(() => {
     if (!booking.property_id || !showHostDetails || isCancelled) return;
+    // Server-checked: returns the host's contact only to this booking's guest,
+    // for a confirmed/completed booking, from the day before check-in.
     supabase
-      .from('property_applications')
-      .select('host_first_name, host_last_name, host_email, host_phone')
-      .eq('id', booking.property_id)
-      .maybeSingle()
+      .rpc('get_booking_host_contact', { p_booking_id: booking.id })
+      .maybeSingle<{ host_first_name: string | null; host_last_name: string | null; host_email: string | null; host_phone: string | null }>()
       .then(({ data }) => {
         if (data) {
           setHostContact({

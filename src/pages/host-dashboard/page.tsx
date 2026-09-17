@@ -17,6 +17,10 @@ import HostActivitiesSection from './components/HostActivitiesSection';
 import { signOutUser } from '../../hooks/useAuth';
 import { useT } from '../../i18n';
 
+// Every property_applications column a host may read (all except admin_token).
+const HOST_PROPERTY_COLUMNS =
+  'id, host_first_name, host_last_name, host_email, host_phone, property_type, location, bedrooms, bathrooms, max_guests, amenities, photo_urls, title, description, price_per_night, status, created_at, google_maps_url, latitude, longitude, address, booking_approval_mode, rejection_note, cover_photo_url, agreement_reminder_sent_at, agreement_status, agreement_received_at, pricing_type, guest_pricing_tiers, cover_photo_position, ical_url, ical_last_synced, sms_notifications_enabled, categories, accepted_payment_methods, approved_at';
+
 type NavSection = 'overview' | 'calendar' | 'bookings' | 'cancelled' | 'properties' | 'offers' | 'activities' | 'dates' | 'earnings' | 'activity' | 'reviews' | 'blocked' | 'ical';
 
 interface HostBooking {
@@ -97,9 +101,11 @@ function HostDashboardContent() {
     if (!user?.email) return;
     setLoading(true);
 
+    // Owner-scoped by RLS. Explicit columns: hosts may read every column of their
+    // own listings except admin_token (not granted), so select('*') would fail.
     const { data: propData } = await supabase
       .from('property_applications')
-      .select('*')
+      .select(HOST_PROPERTY_COLUMNS)
       .eq('host_email', user.email)
       .order('created_at', { ascending: false });
 

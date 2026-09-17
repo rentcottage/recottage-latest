@@ -119,20 +119,19 @@ export default function PropertyDetail() {
 
   useEffect(() => {
     async function loadProperty() {
-      // SECURITY: explicit display-safe columns only — never expose
-      // host_email, host_phone, or admin_token to the public client.
+      // SECURITY: public_properties only exposes display-safe columns of
+      // approved listings (no host contact data). Keep the explicit list.
       const BASE_COLUMNS =
-        'id, title, location, price_per_night, cover_photo_url, cover_photo_position, amenities, categories, description, bedrooms, bathrooms, max_guests, google_maps_url, latitude, longitude, address, accepted_payment_methods, pricing_type, guest_pricing_tiers, host_first_name, host_last_name, photo_urls';
+        'id, title, location, price_per_night, cover_photo_url, cover_photo_position, amenities, categories, description, bedrooms, bathrooms, max_guests, google_maps_url, latitude, longitude, address, accepted_payment_methods, pricing_type, guest_pricing_tiers, host_first_name, host_last_initial, photo_urls';
       // Added by a later DB migration than this code may be deployed with;
       // requesting a missing column fails the whole query, so fall back.
       const TRANSLATION_COLUMNS = 'title_en, title_ru, description_en, description_ru, source_lang';
 
       const runQuery = (columns: string) =>
         supabase
-          .from('property_applications')
+          .from('public_properties')
           .select(columns)
           .eq('id', id)
-          .eq('status', 'approved')
           .maybeSingle()
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .returns<Record<string, any>>();
@@ -147,7 +146,7 @@ export default function PropertyDetail() {
         return;
       }
 
-      const hostName = `${app.host_first_name ?? ''} ${(app.host_last_name ?? '').charAt(0)}.`.trim();
+      const hostName = `${app.host_first_name ?? ''} ${(app.host_last_initial ?? '').charAt(0)}.`.trim();
       const photos: string[] =
         app.photo_urls?.length > 0
           ? app.photo_urls

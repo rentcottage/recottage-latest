@@ -20,9 +20,8 @@ async function loadIndex(): Promise<CottageIndexEntry[]> {
     // Only the three columns the name suggestions need — never widen this to
     // host contact columns (see useApprovedProperties for the same rule).
     const { data, error } = await supabase
-      .from('property_applications')
+      .from('public_properties')
       .select('id, title, location')
-      .eq('status', 'approved')
       .order('title', { ascending: true });
 
     if (error) {

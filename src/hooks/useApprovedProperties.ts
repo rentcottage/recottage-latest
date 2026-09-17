@@ -55,7 +55,7 @@ function normalizeRow(app: Record<string, unknown>, lang: Lang): NormalizedPrope
     reviews: 0,
     image: coverUrl,
     images: orderedPhotos,
-    host: `${(app.host_first_name as string) ?? ''} ${((app.host_last_name as string) ?? '').charAt(0)}.`.trim(),
+    host: `${(app.host_first_name as string) ?? ''} ${((app.host_last_initial as string) ?? '').charAt(0)}.`.trim(),
     amenities: (app.amenities as string[]) || [],
     categories: (app.categories as string[]) || [],
     propertyType: (app.property_type as string) || 'Cottage',
@@ -84,8 +84,9 @@ export function useApprovedProperties() {
       setError(null);
       try {
         // Fetch all approved listings — no range limit so sorting is always global.
-        // SECURITY: select only display-safe columns. Never ship host_email,
-        // host_phone, or admin_token to the public client (was select('*')).
+        // SECURITY: public listings come from the public_properties view, which
+        // only contains display-safe columns (no host contact data) and only
+        // approved listings. Keep an explicit column list here too.
         // The translation columns are added by a separate DB migration, while the
         // frontend deploys on its own schedule — so there is always a window
         // where one is ahead of the other. Asking for a column that doesn't
@@ -93,14 +94,13 @@ export function useApprovedProperties() {
         // the site. Ask for them, and fall back to the base set if they're not
         // there yet.
         const BASE_COLUMNS =
-          'id, title, location, price_per_night, host_first_name, host_last_name, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position';
+          'id, title, location, price_per_night, host_first_name, host_last_initial, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position';
         const TRANSLATION_COLUMNS = 'title_en, title_ru, source_lang';
 
         const runQuery = (columns: string) =>
           supabase
-            .from('property_applications')
+            .from('public_properties')
             .select(columns)
-            .eq('status', 'approved')
             .order('created_at', { ascending: false })
             .returns<Record<string, unknown>[]>();
 

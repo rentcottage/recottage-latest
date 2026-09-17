@@ -65,9 +65,8 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 
 const [propertiesRes, experiencesRes] = await Promise.all([
   supabase
-    .from('property_applications')
-    .select('id, created_at')
-    .eq('status', 'approved'),
+    .from('public_properties')
+    .select('id, created_at'),
   supabase
     .from('experiences')
     .select('id, created_at')

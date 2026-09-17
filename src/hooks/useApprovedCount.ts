@@ -20,9 +20,8 @@ export function useApprovedCount(): { count: number | null; loading: boolean } {
     let cancelled = false;
     async function fetchCount() {
       const { count: c, error } = await supabase
-        .from('property_applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'approved');
+        .from('public_properties')
+        .select('id', { count: 'exact', head: true });
       if (cancelled) return;
       if (!error && typeof c === 'number') setCount(c);
       setLoading(false);
