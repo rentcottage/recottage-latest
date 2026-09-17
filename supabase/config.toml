@@ -77,3 +77,9 @@ verify_jwt = false
 # compare against ADMIN_PANEL_PASSWORD). See admin-read/handler.ts.
 [functions.admin-read]
 verify_jwt = false
+
+# Called only by the n8n Cloud automations, which hold no Supabase session and
+# no database credential: the `x-n8n-secret` header (compared against
+# N8N_DATA_SECRET) is the gate. See n8n-data/handler.ts.
+[functions.n8n-data]
+verify_jwt = false
