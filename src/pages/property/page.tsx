@@ -440,6 +440,13 @@ export default function PropertyDetail() {
         } catch {
           try { errMsg = await response.text(); } catch { /* ignore */ }
         }
+        // Someone else secured these dates first: no payment was started.
+        if (response.status === 409 && errMsg === 'DATES_UNAVAILABLE') {
+          setBookingError(t('property.detail.datesUnavailable'));
+          setSubmitStatus('error');
+          setBookingCaptchaToken('');
+          return;
+        }
         console.error('[handleBooking] Backend error:', errMsg);
         setBookingError(errMsg);
         setSubmitStatus('error');

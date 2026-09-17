@@ -38,6 +38,7 @@ export default function PaymentSuccessPage() {
   const navigate = useNavigate();
   const bookingId = searchParams.get('booking_id');
   const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>('loading');
+  const [datesUnavailable, setDatesUnavailable] = useState(false);
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [pollCount, setPollCount] = useState(0);
 
@@ -77,6 +78,13 @@ export default function PaymentSuccessPage() {
       };
 
       const ps = json.paymentStatus;
+
+      // Paid, but the dates were taken meanwhile: booking rejected and refunded.
+      if (json.source === 'dates_unavailable') {
+        setDatesUnavailable(true);
+        setVerifyStatus('failed');
+        return;
+      }
 
       if (ps === 'paid' || json.verified) {
         // Verified paid by BOG API — safe to show success
@@ -313,9 +321,9 @@ export default function PaymentSuccessPage() {
               <div className="w-20 h-20 flex items-center justify-center rounded-full bg-red-50 border-2 border-red-200 mx-auto mb-6">
                 <i className="ri-close-line text-4xl text-red-500"></i>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-3">{t('property.paymentSuccess.failedTitle')}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-3">{t(datesUnavailable ? 'property.paymentSuccess.datesUnavailableTitle' : 'property.paymentSuccess.failedTitle')}</h1>
               <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                {t('property.paymentSuccess.failedBody')}
+                {t(datesUnavailable ? 'property.paymentSuccess.datesUnavailableBody' : 'property.paymentSuccess.failedBody')}
               </p>
               <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-6 text-left">
                 <p className="text-xs text-red-600 font-medium mb-0.5">{t('property.paymentSuccess.reference')}</p>
