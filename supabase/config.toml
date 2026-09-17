@@ -57,3 +57,10 @@ verify_jwt = false
 # send a user JWT.
 [functions.booking-reminders]
 verify_jwt = false
+
+# Host calendar import/export. POST actions authorize in code with the user's
+# verified session (auth.getUser) plus property/calendar ownership; the gateway
+# check stays on as an additional layer (the anon key alone passes it, so it is
+# not relied on). GET export keeps its current gateway behaviour.
+[functions.ical-sync]
+verify_jwt = true

@@ -8,6 +8,17 @@ type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 const SUPABASE_URL = import.meta.env.VITE_PUBLIC_SUPABASE_URL as string;
 const ICAL_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/ical-sync`;
 
+// ical-sync authorizes host actions from the signed-in host's session token and
+// checks property/calendar ownership server-side (the body host_email is ignored).
+async function icalSessionHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'apikey': import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY as string,
+    'Authorization': `Bearer ${data.session?.access_token ?? ''}`,
+  };
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Property {
   id: string;
@@ -449,7 +460,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
     if (!selectedPropertyId || !user?.email) return;
     const res = await fetch(ICAL_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await icalSessionHeaders(),
       body: JSON.stringify({
         action: 'add-calendar',
         property_id: selectedPropertyId,
@@ -473,7 +484,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
     try {
       const res = await fetch(ICAL_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await icalSessionHeaders(),
         body: JSON.stringify({
           action: 'sync-calendar',
           property_id: selectedPropertyId,
@@ -500,7 +511,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
     try {
       const res = await fetch(ICAL_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await icalSessionHeaders(),
         body: JSON.stringify({
           action: 'sync-all',
           property_id: selectedPropertyId,
@@ -524,7 +535,7 @@ export default function HostICalSection({ properties, loading: propsLoading, onR
     try {
       const res = await fetch(ICAL_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await icalSessionHeaders(),
         body: JSON.stringify({
           action: 'remove-calendar',
           property_id: selectedPropertyId,
