@@ -11,9 +11,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ACTIONS,
+  CONTACT_MARK,
   LISTING_COLUMNS,
   LISTINGS_VIEW,
   MAX_LISTINGS,
+  SHORT_DESCRIPTION_MAX,
   STATS_COLUMNS,
   STATS_VIEW,
   clientBucket,
@@ -21,8 +23,10 @@ import {
   displayName,
   pickRotating,
   providedSecret,
+  redactContacts,
   rotationScore,
   rotationSeed,
+  shortDescription,
 } from './handler.ts';
 import { FAILURES_TABLE, MAX_FAILURES, clientKey } from '../_shared/adminAuth.ts';
 
@@ -51,6 +55,12 @@ function listingRows(n: number): Row[] {
     location: i % 2 === 0 ? 'Batumi, Adjara' : 'Kazbegi, Mtskheta-Mtianeti',
     property_type: 'cottage',
     price_per_night: 100 + i,
+    max_guests: 2 + (i % 5),
+    bedrooms: i % 4 === 3 ? null : 1 + (i % 3),
+    bathrooms: i % 4 === 2 ? null : 1,
+    description: i % 3 === 0
+      ? 'A quiet wooden cottage with a garden and a view of the valley.'
+      : 'Stone house by the river.\nCall +995 599 12 34 56 or write to host.fake@example.test.',
     categories: i % 2 === 0 ? ['Mountain', 'Forest'] : ['Winery'],
     cover_photo_url: `https://cdn.example.test/cover-${i}.webp`,
     photo_urls: [`https://cdn.example.test/p-${i}-1.webp`, `https://cdn.example.test/p-${i}-2.webp`],
@@ -296,9 +306,14 @@ test('listings-for-social returns the documented shape and reads public_properti
   assert.equal(h.db.calls[0].select, LISTING_COLUMNS);
   for (const l of r.body.listings) {
     assert.deepEqual(Object.keys(l).sort(), [
-      'categories', 'cover_photo_url', 'host_display_name', 'id', 'location',
-      'photo_urls', 'price_per_night', 'property_type', 'title', 'url',
+      'bathrooms', 'bedrooms', 'categories', 'cover_photo_url', 'host_display_name', 'id', 'location',
+      'max_guests', 'photo_urls', 'price_per_night', 'property_type', 'short_description', 'title', 'url',
     ]);
+    for (const k of ['max_guests', 'bedrooms', 'bathrooms']) {
+      assert.ok(l[k] === null || (typeof l[k] === 'number' && Number.isFinite(l[k])), `${k} = ${JSON.stringify(l[k])}`);
+    }
+    assert.ok(l.short_description === null || typeof l.short_description === 'string');
+    assert.equal('description' in l, false, 'the raw description must never be returned');
     assert.equal(l.host_display_name, 'Nino P.', 'only first name + initial');
     assert.equal(l.url, `https://rentcottage.ge/property/${l.id}`);
   }
@@ -387,12 +402,150 @@ test('displayName never yields more than a first name and an initial', () => {
   assert.equal(displayName('Nino', 'Privatesurname'), 'Nino P.', 'only the first letter survives');
 });
 
+test('listings-for-social: numbers pass through, anything else becomes null', async () => {
+  const h = harness();
+  h.db.listings = listingRows(4).map((l, i) => ({
+    ...l,
+    max_guests: [6, '6', null, Number.NaN][i],
+    bedrooms: [3, undefined, 0, '2'][i],
+    bathrooms: [2, null, 1.5, {}][i],
+  }));
+  const r = await h.call({ action: 'listings-for-social', count: 4 });
+  const byId = new Map(r.body.listings.map((l: Row) => [l.id, l]));
+  const got = h.db.listings.map((l) => {
+    const o = byId.get(l.id) as Row;
+    return [o.max_guests, o.bedrooms, o.bathrooms];
+  });
+  assert.deepEqual(got, [[6, 3, 2], [null, null, null], [null, 0, 1.5], [null, null, null]]);
+  assert.ok(LISTING_COLUMNS.includes('max_guests, bedrooms, bathrooms, description'));
+});
+
+test('listings-for-social: short_description is built from description, contact data removed', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'listings-for-social', count: 10 });
+  const texts = r.body.listings.map((l: Row) => l.short_description);
+  assert.ok(texts.includes('A quiet wooden cottage with a garden and a view of the valley.'));
+  assert.ok(texts.includes('Stone house by the river.'));
+  const joined = texts.join('\n');
+  assert.equal(joined.includes('599'), false);
+  assert.equal(joined.includes('example.test'), false);
+});
+
+// ── short_description ────────────────────────────────────────────────────────
+// All contact data below is fake.
+
+const M = CONTACT_MARK;
+
+test('SHORT redactContacts: e-mails, each as one whole token', () => {
+  for (const email of ['nino.fake@example.test', 'a_b+c@mail.ge', 'Nino.Fake@Example.Ge', 'гость@почта.рф', 'x@sub.domain.co.uk']) {
+    assert.equal(redactContacts(`write ${email} now`), `write ${M} now`, email);
+  }
+});
+
+test('SHORT redactContacts: URLs, including hosts no domain rule would catch', () => {
+  for (const url of [
+    'https://fake.example.test/p?x=1', 'http://FakeCottage.Ge/book', 'www.FakeCottage.Ge',
+    'https://xn--80ak6aa92e.xn--p1ai/', 'https://127.0.0.1:8080/x', 'ftp://files.fake.test/a',
+  ]) {
+    assert.equal(redactContacts(`see ${url} today`), `see ${M} today`, url);
+  }
+});
+
+test('SHORT redactContacts: bare domains and @handles', () => {
+  for (const d of ['fakecottage.ge', 'FAKECOTTAGE.GE', 'booking.com', 't.me/fakecottage', 'wa.me/995599123456', 'my-cottage.co.uk']) {
+    assert.equal(redactContacts(`find us ${d} ok`).replace('find us ', ''), `${M} ok`, d);
+  }
+  for (const handle of ['@fake_cottage', '@fake.cottage.ge', '@ნინო']) {
+    assert.equal(redactContacts(`follow ${handle} ok`), `follow ${M} ok`, handle);
+  }
+  assert.equal(redactContacts('a stray @ sign').includes('@'), false);
+});
+
+test('SHORT redactContacts: phones in Georgian and international formats', () => {
+  for (const phone of [
+    '+995 599 12 34 56', '+995599123456', '(+995) 599 123 456', '599-12-34-56', '599 123 456',
+    '599123456', '0322 12 34 56', '(032) 2 12 34 56', '+995 (32) 212-34-56', '599.12.34.56',
+    '+44 20 7946 0958', '+1 (555) 010-4567', '8 (800) 555-35-35', '00995 599 12 34 56', '2 12 34 56',
+  ]) {
+    assert.equal(redactContacts(`ring ${phone} today`), `ring ${M} today`, phone);
+  }
+  // Ordinary numbers are left alone.
+  for (const text of ['3 bedrooms, 2 bathrooms', 'from 100 to 150 GEL', 'built in 2019. 150 m² garden', '1.5 km to the lake']) {
+    assert.equal(redactContacts(text), text, text);
+  }
+});
+
+test('SHORT shortDescription strips every kind of contact data', () => {
+  const out = shortDescription(
+    'Wooden cottage in the pines, with a big terrace.\n' +
+    'Phone: +995 599 12 34 56, WhatsApp 555-12-34-56.\n' +
+    'Mail nino.fake@example.test or visit https://fake.example.test and fakecottage.ge. Instagram: @fake_cottage\n' +
+    'Breakfast on request.',
+  );
+  assert.equal(out, 'Wooden cottage in the pines, with a big terrace. Breakfast on request.');
+  for (const s of ['599', '555', '@', 'example', 'http', 'fakecottage', 'fake_cottage', CONTACT_MARK]) {
+    assert.equal(out!.includes(s), false, s);
+  }
+});
+
+test('SHORT shortDescription keeps Georgian, Russian and English text intact', () => {
+  const ka = 'მყუდრო კოტეჯი მთაში, ბუხრით და ხედით კავკასიონზე.';
+  const ru = 'Уютный дом у моря, с садом и мангалом.';
+  const en = 'Quiet cottage near Kazbegi.';
+  assert.equal(shortDescription(ka), ka);
+  assert.equal(shortDescription(`${ka}\nტელ: 555 12 34 56\n${ru} Телефон: 8 (800) 555-35-35. ${en}`), `${ka} ${ru} ${en}`);
+});
+
+test('SHORT shortDescription collapses whitespace and line breaks', () => {
+  assert.equal(shortDescription('  Big   garden.\n\n\tSauna\r\nand   pool.  '), 'Big garden. Sauna and pool.');
+});
+
+test('SHORT shortDescription is at most 200 characters, cut at a sentence or word, with "…"', () => {
+  assert.equal(SHORT_DESCRIPTION_MAX, 200);
+  const sentences = 'The cottage has a lovely view of the mountains. '.repeat(10);
+  const a = shortDescription(sentences)!;
+  assert.ok(a.length <= 200, String(a.length));
+  assert.ok(a.endsWith('mountains…'), a.slice(-20));
+
+  const words = 'wooden ' + 'terrace '.repeat(60);
+  const b = shortDescription(words)!;
+  assert.ok(b.length <= 200 && b.endsWith('terrace…'), b.slice(-20));
+
+  const ka = shortDescription('კოტეჯი '.repeat(80))!;
+  assert.ok(ka.length <= 200 && ka.endsWith('კოტეჯი…'), ka.slice(-20));
+
+  const oneWord = shortDescription('ა'.repeat(500))!;
+  assert.equal(oneWord.length, 200);
+  assert.ok(oneWord.endsWith('…'));
+
+  const emoji = shortDescription('Sun' + '😀'.repeat(150))!;
+  assert.ok(emoji.length <= 200 && !/[\uD800-\uDBFF]…$/.test(emoji), 'an emoji must not be split');
+
+  const exact = 'x'.repeat(200);
+  assert.equal(shortDescription(exact), exact, 'not cut, no "…" at exactly the limit');
+  for (const n of [201, 250, 1000, 5000]) {
+    assert.ok(shortDescription('Nice house. '.repeat(n))!.length <= 200, String(n));
+  }
+});
+
+test('SHORT shortDescription is null when nothing meaningful remains', () => {
+  for (const d of [
+    null, undefined, 42, '', '   \n  ', '+995 599 12 34 56', 'Tel: 599-12-34-56\nEmail: nino.fake@example.test',
+    'https://fake.example.test', 'fakecottage.ge / @fake_cottage', 'ტელ: 555 12 34 56', '— ! ?', 'ok',
+  ]) {
+    assert.equal(shortDescription(d), null, JSON.stringify(d));
+  }
+});
+
 // ── PII: the load-bearing test ───────────────────────────────────────────────
 
 const AT_SIGN = /@/;
 const PHONE_SHAPED = /(?:\+?\d[\d\s().-]{6,}\d)/;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const FORBIDDEN_KEY = /email|phone|user|customer|guest|host_last_name|booking_id|admin|token|secret|password/i;
+// Exact key names that match FORBIDDEN_KEY but carry no personal data.
+// max_guests is a listing's capacity (a number), not guest data.
+const ALLOWED_KEYS = new Set(['max_guests']);
 
 function assertNoPii(text: string, body: Row, label: string, opts: { allowListingIds?: boolean } = {}) {
   assert.equal(AT_SIGN.test(text), false, `${label}: response contains "@"`);
@@ -403,7 +556,7 @@ function assertNoPii(text: string, body: Row, label: string, opts: { allowListin
       for (const [k, v] of Object.entries(value as Row)) {
         // `photo_urls` and `url` are public asset/page links; `id` is a listing
         // id, which is already in every public property URL.
-        const allowed = k === 'id' && opts.allowListingIds;
+        const allowed = (k === 'id' && opts.allowListingIds) || ALLOWED_KEYS.has(k);
         assert.equal(FORBIDDEN_KEY.test(k) && !allowed, false, `${label}: forbidden key ${path}.${k}`);
         walk(v, `${path}.${k}`);
       }
@@ -444,8 +597,14 @@ test('PII no action and no error path leaks contact data, a booking id or a user
   for (const c of cases) {
     const h = harness();
     // Seed the fakes with data that WOULD leak if the wrong source were read.
-    h.db.listings = h.db.listings.map((l) => ({
+    h.db.listings = h.db.listings.map((l, i) => ({
       ...l,
+      description: [
+        'Cottage by the lake. Mail host.private@example.test for details.',
+        'Mountain house.\nTel: +995 599 12 34 56 / 555-98-76-54',
+        'Old stone house. Book at https://private-cottage.example.test/book or privatecottage.ge!',
+        'კოტეჯი ტყეში. ტელ: (032) 2 12 34 56, host.private@example.test, www.Private.Ge',
+      ][i % 4],
       host_email: 'host.private@example.test',
       host_phone: '+995 599 123 456',
       host_last_name: 'Privatesurname',
@@ -453,11 +612,16 @@ test('PII no action and no error path leaks contact data, a booking id or a user
     h.db.statsRows = [{ ...STATS_ROW, user_email: 'guest.private@example.test' }];
     const r = await h.call(c.body, c.headers ?? { 'x-n8n-secret': SECRET }, c.method ?? 'POST');
     assertNoPii(r.text, r.body, c.label, { allowListingIds: c.allowListingIds });
+    if (c.allowListingIds) {
+      // The fakes above carry an e-mail, a phone and a URL in their
+      // descriptions; the scan is only meaningful if cleaned text came back.
+      assert.ok(r.body.listings.some((l: Row) => typeof l.short_description === 'string'), `${c.label}: no short_description to scan`);
+    }
   }
 });
 
 test('PII the column lists themselves exclude contact data', () => {
-  for (const cols of [LISTING_COLUMNS, STATS_COLUMNS]) {
+  for (const cols of [LISTING_COLUMNS.replace(/\bmax_guests\b/, ''), STATS_COLUMNS]) {
     for (const forbidden of ['email', 'phone', 'host_last_name', 'guest', 'customer', 'user_', 'booking_id', 'admin_token']) {
       assert.equal(cols.includes(forbidden), false, `${forbidden} must not be selected (${cols.slice(0, 40)}…)`);
     }

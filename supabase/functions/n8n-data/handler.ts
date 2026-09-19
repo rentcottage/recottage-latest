@@ -23,6 +23,8 @@
 //   purpose-built PII-free sources: marketing_weekly_stats (aggregates) and
 //   public_properties (the same view the public site reads). No base table is
 //   ever queried here.
+// - The listing description is never returned as written: short_description
+//   strips e-mails, phones, URLs, domains and @handles from it first.
 // - Database errors are never echoed; the caller gets a generic 500.
 //
 // No Deno globals and no network imports, so it unit-tests with `node --test`
@@ -60,7 +62,11 @@ export const MAX_LISTINGS = 10;
  * response here may carry — the same "First L." the public site shows.
  */
 export const LISTING_COLUMNS =
-  'id, title, location, property_type, price_per_night, categories, cover_photo_url, photo_urls, host_first_name, host_last_initial, created_at';
+  'id, title, location, property_type, price_per_night, max_guests, bedrooms, bathrooms, description, ' +
+  'categories, cover_photo_url, photo_urls, host_first_name, host_last_initial, created_at';
+
+/** Hard ceiling on short_description, "…" included (UTF-16 code units). */
+export const SHORT_DESCRIPTION_MAX = 200;
 
 /** Aggregate columns, mirroring marketing_weekly_stats. */
 export const STATS_COLUMNS =
@@ -153,6 +159,103 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 }
 
+function asNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+// ── short_description ────────────────────────────────────────────────────────
+//
+// Hosts write descriptions freely, and some put their phone, e-mail, website or
+// Instagram in them. The public site shows that text, but n8n turns it into
+// social posts, so the contact data is removed here, server-side, before
+// anything leaves the function — together with the sentence or line it sat in.
+// The full description is never returned.
+//
+// Stripping errs towards removing too much: a missing-space typo like
+// "sea.and" reads as a domain and is dropped, and any run of 7+ digits (a date
+// like 12.05.2024 or a year range 2019-2023) reads as a phone. Losing a few
+// words of a marketing blurb is harmless; posting a host's number is not.
+
+/** Stands in for a removed contact; never survives into a response. */
+export const CONTACT_MARK = '\u0000';
+const MARK = CONTACT_MARK;
+const EMAIL_RE = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
+const URL_RE = /(?:\b(?:https?|ftp):\/\/|\bwww\.)[^\s<>"'«»]+/giu;
+// ASCII labels + an all-lowercase or all-uppercase TLD: "something.ge",
+// "Booking.com", "t.me/handle", "SITE.GE". A mixed-case TLD ("sea.It") is
+// prose with a missing space and is left alone.
+const DOMAIN_RE = /(?<![\p{L}\p{N}_-])(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+(?:[a-z]{2,24}|[A-Z]{2,24})(?![\p{L}\p{N}_-])(?:[/?#][^\s]*)?/gu;
+const HANDLE_RE = /@[\p{L}\p{N}_.]+/gu;
+// Digits joined by spaces, dashes, slashes, brackets or a dot that is directly
+// followed by a digit (so "2019. 150 m²" is two numbers, not one phone).
+// Counted afterwards: 7+ digits is a phone.
+const PHONE_RUN_RE = /\+?\(?\+?\d(?:(?:[ ()\-‐‑–—/]|\.(?=\d))*\d)+\)?/gu;
+const PHONE_MIN_DIGITS = 7;
+// A contact label left dangling once its value is gone ("Tel:", "ტელ:", "Почта:").
+const LABEL_RE = new RegExp(
+  '(?<![\\p{L}\\p{N}])(?:tel|phone|mob|mobile|whatsapp|viber|telegram|e-?mail|mail|web|website|site|instagram|insta|facebook|fb|' +
+  'contacts?|call|ტელ|ტელეფონი|მობ|მობილური|ელ-?ფოსტა|ფოსტა|საიტი|კონტაქტი|тел|телефон|моб|почта|эл\\. ?почта|' +
+  'сайт|контакты|звоните)\\.?(?: (?:us|me|on|at|нам|по))*\\s*[:：\\-–]?\\s*' + MARK,
+  'giu',
+);
+
+function stripPhones(text: string): string {
+  return text.replace(PHONE_RUN_RE, (run) =>
+    run.replace(/\D/g, '').length >= PHONE_MIN_DIGITS ? MARK : run);
+}
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const room = max - 1; // leave space for "…"
+  let window = text.slice(0, room);
+  if (/[\uD800-\uDBFF]$/.test(window)) window = window.slice(0, -1); // never split an emoji
+  // Prefer a whole sentence, if that keeps at least half the room.
+  const sentenceEnd = Math.max(...[...window.matchAll(/[.!?](?= )/g)].map((m) => m.index ?? -1), -1);
+  if (sentenceEnd >= room / 2) {
+    return window.slice(0, sentenceEnd + 1).replace(/\.$/, '') + '…';
+  }
+  const space = window.lastIndexOf(' ');
+  const cut = space >= room / 2 ? window.slice(0, space) : window;
+  return cut.replace(/[\s,;:\-–—(]+$/u, '') + '…';
+}
+
+/**
+ * Every e-mail, URL, domain, @handle and phone number (and a contact label
+ * left in front of one) replaced by CONTACT_MARK. Line breaks survive.
+ * Each rule is applied separately — and tested separately — even though the
+ * later ones would often catch what an earlier one missed.
+ */
+export function redactContacts(description: string): string {
+  let text = description.replace(/[^\S\n]+/gu, ' ').replace(/ *\n */g, '\n');
+  text = text.replace(EMAIL_RE, MARK);
+  text = text.replace(URL_RE, MARK);
+  text = text.replace(DOMAIN_RE, MARK);
+  text = text.replace(HANDLE_RE, MARK);
+  text = stripPhones(text);
+  text = text.replace(/@/g, ''); // whatever is left of an address or a handle
+  return text.replace(LABEL_RE, MARK);
+}
+
+/**
+ * The description as a social post may use it: contact data removed, one line,
+ * at most SHORT_DESCRIPTION_MAX characters, or null if nothing is left.
+ */
+export function shortDescription(description: unknown): string | null {
+  if (typeof description !== 'string') return null;
+  // A sentence or line that carried contact data is a "call us / write to us"
+  // sentence: removing only the number leaves "Call or write to!". Drop it.
+  const text = redactContacts(description)
+    .split(/\n+|(?<=[.!?…]) +/u)
+    .filter((segment) => !segment.includes(MARK))
+    .join(' ')
+    .replace(/\(\s*\)|\[\s*\]/g, ' ')
+    .replace(/\s+/gu, ' ')
+    .replace(/^[\s,.;:|/\-–—·•]+|[\s,;:|/\-–—·•]+$/gu, '');
+  // "Meaningful" = at least three letters in any script.
+  if ((text.match(/\p{L}/gu) ?? []).length < 3) return null;
+  return truncate(text, SHORT_DESCRIPTION_MAX);
+}
+
 /** "Nino" + "P" → "Nino P." — the display name the public site uses. */
 export function displayName(first: unknown, initial: unknown): string {
   const f = asString(first);
@@ -228,6 +331,10 @@ const listingsForSocial: Action = async (body, { db, now }) => {
       location: r.location ?? null,
       property_type: r.property_type ?? null,
       price_per_night: r.price_per_night ?? null,
+      max_guests: asNumber(r.max_guests),
+      bedrooms: asNumber(r.bedrooms),
+      bathrooms: asNumber(r.bathrooms),
+      short_description: shortDescription(r.description),
       categories: Array.isArray(r.categories) ? r.categories : [],
       cover_photo_url: r.cover_photo_url ?? (Array.isArray(r.photo_urls) ? r.photo_urls[0] ?? null : null),
       photo_urls: Array.isArray(r.photo_urls) ? r.photo_urls : [],
