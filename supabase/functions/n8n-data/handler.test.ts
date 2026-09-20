@@ -11,19 +11,29 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ACTIONS,
+  CLEANUP_PAGE_SIZE,
   CONTACT_MARK,
   LISTING_COLUMNS,
   LISTINGS_VIEW,
   MAX_LISTINGS,
+  REEL_NAME_RE,
+  REEL_RETENTION_DAYS,
+  REELS_BUCKET,
+  REELS_PREFIX,
   SHORT_DESCRIPTION_MAX,
   STATS_COLUMNS,
   STATS_VIEW,
+  UPLOAD_URL_TTL_SECONDS,
   clientBucket,
   createHandler,
+  defaultRandomId,
   displayName,
+  isExpiredReel,
+  photoCount,
   pickRotating,
   providedSecret,
   redactContacts,
+  reelPath,
   rotationScore,
   rotationSeed,
   shortDescription,
@@ -99,6 +109,11 @@ class FakeDb {
         rows = rows.filter((r) => String(r[col] ?? '').toLowerCase().includes(needle));
         return q;
       },
+      eq(col: string, value: unknown) {
+        call.filters.push(`${col}=${String(value)}`);
+        rows = rows.filter((r) => r[col] === value);
+        return q;
+      },
       then(resolve: (v: Row) => void) {
         if (broken()) return resolve({ data: null, error: { message: 'relation "property_applications" host=10.0.0.9 password=hunter2' } });
         resolve({ data: rows, error: null });
@@ -130,11 +145,78 @@ class FakeDb {
   }
 }
 
+/**
+ * In-memory Storage. It records every bucket it was asked for and every path
+ * it was asked to sign, list or remove, so a test can assert not just the
+ * response but exactly which objects the function reached for.
+ */
+class FakeStorage {
+  buckets: string[] = [];
+  signed: string[] = [];
+  listed: { prefix: string; limit: number; offset: number }[] = [];
+  removed: string[] = [];
+  objects: Row[] = [];
+  failSign = false;
+  failList = false;
+  failRemove = false;
+  noPublicUrl = false;
+
+  from(bucket: string) {
+    this.buckets.push(bucket);
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const s = this;
+    return {
+      async createSignedUploadUrl(path: string) {
+        s.signed.push(path);
+        if (s.failSign) return { data: null, error: { message: 'signing blew up' } };
+        return {
+          data: { signedUrl: `https://sb.example.test/storage/v1/object/upload/sign/${bucket}/${path}?token=faketoken`, token: 'faketoken', path },
+          error: null,
+        };
+      },
+      getPublicUrl(path: string) {
+        return { data: { publicUrl: s.noPublicUrl ? '' : `https://sb.example.test/storage/v1/object/public/${bucket}/${path}` } };
+      },
+      async list(prefix: string, options: { limit: number; offset: number }) {
+        s.listed.push({ prefix, limit: options.limit, offset: options.offset });
+        if (s.failList) return { data: null, error: { message: 'listing blew up' } };
+        // Storage returns names RELATIVE to the prefix.
+        const inPrefix = s.objects.filter((o) => String(o.fullPath).startsWith(`${prefix}/`));
+        const page = inPrefix
+          .slice(options.offset, options.offset + options.limit)
+          .map((o) => ({ ...o, name: String(o.fullPath).slice(prefix.length + 1) }));
+        return { data: page, error: null };
+      },
+      async remove(paths: string[]) {
+        s.removed.push(...paths);
+        if (s.failRemove) return { data: null, error: { message: 'removal blew up' } };
+        s.objects = s.objects.filter((o) => !paths.includes(String(o.fullPath)));
+        return { data: paths.map((p) => ({ name: p })), error: null };
+      },
+    };
+  }
+}
+
+/** A stored object, `days` old relative to NOW. */
+function storedReel(name: string, days: number, prefix = 'reels'): Row {
+  return {
+    id: `obj-${name}`,
+    fullPath: `${prefix}/${name}`,
+    created_at: new Date(NOW.getTime() - days * 86_400_000).toISOString(),
+  };
+}
+
+const RANDOM_ID = 'abcdef0123456789';
+
 function harness(opts: { secret?: string } = { secret: SECRET }) {
   const secret = 'secret' in opts ? opts.secret : SECRET;
   const db = new FakeDb();
+  const storage = new FakeStorage();
   const logs: string[] = [];
-  const handler = createHandler({ db, secret, now: () => NOW, log: (e, f) => logs.push(`${e} ${JSON.stringify(f ?? {})}`) });
+  const handler = createHandler({
+    db, storage, secret, now: () => NOW, randomId: () => RANDOM_ID,
+    log: (e, f) => logs.push(`${e} ${JSON.stringify(f ?? {})}`),
+  });
   let client = 0;
   const call = async (
     body: unknown,
@@ -155,7 +237,7 @@ function harness(opts: { secret?: string } = { secret: SECRET }) {
     try { json = JSON.parse(text); } catch { /* not json */ }
     return { status: res.status, body: json, text };
   };
-  return { db, logs, call };
+  return { db, storage, logs, call };
 }
 
 // ── The gate ─────────────────────────────────────────────────────────────────
@@ -261,8 +343,9 @@ test('ROUTING GET → 405, unknown action → 400, bad JSON → 400', async () =
   assert.equal(h.db.calls.length, 0, 'no action ran');
 });
 
-test('ROUTING the whitelist holds exactly the two phase-1 actions', () => {
-  assert.deepEqual(Object.keys(ACTIONS).sort(), ['listings-for-social', 'weekly-report']);
+test('ROUTING the whitelist holds exactly the four actions', () => {
+  assert.deepEqual(Object.keys(ACTIONS).sort(),
+    ['listings-for-social', 'reel-cleanup', 'reel-upload-url', 'weekly-report']);
 });
 
 // ── weekly-report ────────────────────────────────────────────────────────────
@@ -570,9 +653,16 @@ function assertNoPii(text: string, body: Row, label: string, opts: { allowListin
       }
       // An ISO-8601 timestamp is digits and punctuation but is not a phone
       // number; URLs are public links. Strip both before the phone check.
+      // A calendar date, with or without a time, is digits and punctuation but
+      // is not a phone number — `reels/2026-09-20-….mp4` would otherwise read
+      // as one. Same reasoning as the timestamp rule this widens.
       const scannable = withoutUrls
         .replace(/https?:\/\/\S+/g, '')
-        .replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z?/g, '')
+        // A reel object name is an opaque, server-generated random string; a
+        // run of hex digits inside it is not a phone number. (The fake RNG in
+        // this file deliberately yields one that would read as one.)
+        .replace(/reels\/\d{4}-\d{2}-\d{2}-[a-z0-9]+\.mp4/gi, '')
+        .replace(/\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?/g, '')
         .replace(new RegExp(UUID.source, 'gi'), '');
       assert.equal(PHONE_SHAPED.test(scannable), false, `${label}: phone-shaped string at ${path}`);
     }
@@ -586,6 +676,12 @@ test('PII no action and no error path leaks contact data, a booking id or a user
     { label: 'listings (default)', body: { action: 'listings-for-social' }, allowListingIds: true },
     { label: 'listings (max)', body: { action: 'listings-for-social', count: MAX_LISTINGS }, allowListingIds: true },
     { label: 'listings (filtered)', body: { action: 'listings-for-social', count: 5, category: 'Mountain', region: 'Batumi' }, allowListingIds: true },
+    { label: 'listings (min_photos)', body: { action: 'listings-for-social', count: 5, min_photos: 2 }, allowListingIds: true },
+    { label: 'reel-upload-url', body: { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' } },
+    { label: 'reel-upload-url (bad id)', body: { action: 'reel-upload-url', listing_id: 'nope' } },
+    { label: 'reel-upload-url (unknown listing)', body: { action: 'reel-upload-url', listing_id: '99990000-2222-4222-8222-333333333333' } },
+    { label: 'reel-cleanup', body: { action: 'reel-cleanup' } },
+    { label: 'bad min_photos', body: { action: 'listings-for-social', min_photos: -1 } },
     { label: 'unauthorized', body: { action: 'weekly-report' }, headers: { 'x-n8n-secret': 'wrong' } },
     { label: 'no secret', body: { action: 'weekly-report' }, headers: {} },
     { label: 'unknown action', body: { action: 'fetch-users' } },
@@ -661,7 +757,8 @@ test('SOURCES no action ever queries a base table — only the two PII-free view
   const bodies = [
     { action: 'weekly-report' },
     { action: 'listings-for-social' },
-    { action: 'listings-for-social', count: 10, category: 'Mountain', region: 'Batumi', exclude_ids: [] },
+    { action: 'listings-for-social', count: 10, category: 'Mountain', region: 'Batumi', exclude_ids: [], min_photos: 2 },
+    { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' },
   ];
   for (const body of bodies) {
     const h = harness();
@@ -671,6 +768,31 @@ test('SOURCES no action ever queries a base table — only the two PII-free view
     for (const t of tables) {
       assert.equal(BASE_TABLES.includes(t), false, `${JSON.stringify(body)} read base table ${t}`);
       assert.ok(['marketing_weekly_stats', 'public_properties'].includes(t), `unexpected source ${t}`);
+    }
+  }
+  // reel-cleanup is the one action that reads no table at all — asserted
+  // positively, so that a future edit which made it query something shows up.
+  const h = harness();
+  await h.call({ action: 'reel-cleanup' });
+  assert.deepEqual(h.db.calls, []);
+});
+
+test('SOURCES no action ever touches a bucket other than social-videos', async () => {
+  const bodies = [
+    { action: 'weekly-report' },
+    { action: 'listings-for-social' },
+    { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' },
+    { action: 'reel-cleanup' },
+  ];
+  for (const body of bodies) {
+    const h = harness();
+    h.storage.objects = [storedReel(`2026-09-01-${'a'.repeat(16)}.mp4`, 30)];
+    await h.call(body);
+    for (const b of h.storage.buckets) {
+      assert.equal(b, REELS_BUCKET, `${JSON.stringify(body)} reached bucket ${b}`);
+    }
+    for (const path of [...h.storage.signed, ...h.storage.removed]) {
+      assert.ok(path.startsWith(`${REELS_PREFIX}/`), `${JSON.stringify(body)} touched ${path}`);
     }
   }
 });
@@ -685,4 +807,376 @@ test('AUTH no header other than x-n8n-secret can carry the secret', async () => 
     assert.deepEqual([r.status, r.body], [401, { error: 'Unauthorized' }], header);
     assert.equal(h.db.calls.length, 0, header);
   }
+});
+
+// ── min_photos ───────────────────────────────────────────────────────────────
+
+test('MINPHOTOS photoCount is the de-duplicated union of the cover and photo_urls', () => {
+  const cases: [Row, number][] = [
+    [{ cover_photo_url: null, photo_urls: [] }, 0],
+    [{ cover_photo_url: 'a.webp', photo_urls: [] }, 1],
+    // the usual shape: the cover IS the first photo, and must count once
+    [{ cover_photo_url: 'a.webp', photo_urls: ['a.webp', 'b.webp'] }, 2],
+    [{ cover_photo_url: 'a.webp', photo_urls: ['b.webp', 'c.webp'] }, 3],
+    // whitespace-only, empty and non-string entries are not photos
+    [{ cover_photo_url: '  ', photo_urls: ['', null, 7, 'b.webp'] }, 1],
+    // trimming happens before de-duplication
+    [{ cover_photo_url: 'a.webp', photo_urls: [' a.webp '] }, 1],
+    [{ cover_photo_url: undefined, photo_urls: 'not-an-array' }, 0],
+  ];
+  for (const [row, expected] of cases) {
+    assert.equal(photoCount(row), expected, JSON.stringify(row));
+  }
+});
+
+test('MINPHOTOS listings-for-social filters on the photo count and reports it in `available`', async () => {
+  const h = harness();
+  // 0,1,2,…,5 distinct photos across six listings.
+  h.db.listings = listingRows(6).map((l, i) => ({
+    ...l,
+    cover_photo_url: i === 0 ? null : 'cover.webp',
+    photo_urls: Array.from({ length: Math.max(0, i - 1) }, (_, k) => `p-${k}.webp`),
+  }));
+
+  const all = await h.call({ action: 'listings-for-social', count: 10 });
+  assert.equal(all.body.available, 6);
+
+  for (const [min, expected] of [[0, 6], [1, 5], [3, 3], [5, 1], [6, 0]] as [number, number][]) {
+    const r = await h.call({ action: 'listings-for-social', count: 10, min_photos: min });
+    assert.equal(r.status, 200, `min_photos=${min}`);
+    assert.equal(r.body.available, expected, `min_photos=${min}: available`);
+    assert.equal(r.body.listings.length, expected, `min_photos=${min}: returned`);
+    for (const l of r.body.listings) {
+      assert.ok(photoCount(l) >= min, `min_photos=${min}: a listing with ${photoCount(l)} photos came back`);
+    }
+  }
+});
+
+test('MINPHOTOS a bad min_photos is a 400 and reads nothing', async () => {
+  for (const min of [-1, 1.5, '3', null, 51, NaN, Infinity, true, [3]]) {
+    const h = harness();
+    const r = await h.call({ action: 'listings-for-social', min_photos: min });
+    assert.deepEqual([r.status, r.body], [400, { error: 'Invalid min_photos' }], JSON.stringify(min));
+    assert.equal(h.db.calls.length, 0, `${JSON.stringify(min)} reached the database`);
+  }
+});
+
+// ── reel-upload-url ──────────────────────────────────────────────────────────
+
+const LISTING_ID = '11110000-2222-4222-8222-333333333333';
+
+test('REELUP returns upload_url, public_url and path for a known listing', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'reel-upload-url', listing_id: LISTING_ID });
+
+  assert.equal(r.status, 200);
+  assert.deepEqual(Object.keys(r.body).sort(),
+    ['expires_in', 'generated_at', 'path', 'public_url', 'upload_url']);
+  assert.equal(r.body.path, `reels/2026-09-18-${RANDOM_ID}.mp4`);
+  assert.equal(r.body.expires_in, UPLOAD_URL_TTL_SECONDS);
+  assert.ok(UPLOAD_URL_TTL_SECONDS <= 7200, 'the upload URL must not outlive two hours');
+  assert.ok(r.body.public_url.endsWith(`/object/public/${REELS_BUCKET}/${r.body.path}`));
+  assert.ok(r.body.upload_url.includes(`/object/upload/sign/${REELS_BUCKET}/${r.body.path}`));
+
+  // Exactly one bucket, exactly one path, and nothing was listed or removed.
+  assert.deepEqual(h.storage.buckets, [REELS_BUCKET]);
+  assert.deepEqual(h.storage.signed, [r.body.path]);
+  assert.deepEqual(h.storage.removed, []);
+  assert.deepEqual(h.storage.listed, []);
+});
+
+test('REELUP the path is chosen server-side: nothing in the body can influence it', async () => {
+  const attempts: Row[] = [
+    { path: '../avatars/evil.mp4' },
+    { Path: 'reels/evil.mp4' },
+    { filename: 'evil.mp4' },
+    { name: 'evil' },
+    { upload_url: 'https://evil.test/' },
+    { prefix: 'avatars' },
+    { bucket: 'property-photos' },
+    { date: '1999-01-01' },
+    { random: 'deadbeef' },
+    { listing_id: LISTING_ID, path: 'reels/../../etc/passwd' },
+  ];
+  const expected = `reels/2026-09-18-${RANDOM_ID}.mp4`;
+  for (const extra of attempts) {
+    const h = harness();
+    const r = await h.call({ action: 'reel-upload-url', listing_id: LISTING_ID, ...extra });
+    assert.equal(r.status, 200, JSON.stringify(extra));
+    assert.equal(r.body.path, expected, `body ${JSON.stringify(extra)} changed the path`);
+    assert.deepEqual(h.storage.signed, [expected], `body ${JSON.stringify(extra)} was signed`);
+    assert.deepEqual(h.storage.buckets, [REELS_BUCKET]);
+  }
+});
+
+test('REELUP the signed URL targets that one path and no other', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'reel-upload-url', listing_id: LISTING_ID });
+  // One signature request, for a path inside reels/ that matches the name rule.
+  assert.equal(h.storage.signed.length, 1);
+  const [prefix, ...rest] = h.storage.signed[0].split('/');
+  assert.equal(prefix, REELS_PREFIX);
+  assert.equal(rest.length, 1, 'the path must be one flat segment under reels/');
+  assert.ok(REEL_NAME_RE.test(rest[0]), `${rest[0]} is not a reel name`);
+  // And the URL the caller got back is for exactly that path.
+  assert.ok(r.body.upload_url.includes(h.storage.signed[0]));
+  assert.ok(r.body.public_url.includes(h.storage.signed[0]));
+});
+
+test('REELUP reelPath is date + random only, and rejects a suffix that would escape', () => {
+  const day = new Date('2026-01-05T23:59:59.000Z');
+  assert.equal(reelPath(day, () => 'abcdef0123456789'), 'reels/2026-01-05-abcdef0123456789.mp4');
+  // Upper case and punctuation are stripped, not passed through.
+  assert.equal(reelPath(day, () => 'AB-CD/EF..0123'), 'reels/2026-01-05-abcdef0123.mp4');
+  // A suffix that sanitises away entirely must not yield `reels/2026-01-05-.mp4`.
+  for (const bad of ['', '../', '///', '!!']) {
+    assert.throws(() => reelPath(day, () => bad), `reelPath accepted ${JSON.stringify(bad)}`);
+  }
+});
+
+test('REELUP defaultRandomId is 16 hex characters and does not repeat', () => {
+  const seen = new Set<string>();
+  for (let i = 0; i < 200; i++) {
+    const id = defaultRandomId();
+    assert.match(id, /^[0-9a-f]{16}$/);
+    seen.add(id);
+  }
+  assert.equal(seen.size, 200, 'defaultRandomId produced a collision in 200 draws');
+});
+
+test('REELUP a malformed listing_id is rejected BEFORE the database is touched', async () => {
+  // The shape check is its own control: a string that is not a uuid must never
+  // reach the query, even though the existence check would also turn it away.
+  const malformed: unknown[] = [
+    undefined, null, '', '   ', 'not-a-uuid', 123, {}, [], true,
+    '11110000-2222-4222-8222-33333333333',          // too short
+    '11110000-2222-4222-8222-3333333333333',        // too long
+    '11110000-2222-4222-8222-33333333333g',         // not hex
+    '11110000222242228222333333333333',             // no dashes
+    "11110000-2222-4222-8222-333333333333' or '1",  // injection-shaped
+    '../../avatars/x',
+  ];
+  for (const id of malformed) {
+    const h = harness();
+    const r = await h.call({ action: 'reel-upload-url', listing_id: id });
+    assert.deepEqual([r.status, r.body], [400, { error: 'Invalid listing_id' }], JSON.stringify(id));
+    assert.equal(h.db.calls.length, 0, `${JSON.stringify(id)} reached the database`);
+    assert.deepEqual(h.storage.signed, [], `${JSON.stringify(id)} got a signed URL`);
+    assert.deepEqual(h.storage.buckets, []);
+  }
+});
+
+test('REELUP a listing_id is trimmed before it is validated', async () => {
+  // asString() trims, so a value that arrives padded is still the same uuid.
+  const h = harness();
+  const r = await h.call({ action: 'reel-upload-url', listing_id: `  ${LISTING_ID}\n` });
+  assert.equal(r.status, 200);
+  assert.deepEqual(h.db.calls.map((c) => c.filters).flat(), [`id=${LISTING_ID}`]);
+});
+
+test('REELUP a well-formed but unknown listing_id gets no URL either', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'reel-upload-url', listing_id: '99990000-2222-4222-8222-333333333333' });
+  assert.deepEqual([r.status, r.body], [400, { error: 'Unknown listing' }]);
+  // It DID ask the view — that is the difference from a malformed id.
+  assert.deepEqual(h.db.calls.map((c) => c.table), [LISTINGS_VIEW]);
+  assert.deepEqual(h.storage.signed, []);
+  assert.deepEqual(h.storage.buckets, []);
+});
+
+test('REELUP a storage or database failure is a generic 500 that echoes nothing', async () => {
+  for (const breaks of ['failSign', 'noPublicUrl', 'db'] as const) {
+    const h = harness();
+    if (breaks === 'db') h.db.failListings = true;
+    else h.storage[breaks] = true;
+    const r = await h.call({ action: 'reel-upload-url', listing_id: LISTING_ID });
+    assert.deepEqual([r.status, r.body], [500, { error: 'Request failed' }], breaks);
+    assert.equal(r.text.includes('blew up'), false, breaks);
+    assert.equal(r.text.includes('password'), false, breaks);
+  }
+});
+
+test('REELUP without a storage client the action fails closed', async () => {
+  const db = new FakeDb();
+  const handler = createHandler({ db, secret: SECRET, now: () => NOW });
+  const res = await handler(new Request('https://fn.local/n8n-data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-n8n-secret': SECRET, 'x-forwarded-for': '10.0.0.1' },
+    body: JSON.stringify({ action: 'reel-upload-url', listing_id: LISTING_ID }),
+  }));
+  assert.equal(res.status, 500);
+  assert.deepEqual(await res.json(), { error: 'Request failed' });
+});
+
+// ── reel-cleanup ─────────────────────────────────────────────────────────────
+
+test('CLEANUP deletes only reels strictly older than three days', async () => {
+  const h = harness();
+  h.storage.objects = [
+    storedReel(`2026-09-18-${'a'.repeat(16)}.mp4`, 0),                        // today
+    storedReel(`2026-09-17-${'b'.repeat(16)}.mp4`, 1),
+    storedReel(`2026-09-16-${'c'.repeat(16)}.mp4`, 2.99),                     // just under 3d
+    storedReel(`2026-09-15-${'d'.repeat(16)}.mp4`, 3),                        // exactly 3d
+    storedReel(`2026-09-15-${'e'.repeat(16)}.mp4`, 3.01),                     // just over
+    storedReel(`2026-09-10-${'f'.repeat(16)}.mp4`, 9),
+  ];
+  const r = await h.call({ action: 'reel-cleanup' });
+
+  assert.equal(r.status, 200);
+  assert.equal(r.body.deleted, 2);
+  assert.equal(r.body.scanned, 6);
+  assert.deepEqual(h.storage.removed.sort(), [
+    `reels/2026-09-10-${'f'.repeat(16)}.mp4`,
+    `reels/2026-09-15-${'e'.repeat(16)}.mp4`,
+  ]);
+  // Everything younger than the cut-off survived.
+  assert.equal(h.storage.objects.length, 4);
+});
+
+test('CLEANUP never touches an object outside reels/', async () => {
+  const h = harness();
+  h.storage.objects = [
+    storedReel(`2026-09-01-${'a'.repeat(16)}.mp4`, 19),                       // old, in reels/
+    storedReel(`2026-09-01-${'b'.repeat(16)}.mp4`, 19, 'avatars'),            // old, elsewhere
+    storedReel(`2026-09-01-${'c'.repeat(16)}.mp4`, 19, 'property-photos'),
+    storedReel(`2026-09-01-${'d'.repeat(16)}.mp4`, 19, 'reels/nested'),       // old, nested deeper
+  ];
+  const r = await h.call({ action: 'reel-cleanup' });
+
+  assert.equal(r.body.deleted, 1);
+  assert.deepEqual(h.storage.removed, [`reels/2026-09-01-${'a'.repeat(16)}.mp4`]);
+  // The prefix was pinned on the way in, too.
+  assert.ok(h.storage.listed.length > 0);
+  for (const l of h.storage.listed) assert.equal(l.prefix, REELS_PREFIX);
+  assert.deepEqual(h.storage.buckets, [REELS_BUCKET]);
+});
+
+test('CLEANUP skips folders, placeholders and anything not reel-shaped', async () => {
+  const h = harness();
+  const old = new Date(NOW.getTime() - 30 * 86_400_000).toISOString();
+  h.storage.objects = [
+    { id: null, fullPath: 'reels/subfolder', created_at: old },                  // a folder
+    { id: 'p', fullPath: 'reels/.emptyFolderPlaceholder', created_at: old },
+    { id: 'q', fullPath: 'reels/../avatars/escape.mp4', created_at: old },
+    { id: 'r', fullPath: 'reels/nested/deep.mp4', created_at: old },
+    { id: 's', fullPath: 'reels/no-date-here.mp4', created_at: old },
+    { id: 't', fullPath: 'reels/2026-09-01-ok0123456789abcd.txt', created_at: old },
+    { id: 'u', fullPath: `reels/2026-09-01-${'a'.repeat(16)}.mp4`, created_at: null },  // no timestamp
+    { id: 'v', fullPath: `reels/2026-09-01-${'b'.repeat(16)}.mp4`, created_at: 'not a date' },
+    { id: 'w', fullPath: `reels/2026-09-01-${'c'.repeat(16)}.mp4`, created_at: old },   // the only one
+  ];
+  const r = await h.call({ action: 'reel-cleanup' });
+
+  assert.equal(r.body.deleted, 1);
+  assert.deepEqual(h.storage.removed, [`reels/2026-09-01-${'c'.repeat(16)}.mp4`]);
+});
+
+test('CLEANUP isExpiredReel is false for every not-strictly-expired case', () => {
+  const name = `2026-09-01-${'a'.repeat(16)}.mp4`;
+  const old = new Date(NOW.getTime() - 30 * 86_400_000).toISOString();
+  const ok = { id: 'x', name, created_at: old };
+  assert.equal(isExpiredReel(ok, NOW), true);
+  for (const bad of [
+    null, undefined, 'a string', 42,
+    { ...ok, id: null }, { ...ok, id: '' }, { ...ok, id: 7 },
+    { ...ok, name: `reels/${name}` }, { ...ok, name: `../${name}` }, { ...ok, name: undefined },
+    { ...ok, name: name.replace('.mp4', '.mov') },
+    { ...ok, created_at: undefined }, { ...ok, created_at: 'soon' },
+    // exactly at the boundary is not "older than"
+    { ...ok, created_at: new Date(NOW.getTime() - REEL_RETENTION_DAYS * 86_400_000).toISOString() },
+    // and a future timestamp is certainly not expired
+    { ...ok, created_at: new Date(NOW.getTime() + 86_400_000).toISOString() },
+  ]) {
+    assert.equal(isExpiredReel(bad as Row, NOW), false, JSON.stringify(bad));
+  }
+});
+
+test('CLEANUP pages through a full bucket and stops when a page is short', async () => {
+  const h = harness();
+  const total = CLEANUP_PAGE_SIZE * 2 + 5;
+  h.storage.objects = Array.from({ length: total }, (_, i) =>
+    storedReel(`2026-09-01-${String(i).padStart(16, '0')}.mp4`, 30));
+  const r = await h.call({ action: 'reel-cleanup' });
+
+  assert.equal(r.body.scanned, total);
+  assert.equal(r.body.deleted, total);
+  assert.deepEqual(h.storage.listed.map((l) => l.offset),
+    [0, CLEANUP_PAGE_SIZE, CLEANUP_PAGE_SIZE * 2]);
+  assert.equal(h.storage.removed.length, total);
+  assert.equal(h.storage.objects.length, 0);
+});
+
+test('CLEANUP an empty bucket is a 200 with deleted: 0 and no removal call', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'reel-cleanup' });
+  assert.deepEqual([r.status, r.body.deleted, r.body.scanned], [200, 0, 0]);
+  assert.deepEqual(h.storage.removed, []);
+});
+
+test('CLEANUP a listing or removal failure is a generic 500 and deletes nothing more', async () => {
+  for (const breaks of ['failList', 'failRemove'] as const) {
+    const h = harness();
+    h.storage.objects = [storedReel(`2026-09-01-${'a'.repeat(16)}.mp4`, 30)];
+    h.storage[breaks] = true;
+    const r = await h.call({ action: 'reel-cleanup' });
+    assert.deepEqual([r.status, r.body], [500, { error: 'Request failed' }], breaks);
+    assert.equal(r.text.includes('blew up'), false, breaks);
+    assert.equal(h.storage.objects.length, 1, `${breaks}: an object was deleted anyway`);
+  }
+});
+
+test('CLEANUP reads no database table at all', async () => {
+  const h = harness();
+  h.storage.objects = [storedReel(`2026-09-01-${'a'.repeat(16)}.mp4`, 30)];
+  await h.call({ action: 'reel-cleanup' });
+  assert.deepEqual(h.db.calls, [], 'reel-cleanup touched a data source');
+});
+
+test('CLEANUP the reel actions are behind the same gate and the same throttle', async () => {
+  for (const body of [{ action: 'reel-cleanup' }, { action: 'reel-upload-url', listing_id: LISTING_ID }]) {
+    // Wrong secret → the same generic 401, with no bucket touched.
+    const h = harness();
+    const r = await h.call(body, { 'x-n8n-secret': 'wrong' });
+    assert.deepEqual([r.status, r.body], [401, { error: 'Unauthorized' }], JSON.stringify(body));
+    assert.deepEqual(h.storage.buckets, [], JSON.stringify(body));
+    assert.deepEqual(h.storage.signed, []);
+    assert.deepEqual(h.storage.removed, []);
+
+    // And the throttle applies: 10 failures from one client → 429 even when
+    // the secret is then correct.
+    const t = harness();
+    const ip = { 'x-forwarded-for': '203.0.113.7' };
+    for (let i = 0; i < MAX_FAILURES; i++) {
+      await t.call(body, { ...ip, 'x-n8n-secret': 'wrong' });
+    }
+    const blocked = await t.call(body, { ...ip, 'x-n8n-secret': SECRET });
+    assert.deepEqual([blocked.status, blocked.body], [429, { error: 'Too many attempts' }], JSON.stringify(body));
+    assert.deepEqual(t.storage.buckets, [], JSON.stringify(body));
+  }
+});
+
+test('CLEANUP the log line carries counts only, never a path or an upload URL', async () => {
+  const h = harness();
+  h.storage.objects = [storedReel(`2026-09-01-${'a'.repeat(16)}.mp4`, 30)];
+  await h.call({ action: 'reel-cleanup' });
+  await h.call({ action: 'reel-upload-url', listing_id: LISTING_ID });
+  const joined = h.logs.join('\n');
+  assert.ok(joined.includes('"action":"reel-cleanup"'));
+  assert.ok(joined.includes('"deleted":1'));
+  assert.equal(joined.includes('faketoken'), false, 'the upload token reached the log');
+  assert.equal(joined.includes('reels/'), false, 'an object path reached the log');
+  assert.equal(joined.includes(SECRET), false);
+});
+
+test('REELS the bucket, prefix and retention are pinned to their literal values', () => {
+  // These four are a contract with things outside this file: the bucket and
+  // prefix must match 20260920120000_storage_social_videos.sql, the retention
+  // is what that migration's comment promises, and the URL life is the ceiling
+  // the design allows. Asserting them symbolically elsewhere would let a
+  // rename sail through every other test in this file.
+  assert.equal(REELS_BUCKET, 'social-videos');
+  assert.equal(REELS_PREFIX, 'reels');
+  assert.equal(REEL_RETENTION_DAYS, 3);
+  assert.ok(UPLOAD_URL_TTL_SECONDS > 0 && UPLOAD_URL_TTL_SECONDS <= 7200,
+    `upload URLs must live at most two hours, got ${UPLOAD_URL_TTL_SECONDS}s`);
 });

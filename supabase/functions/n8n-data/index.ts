@@ -15,6 +15,10 @@ const supabase = createClient(
 
 const handler = createHandler({
   db: supabase,
+  // The same service-role client, narrowed to the Storage surface the two reel
+  // actions use. It never leaves this function either: what goes out is a
+  // signed upload URL for one object path this function picked.
+  storage: supabase.storage,
   secret: Deno.env.get("N8N_DATA_SECRET"),
   log: (event, fields) => {
     console.log(`[n8n-data] ${event}`, fields ? JSON.stringify(fields) : "");

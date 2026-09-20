@@ -6,6 +6,13 @@
 // already shows. Guest and host contact data is out of scope for this
 // function — not "filtered out", but never selected in the first place.
 //
+// Phase 2 adds automated Instagram Reels. The video is rendered by a GitHub
+// Actions job in a separate private repo, which holds NO Supabase credential:
+// it receives one single-use signed upload URL per run and PUTs the MP4 to it.
+// `reel-upload-url` mints that URL for a path this function chooses, and
+// `reel-cleanup` deletes reels older than three days. Both touch exactly one
+// bucket (social-videos) under exactly one prefix (reels/).
+//
 // SECURITY
 // - n8n holds NO database credential and NOT the service-role key: it sends an
 //   HTTP secret and gets shaped JSON back. The service-role client stays inside
@@ -19,10 +26,11 @@
 // - Failed attempts are throttled at 10 per client per 15 minutes → 429, using
 //   the same admin_auth_failures table but under a SEPARATE KEY NAMESPACE.
 //   See clientBucket() for why that matters.
-// - Only two actions exist, both on an explicit whitelist, both reading
-//   purpose-built PII-free sources: marketing_weekly_stats (aggregates) and
-//   public_properties (the same view the public site reads). No base table is
-//   ever queried here.
+// - Four actions exist, all on an explicit whitelist. The two that read data
+//   read purpose-built PII-free sources only: marketing_weekly_stats
+//   (aggregates) and public_properties (the same view the public site reads).
+//   No base table is ever queried here. The two reel actions read nothing but
+//   a listing id and touch nothing but the social-videos bucket.
 // - The listing description is never returned as written: short_description
 //   strips e-mails, phones, URLs, domains and @handles from it first.
 // - Database errors are never echoed; the caller gets a generic 500.
@@ -36,15 +44,44 @@ type Row = Record<string, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = { from: (table: string) => any };
 
+/**
+ * The slice of the service-role Storage client the reel actions use. Narrowed
+ * to four methods so the fake in handler.test.ts is the whole surface: nothing
+ * here can reach a bucket or a method this type does not name.
+ */
+export interface StorageBucket {
+  createSignedUploadUrl: (path: string) => Promise<{
+    data: { signedUrl: string; token?: string; path?: string } | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    error: any;
+  }>;
+  getPublicUrl: (path: string) => { data: { publicUrl: string } };
+  list: (prefix: string, options: { limit: number; offset: number }) => Promise<{
+    data: Row[] | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    error: any;
+  }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  remove: (paths: string[]) => Promise<{ data: Row[] | null; error: any }>;
+}
+export type Storage = { from: (bucket: string) => StorageBucket };
+
 export interface N8nDataDeps {
   /** Service-role Supabase client. Never leaves this function. */
   db: Db;
+  /** Service-role Storage client, for the two reel actions only. */
+  storage?: Storage;
   /** Server-side N8N_DATA_SECRET. Empty/undefined denies every request. */
   secret: string | undefined;
   /** Diagnostics: action names and counts only, never payloads. */
   log?: (event: string, fields?: Record<string, string | number | boolean>) => void;
   /** Injectable clock, so the rotation and generated_at are testable. */
   now?: () => Date;
+  /**
+   * Injectable randomness for the reel object name. The caller never gets to
+   * influence it — see reelPath(). Only handler.test.ts ever passes one.
+   */
+  randomId?: () => string;
 }
 
 export const FUNCTION_NAME = 'n8n-data';
@@ -54,6 +91,41 @@ export const SITE_ORIGIN = 'https://rentcottage.ge';
 
 /** Ceiling on how many listings one social call may take. */
 export const MAX_LISTINGS = 10;
+
+// ── Reels ────────────────────────────────────────────────────────────────────
+//
+// Phase 2: two Instagram Reels a week, rendered by a GitHub Actions job in a
+// separate private repo. GitHub never holds a Supabase key — it is handed one
+// single-use signed upload URL per run and PUTs the finished MP4 to it.
+//
+// The whole security argument rests on the PATH being chosen here:
+// `reel-upload-url` takes a listing id and nothing else, and the signed URL it
+// mints is scoped by Storage to that one object name. A caller (n8n, or
+// anything that got hold of the n8n secret) cannot ask for a path, cannot
+// overwrite an existing object, and cannot reach another bucket.
+
+export const REELS_BUCKET = 'social-videos';
+/** Every reel lives directly under this prefix. Nothing else is ever deleted. */
+export const REELS_PREFIX = 'reels';
+/** Supabase mints signed upload URLs with a two-hour life. Documented, not set. */
+export const UPLOAD_URL_TTL_SECONDS = 7200;
+/** A reel is published within minutes; after three days it is litter. */
+export const REEL_RETENTION_DAYS = 3;
+/** Objects examined per cleanup run: 20 pages of 100. */
+export const CLEANUP_PAGE_SIZE = 100;
+export const CLEANUP_MAX_PAGES = 20;
+/** Storage takes a bounded list of names per delete call. */
+export const CLEANUP_DELETE_BATCH = 100;
+
+/**
+ * The object name a reel may have: one flat segment of safe characters ending
+ * in .mp4. This is both what reelPath() produces and what reel-cleanup will
+ * agree to delete, so a name that somehow arrived by another route — a slash,
+ * a "..", a leading dot — is never passed to remove().
+ */
+export const REEL_NAME_RE = /^\d{4}-\d{2}-\d{2}-[a-z0-9]{8,32}\.mp4$/;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Exactly the listing columns a social post needs. This list is the second
@@ -264,7 +336,82 @@ export function displayName(first: unknown, initial: unknown): string {
   return i ? `${f} ${i[0].toUpperCase()}.` : f;
 }
 
-type Action = (body: Row, deps: Required<Pick<N8nDataDeps, 'db' | 'now'>>) => Promise<Row>;
+// ── Reel helpers ─────────────────────────────────────────────────────────────
+
+/** UTC calendar date, so the path sorts and reads the same wherever it is run. */
+function isoDate(now: Date): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/**
+ * The object path for a new reel: `reels/<UTC date>-<random>.mp4`.
+ *
+ * Note what is NOT an argument: anything from the request body. The date comes
+ * from the injected clock and the suffix from the injected RNG, so the only way
+ * to change the path is to change this function. The result is asserted against
+ * REEL_NAME_RE before it is used, which makes a future edit that let a caller's
+ * string in fail loudly instead of quietly minting a URL for `../avatars/x`.
+ */
+export function reelPath(now: Date, randomId: () => string): string {
+  const suffix = String(randomId()).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 32);
+  const name = `${isoDate(now)}-${suffix}.mp4`;
+  if (!REEL_NAME_RE.test(name)) throw new HttpError(500, 'Request failed');
+  return `${REELS_PREFIX}/${name}`;
+}
+
+/** 16 hex characters from the platform CSPRNG (Deno and Node both have it). */
+export function defaultRandomId(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Whether one entry returned by `list('reels', …)` may be deleted.
+ *
+ * Three independent conditions, each of which alone would prevent a mistake:
+ *   1. it is an object, not a folder or Storage's `.emptyFolderPlaceholder`
+ *      (folders come back with a null id);
+ *   2. its name is a single reel-shaped segment — no slash, no `..`, so the
+ *      path handed to remove() cannot climb out of `reels/`;
+ *   3. it is strictly older than REEL_RETENTION_DAYS, by its own created_at.
+ *      An unparseable or missing created_at is treated as "too young", because
+ *      the safe failure here is to keep a file, not to delete one.
+ */
+export function isExpiredReel(entry: Row, now: Date): boolean {
+  if (!entry || typeof entry !== 'object') return false;
+  if (typeof entry.id !== 'string' || entry.id === '') return false;
+  const name = typeof entry.name === 'string' ? entry.name : '';
+  if (!REEL_NAME_RE.test(name)) return false;
+  const created = Date.parse(String(entry.created_at ?? ''));
+  if (!Number.isFinite(created)) return false;
+  return now.getTime() - created > REEL_RETENTION_DAYS * 86_400_000;
+}
+
+/**
+ * How many distinct photos a listing has: the cover plus photo_urls, trimmed
+ * and de-duplicated, because the cover is usually also the first of the
+ * photo_urls and would otherwise be counted twice. This is the number
+ * `min_photos` filters on, and it is the number the renderer actually has to
+ * work with.
+ */
+export function photoCount(row: Row): number {
+  const urls = [
+    row.cover_photo_url,
+    ...(Array.isArray(row.photo_urls) ? row.photo_urls : []),
+  ];
+  const seen = new Set<string>();
+  for (const u of urls) {
+    const s = asString(u);
+    if (s) seen.add(s);
+  }
+  return seen.size;
+}
+
+type Action = (
+  body: Row,
+  deps: Required<Pick<N8nDataDeps, 'db' | 'now' | 'randomId'>> & { storage?: Storage },
+) => Promise<Row>;
 
 /**
  * The keys weekly-report publishes, in order. The view is the first boundary;
@@ -303,6 +450,19 @@ const listingsForSocial: Action = async (body, { db, now }) => {
   const region = body.region === undefined ? null : asString(body.region);
   if (body.region !== undefined && !region) throw new HttpError(400, 'Invalid region');
 
+  // A reel needs several photos to be worth rendering; a listing with one
+  // picture makes a slideshow of the same frame. The count is computed here
+  // rather than in SQL because "how many photos" means the de-duplicated union
+  // of the cover and photo_urls — see photoCount().
+  let minPhotos = 0;
+  if (body.min_photos !== undefined) {
+    if (typeof body.min_photos !== 'number' || !Number.isInteger(body.min_photos)
+        || body.min_photos < 0 || body.min_photos > 50) {
+      throw new HttpError(400, 'Invalid min_photos');
+    }
+    minPhotos = body.min_photos;
+  }
+
   let excludeIds: string[] = [];
   if (body.exclude_ids !== undefined) {
     if (!Array.isArray(body.exclude_ids) || body.exclude_ids.length > 200
@@ -320,7 +480,8 @@ const listingsForSocial: Action = async (body, { db, now }) => {
 
   const excluded = new Set(excludeIds);
   const candidates = ((data ?? []) as Row[])
-    .filter((r) => typeof r.id === 'string' && !excluded.has(r.id));
+    .filter((r) => typeof r.id === 'string' && !excluded.has(r.id))
+    .filter((r) => photoCount(r) >= minPhotos);
 
   const seed = rotationSeed(now());
   const listings = pickRotating(candidates as { id: string }[], count, seed).map((row) => {
@@ -352,9 +513,90 @@ const listingsForSocial: Action = async (body, { db, now }) => {
   };
 };
 
+/**
+ * c) One single-use signed upload URL for one reel.
+ *
+ * The caller says WHICH LISTING the reel is for and nothing else. The listing
+ * id is validated as a uuid and checked against public_properties — not
+ * because the path depends on it (it does not), but so that this action cannot
+ * be used as an open URL-minting oracle: no listing, no URL.
+ *
+ * `upsert` is deliberately not enabled. A signed upload URL for a path that
+ * already holds an object is refused by Storage, so a leaked URL cannot be
+ * replayed to replace a published video.
+ */
+const reelUploadUrl: Action = async (body, { db, now, randomId, storage }) => {
+  if (!storage) throw new HttpError(500, 'Request failed');
+
+  const listingId = asString(body.listing_id);
+  if (!listingId || !UUID_RE.test(listingId)) throw new HttpError(400, 'Invalid listing_id');
+
+  const { data, error } = await db.from(LISTINGS_VIEW).select('id').eq('id', listingId).limit(1);
+  if (error) throw new HttpError(500, 'Request failed');
+  if (!Array.isArray(data) || data.length === 0) throw new HttpError(400, 'Unknown listing');
+
+  const path = reelPath(now(), randomId);
+  const bucket = storage.from(REELS_BUCKET);
+  const signed = await bucket.createSignedUploadUrl(path);
+  if (signed.error || !signed.data?.signedUrl) throw new HttpError(500, 'Request failed');
+
+  const publicUrl = bucket.getPublicUrl(path).data?.publicUrl;
+  if (typeof publicUrl !== 'string' || publicUrl === '') throw new HttpError(500, 'Request failed');
+
+  return {
+    generated_at: now().toISOString(),
+    path,
+    upload_url: signed.data.signedUrl,
+    public_url: publicUrl,
+    expires_in: UPLOAD_URL_TTL_SECONDS,
+  };
+};
+
+/**
+ * d) Delete reels older than REEL_RETENTION_DAYS.
+ *
+ * Scoped three times over: `list` is asked for the `reels` prefix only, every
+ * entry must satisfy isExpiredReel(), and the path handed to remove() is
+ * rebuilt here as `reels/<name>` from a name that matched REEL_NAME_RE. There
+ * is no code path in which a string from the request body reaches remove().
+ */
+const reelCleanup: Action = async (_body, { now, storage }) => {
+  if (!storage) throw new HttpError(500, 'Request failed');
+  const bucket = storage.from(REELS_BUCKET);
+  const at = now();
+
+  const doomed: string[] = [];
+  let scanned = 0;
+  for (let page = 0; page < CLEANUP_MAX_PAGES; page++) {
+    const { data, error } = await bucket.list(REELS_PREFIX, {
+      limit: CLEANUP_PAGE_SIZE,
+      offset: page * CLEANUP_PAGE_SIZE,
+    });
+    if (error) throw new HttpError(500, 'Request failed');
+    const entries = (data ?? []) as Row[];
+    scanned += entries.length;
+    for (const entry of entries) {
+      if (isExpiredReel(entry, at)) doomed.push(`${REELS_PREFIX}/${entry.name}`);
+    }
+    if (entries.length < CLEANUP_PAGE_SIZE) break;
+  }
+
+  let deleted = 0;
+  for (let i = 0; i < doomed.length; i += CLEANUP_DELETE_BATCH) {
+    const batch = doomed.slice(i, i + CLEANUP_DELETE_BATCH);
+    const { error } = await bucket.remove(batch);
+    if (error) throw new HttpError(500, 'Request failed');
+    deleted += batch.length;
+  }
+
+  return { generated_at: at.toISOString(), scanned, deleted };
+};
+
 export const ACTIONS: Record<string, Action> = {
   'weekly-report': weeklyReport,
   'listings-for-social': listingsForSocial,
+  'reel-upload-url': reelUploadUrl,
+  'reel-cleanup': reelCleanup,
 };
 
 const ALLOWED_ORIGIN_RE = /^https:\/\/(www\.)?rentcottage\.ge$/;
@@ -374,6 +616,7 @@ function corsFor(req: Request): Record<string, string> {
 export function createHandler(deps: N8nDataDeps): (req: Request) => Promise<Response> {
   const log = deps.log ?? (() => {});
   const now = deps.now ?? (() => new Date());
+  const randomId = deps.randomId ?? defaultRandomId;
 
   return async (req: Request): Promise<Response> => {
     const cors = corsFor(req);
@@ -410,8 +653,16 @@ export function createHandler(deps: N8nDataDeps): (req: Request) => Promise<Resp
     if (!run) return json({ error: 'Unsupported action' }, 400);
 
     try {
-      const result = await run(body, { db: deps.db, now });
-      log('ok', { action, returned: typeof result.returned === 'number' ? result.returned : 0 });
+      const result = await run(body, { db: deps.db, now, randomId, storage: deps.storage });
+      const fields: Record<string, string | number | boolean> = {
+        action,
+        returned: typeof result.returned === 'number' ? result.returned : 0,
+      };
+      // Counts only. The path and the signed URL are never logged: the URL
+      // carries its own upload token, so a log line holding it would be a
+      // credential at rest.
+      if (typeof result.deleted === 'number') fields.deleted = result.deleted;
+      log('ok', fields);
       return json(result);
     } catch (e) {
       if (e instanceof HttpError) {

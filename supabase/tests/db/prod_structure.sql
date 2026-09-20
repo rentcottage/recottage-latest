@@ -211,7 +211,11 @@ grant usage on schema storage to anon, authenticated, service_role;
 create table storage.buckets (
   id text primary key,
   name text not null,
-  public boolean default false not null
+  public boolean default false not null,
+  -- Present in real Supabase storage.buckets; the social-videos migration
+  -- declares both, so the stand-in has to carry them for the test to run.
+  file_size_limit bigint,
+  allowed_mime_types text[]
 );
 create table storage.objects (
   id uuid default gen_random_uuid() not null primary key,
