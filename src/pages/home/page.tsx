@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../components/feature/Header';
 import CinematicHero from '../../components/feature/CinematicHero';
 import PropertyCard from '../../components/feature/PropertyCard';
@@ -151,22 +151,22 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[18px]">
           {[
-            // `region` (when set) filters by region — the same filter as the search
-            // page checkbox, so a cottage counts as Racha even when its saved
-            // location only names the village. Kazbegi is a town, not a region,
-            // so it stays a plain location search.
-            { name: 'Adjara', region: 'Adjara', nameKey: 'home.regionAdjara', tagKey: 'home.regionAdjaraTag', img: '/redesign/region-adjara.jpg' },
-            { name: 'Racha', region: 'Racha-Lechkhumi', nameKey: 'home.regionRacha', tagKey: 'home.regionRachaTag', img: '/redesign/region-racha.jpg' },
-            { name: 'Kakheti', region: 'Kakheti', nameKey: 'home.regionKakheti', tagKey: 'home.regionKakhetiTag', img: '/redesign/region-kakheti.jpg' },
-            { name: 'Kazbegi', nameKey: 'home.regionKazbegi', tagKey: 'home.regionKazbegiTag', img: '/redesign/region-kazbegi.jpg' },
-          ].map((region: { name: string; region?: string; nameKey: string; tagKey: string; img: string }) => (
-            <button
+            // These now point at the /cottages/<slug> landing pages instead of a
+            // /search?regions=… query. Three reasons: the landing page is a real
+            // indexable document with its own copy and its own listings, a
+            // <Link> is an <a href> that a crawler can follow while the old
+            // onClick button was invisible to one, and the slug is the same
+            // canonical key the search filter uses, so the destination shows the
+            // same cottages it always did. Kazbegi is a town, not a region — it
+            // has a town landing page.
+            { name: 'Adjara', slug: 'adjara', nameKey: 'home.regionAdjara', tagKey: 'home.regionAdjaraTag', img: '/redesign/region-adjara.jpg' },
+            { name: 'Racha', slug: 'racha-lechkhumi', nameKey: 'home.regionRacha', tagKey: 'home.regionRachaTag', img: '/redesign/region-racha.jpg' },
+            { name: 'Kakheti', slug: 'kakheti', nameKey: 'home.regionKakheti', tagKey: 'home.regionKakhetiTag', img: '/redesign/region-kakheti.jpg' },
+            { name: 'Kazbegi', slug: 'kazbegi', nameKey: 'home.regionKazbegi', tagKey: 'home.regionKazbegiTag', img: '/redesign/region-kazbegi.jpg' },
+          ].map((region: { name: string; slug: string; nameKey: string; tagKey: string; img: string }) => (
+            <Link
               key={region.name}
-              onClick={() => navigate(
-                region.region
-                  ? `/search?regions=${encodeURIComponent(region.region)}`
-                  : `/search?location=${encodeURIComponent(region.name)}`
-              )}
+              to={`/cottages/${region.slug}`}
               className="group relative rounded-card overflow-hidden h-44 md:h-52 flex items-end text-left p-4 shadow-card hover:-translate-y-1 transition-transform duration-200 cursor-pointer"
               style={{ backgroundImage: `url('${region.img}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             >
@@ -175,7 +175,7 @@ export default function HomePage() {
                 <span className="block text-lg md:text-[19px] font-extrabold">{t(region.nameKey)}</span>
                 <span className="block text-xs md:text-[13px] opacity-90">{t(region.tagKey)}</span>
               </span>
-            </button>
+            </Link>
           ))}
         </div>
       </section>

@@ -3,6 +3,22 @@ import { Link } from 'react-router-dom';
 import ContactModal from './ContactModal';
 import CancellationModal from './CancellationModal';
 import { useT } from '../../i18n';
+import { localizePlace } from '../../lib/locationNormalizer';
+
+/**
+ * The region landing pages linked from every page of the site.
+ *
+ * Hard-coded rather than derived, because the footer has no listing data and
+ * should not fetch any to render. They are the eight regions that had enough
+ * cottages to earn a page; if one ever drops below the threshold its page is
+ * not built and this link lands on /cottages/<slug>, which is still a 200 and
+ * still routes — the client page shows a link back to search rather than a
+ * dead end. Worth re-checking when the catalogue changes shape.
+ */
+const FOOTER_REGIONS = [
+  'mtskheta-mtianeti', 'racha-lechkhumi', 'adjara', 'samtskhe-javakheti',
+  'kakheti', 'imereti', 'kvemo-kartli', 'svaneti',
+] as const;
 
 /**
  * Shared dark footer — the "new look" mockup design. Self-contained: it owns its
@@ -11,7 +27,7 @@ import { useT } from '../../i18n';
  * (real <a href> for crawlers + client-side navigation).
  */
 export default function Footer() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [showContact, setShowContact] = useState(false);
   const [showCancellation, setShowCancellation] = useState(false);
   const year = new Date().getFullYear();
@@ -56,6 +72,24 @@ export default function Footer() {
                 <Link to="/how-it-works" className={linkClass}>{t('footer.howItWorks')}</Link>
                 <Link to="/about-georgia" className={linkClass}>{t('footer.aboutGeorgia')}</Link>
                 <Link to="/sitemap" className={linkClass}>{t('footer.siteMap')}</Link>
+              </nav>
+            </div>
+
+            {/* Destinations — the /cottages/<slug> landing pages.
+                Every page in the site footer is a page every crawl reaches, so
+                these eight region hubs put the whole landing-page tree (they
+                each link down to their towns) two clicks from any URL. The
+                names are the canonical keys, localised for the reader; the
+                slugs are the same keys, which is why no translation is needed
+                to build the href. */}
+            <div>
+              <h4 className="text-white text-[14.5px] font-bold mb-3">{t('home.popularDestinations')}</h4>
+              <nav className="flex flex-col gap-2">
+                {FOOTER_REGIONS.map((slug) => (
+                  <Link key={slug} to={`/cottages/${slug}`} className={linkClass}>
+                    {localizePlace(slug.replace(/-/g, ' '), lang)}
+                  </Link>
+                ))}
               </nav>
             </div>
 

@@ -131,9 +131,30 @@ for (const e of experiences) {
   );
 }
 
+// --- landing pages -------------------------------------------------------
+// /cottages/<slug>, one per region, town and category with enough cottages.
+// The list comes from landing-groups.json, which `vite build` wrote using the
+// app's own matchers (see vite.config.ts) and scripts/prerender.mjs rendered
+// to HTML. Reading the same artifact is what keeps the files on disk and the
+// URLs in this file the same set. A missing artifact means a build without
+// landing pages, and they are simply absent here too.
+const landingPath = join(repoRoot, 'landing-groups.json');
+let landings = [];
+if (existsSync(landingPath)) {
+  const parsed = JSON.parse(readFileSync(landingPath, 'utf8'));
+  landings = Array.isArray(parsed.groups) ? parsed.groups : [];
+}
+for (const g of landings) {
+  // A region hub outranks a single town, which outranks a category facet.
+  const priority = g.kind === 'region' ? '0.8' : g.kind === 'city' ? '0.7' : '0.6';
+  lines.push(urlBlock(`${SITE}/cottages/${g.slug}`, today, 'weekly', priority));
+}
+
 lines.push('</urlset>', '');
 writeFileSync(outPath, lines.join('\n'), 'utf8');
 
+const total = staticRoutes.length + properties.length + experiences.length + landings.length;
 console.log(
-  `\nGenerated sitemap.xml: ${staticRoutes.length} static + ${properties.length} properties + ${experiences.length} experiences = ${staticRoutes.length + properties.length + experiences.length} URLs`,
+  `\nGenerated sitemap.xml: ${staticRoutes.length} static + ${properties.length} properties + ` +
+  `${experiences.length} experiences + ${landings.length} landing = ${total} URLs`,
 );

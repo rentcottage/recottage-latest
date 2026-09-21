@@ -39,6 +39,15 @@ import {
   listingRoute,
   loadEnv,
 } from './lib/seo.mjs';
+import {
+  georgianName,
+  landingBodyHtml,
+  landingDescription,
+  landingJsonLd,
+  landingOgImage,
+  landingTitle,
+} from './lib/landing.mjs';
+import { existsSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -56,6 +65,8 @@ const OG = DEFAULT_OG;
  * @property {string} [ogType]    og:type, when it is not the template's "website"
  * @property {string} [ogImage]   Absolute share image URL; defaults to the site card
  * @property {string} [ogImageAlt] Alt text for that image
+ * @property {string} [bodyHtml]  Crawler-visible markup injected into #root
+ * @property {object[]} [jsonLd]  Structured data emitted into the document
  */
 
 /** @type {Route[]} */
@@ -249,6 +260,26 @@ function patchHtml(template, route) {
     `<meta name="twitter:image" content="${image}" />`,
   );
 
+  // Structured data, in the SERVED html. Everywhere else on the site the
+  // JSON-LD is injected by SEO.tsx after React mounts, which a crawler that
+  // does not run JavaScript never sees.
+  if (route.jsonLd?.length) {
+    const blocks = route.jsonLd
+      .map((schema) => `  <script type="application/ld+json">${JSON.stringify(schema)}</script>`)
+      .join('\n');
+    html = html.replace('</head>', `${blocks}\n  </head>`);
+  }
+
+  // The crawler-visible body. It goes INSIDE #root, so React's first render
+  // replaces it wholesale and there is no duplicated markup left behind for a
+  // reader; a bot that never runs the bundle keeps the links and the copy.
+  if (route.bodyHtml) {
+    html = html.replace(
+      '<div id="root"></div>',
+      `<div id="root">\n${route.bodyHtml}\n  </div>`,
+    );
+  }
+
   return html;
 }
 
@@ -310,4 +341,87 @@ if (listings === null) {
   if (skipped > 0) {
     console.warn(`⚠ Skipped ${skipped} listing(s) with a missing id, title or location.`);
   }
+}
+
+// ── Landing pages ────────────────────────────────────────────────────────────
+//
+// /cottages/<slug>: one page per region, per town and per category with at
+// least three cottages. The grouping was done during `vite build` with the
+// app's own matchers and left in landing-groups.json — see vite.config.ts for
+// why it cannot be done here. This step only renders it.
+
+const LANDING_INDEX = join(repoRoot, 'landing-groups.json');
+
+if (!existsSync(LANDING_INDEX)) {
+  console.warn('\n⚠ landing-groups.json missing; skipping landing pages.');
+} else {
+  const { groups } = JSON.parse(readFileSync(LANDING_INDEX, 'utf8'));
+  const { enToKa, cityToRegion } = JSON.parse(
+    readFileSync(join(repoRoot, 'src/data/regions.json'), 'utf8'),
+  );
+
+  const bySlug = new Map(groups.map((g) => [g.slug, g]));
+  const regions = groups.filter((g) => g.kind === 'region');
+  const cities = groups.filter((g) => g.kind === 'city');
+  const categories = groups.filter((g) => g.kind === 'category');
+  const nameOf = (g) => georgianName(g.key, enToKa);
+  const linkOf = (g) => ({ slug: g.slug, name: nameOf(g) });
+
+  /** The region page for a city, when that region has a page of its own. */
+  const regionPageForCity = (cityKey) => {
+    const regionKey = cityToRegion[cityKey];
+    if (!regionKey) return null;
+    const g = bySlug.get(regionKey.replace(/\s+/g, '-'));
+    return g && g.kind === 'region' ? g : null;
+  };
+
+  let landingWritten = 0;
+  for (const group of groups) {
+    const displayName = nameOf(group);
+
+    // Region pages are hubs: they link down to every town page inside them.
+    // Town pages link back up to their region and sideways to the other towns
+    // in it. "Sideways" means "also has cottages", not "is geographically
+    // near" — adjacency is not in the data and is not claimed.
+    let regionLink = null;
+    let cityLinks = [];
+    let siblingLinks = [];
+
+    if (group.kind === 'region') {
+      cityLinks = cities.filter((c) => cityToRegion[c.key] === group.key).map(linkOf);
+      siblingLinks = regions.filter((r) => r.slug !== group.slug).map(linkOf);
+    } else if (group.kind === 'city') {
+      const region = regionPageForCity(group.key);
+      if (region) regionLink = linkOf(region);
+      siblingLinks = cities
+        .filter((c) => c.slug !== group.slug && cityToRegion[c.key] === cityToRegion[group.key])
+        .map(linkOf);
+    } else {
+      siblingLinks = categories.filter((c) => c.slug !== group.slug).map(linkOf);
+    }
+
+    const ctx = {
+      displayName,
+      regionLink,
+      cityLinks,
+      siblingLinks,
+      categoryLinks: group.kind === 'category' ? [] : categories.map(linkOf),
+    };
+
+    write({
+      path: `cottages/${group.slug}`,
+      title: landingTitle(group, ctx),
+      description: landingDescription(group, ctx),
+      ogType: 'website',
+      ogImage: landingOgImage(group),
+      ogImageAlt: landingTitle(group, ctx),
+      jsonLd: landingJsonLd(group, ctx),
+      bodyHtml: landingBodyHtml(group, ctx),
+    });
+    landingWritten += 1;
+  }
+  console.log(
+    `Prerendered ${landingWritten} landing page${landingWritten === 1 ? '' : 's'} ` +
+    `(${regions.length} region, ${cities.length} city, ${categories.length} category).`,
+  );
 }

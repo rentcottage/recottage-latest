@@ -34,6 +34,7 @@ function lazyPage(load: () => Promise<{ default: ComponentType }>) {
 }
 
 const SearchResults = lazyPage(() => import('../pages/search/page'));
+const CottagesLanding = lazyPage(() => import('../pages/cottages/page'));
 const PropertyDetail = lazyPage(() => import('../pages/property/page'));
 const Profile = lazyPage(() => import('../pages/profile/page'));
 const BecomeHost = lazyPage(() => import('../pages/become-host/page'));
@@ -91,6 +92,13 @@ const routes: RouteObject[] = [
   {
     path: '/property/:id',
     element: page(PropertyDetail)
+  },
+  {
+    // The landing pages. Their HTML is prerendered (scripts/prerender.mjs);
+    // this route is what keeps hydration from replacing that page with the
+    // "*" 404 screen, and gives a reader the normal card grid.
+    path: '/cottages/:slug',
+    element: page(CottagesLanding)
   },
   {
     path: '/profile',
