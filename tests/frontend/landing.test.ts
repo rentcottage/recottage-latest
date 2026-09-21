@@ -105,6 +105,35 @@ test('CITY a region name alone is not a town', () => {
   assert.equal(canonicalCity('Somewhere Nice, Georgia'), null);
 });
 
+test('CITY the Jvarisa strings from the database resolve, exactly as stored', () => {
+  // Two real rows carried locations that reached no town page until ჯვარისა
+  // was added to the village catalogue. They are pinned here verbatim, because
+  // what broke was never the phrase shape — it was the village being absent —
+  // and these are the shapes production actually contains:
+  //   830f0af2  a district name, an abbreviation, and a space before the dot
+  //   0348ccf5  a Mtavruli capital Რ and no space after the dot
+  assert.equal(canonicalCity('რაჭა ამბროლაურის რაიონი სოფ . ჯვარისა'), 'jvarisa');
+  assert.equal(canonicalCity('Რაჭა.სოფ ჯვარისა'), 'jvarisa');
+  assert.equal(regionForCity('jvarisa'), 'racha-lechkhumi');
+
+  // The plain name, and the shapes a host might type next time.
+  for (const s of ['ჯვარისა', 'სოფ ჯვარისა', 'სოფელი ჯვარისა', 'რაჭა, ჯვარისა', 'ჯვარისა, რაჭა-ლეჩხუმი']) {
+    assert.equal(canonicalCity(s), 'jvarisa', s);
+  }
+});
+
+test('CITY a region name in the location field still resolves to no town', () => {
+  // These two rows are a DATA problem, not a catalogue one: the host named a
+  // region where a village belongs, and no dictionary entry can fix that. They
+  // are pinned so that adding villages never silently starts inventing towns
+  // for them.
+  assert.equal(canonicalCity('რაჭა'), null);
+  assert.equal(canonicalCity('ხევსურეთი'), null);
+  // Both are still reachable through their region page.
+  assert.equal(regionMatches('რაჭა', 'racha-lechkhumi'), true);
+  assert.equal(regionMatches('ხევსურეთი', 'mtskheta-mtianeti'), true);
+});
+
 test('CITY every town page knows which region it belongs to', () => {
   assert.equal(regionForCity('ambrolauri'), 'racha-lechkhumi');
   assert.equal(regionForCity('batumi'), 'adjara');
