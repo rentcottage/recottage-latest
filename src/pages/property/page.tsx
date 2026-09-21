@@ -18,6 +18,7 @@ import { localizePlace } from '../../lib/locationNormalizer';
 import { localizeHostName } from '../../lib/hostNames';
 import { isStayUnavailable, parseUnavailableRanges, type UnavailableRange } from '../../lib/availability';
 import { OG_BOX, optimizedImageUrl } from '../../lib/imageUrl';
+import { buildListingSchema } from '../../lib/listingSchema';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
 
@@ -515,32 +516,31 @@ export default function PropertyDetail() {
     `${property.bedrooms || 1} bedrooms${ratingPart}. ` +
     'Authentic Georgian cottage experience with verified host.';
 
-  const propertyJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'LodgingBusiness',
-    name: property.title,
-    description: property.description || `Authentic Georgian cottage rental in ${property.location}. ${property.bedrooms || 1} bedrooms, perfect for your Georgian getaway.`,
-    url: `${siteUrl}/property/${property.id}`,
-    image: property.image,
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: property.location,
-      addressCountry: 'GE',
+  // The SAME object the prerendered HTML already carries — see
+  // src/lib/listingSchema.ts for why both sides call one builder. If this
+  // diverged, the document a crawler indexed and the DOM a reader inspects
+  // would describe the cottage differently.
+  const propertyJsonLd = buildListingSchema(
+    {
+      id: property.id,
+      title: property.title,
+      description: property.description,
+      location: property.location,
+      address: property.address ?? null,
+      price_per_night: property.price,
+      bedrooms: property.bedrooms,
+      max_guests: property.maxGuests,
+      amenities: property.amenities,
+      latitude: property.latitude,
+      longitude: property.longitude,
     },
-    ...(property.latitude != null && property.longitude != null
-      ? { geo: { '@type': 'GeoCoordinates', latitude: property.latitude, longitude: property.longitude } }
-      : {}),
-    aggregateRating:
-      property.reviews > 0
-        ? { '@type': 'AggregateRating', ratingValue: property.rating, reviewCount: property.reviews }
-        : undefined,
-    priceRange: `₾${property.price} per night`,
-    amenityFeature: (property.amenities || []).map((a: string) => ({
-      '@type': 'LocationFeatureSpecification',
-      name: a,
-      value: true,
-    })),
-  };
+    {
+      url: `${siteUrl}/property/${property.id}`,
+      image: optimizedImageUrl(property.image, OG_BOX, 75, 'cover'),
+      reviews: property.reviews,
+      rating: property.rating,
+    },
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -574,11 +574,20 @@ export default function PropertyDetail() {
                 <i className="ri-map-pin-line text-soft"></i>
                 {localizePlace(property.location, lang)}
               </span>
-              <span className="inline-flex items-center gap-1 font-bold">
-                <i className="ri-star-fill text-red-500"></i>
-                <span translate="no">{property.rating}</span>
-                <span className="font-semibold text-soft">{t('property.detail.reviewsCount', { count: property.reviews })}</span>
-              </span>
+              {/* A star and a score only when guests have actually left one.
+                  `rating` is a 5.0 literal in the data layer and `reviews` is
+                  0 for every listing, so this badge used to read "5.0 · 0
+                  reviews" on all 101 — a five-star claim nobody made. With no
+                  reviews the listing says so plainly instead. */}
+              {property.reviews > 0 ? (
+                <span className="inline-flex items-center gap-1 font-bold">
+                  <i className="ri-star-fill text-red-500"></i>
+                  <span translate="no">{property.rating}</span>
+                  <span className="font-semibold text-soft">{t('property.detail.reviewsCount', { count: property.reviews })}</span>
+                </span>
+              ) : (
+                <span className="text-soft">{t('property.reviews.noReviewsYet')}</span>
+              )}
               {isDbProperty && (
                 <span className="inline-flex items-center gap-1 bg-[#222] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                   <i className="ri-verified-badge-fill"></i>

@@ -756,11 +756,14 @@ export default function BookingWidget({
                 );
               })()}
             </div>
-            <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
-              <i className="ri-star-fill text-red-500 mr-1"></i>
-              <span translate="no">{property.rating}</span>
-              <span className="text-soft ml-1 font-semibold" translate="no">({property.reviews})</span>
-            </div>
+            {/* Same rule as the title row: no reviews, no score. */}
+            {property.reviews > 0 && (
+              <div className="flex items-center text-sm font-bold flex-shrink-0 whitespace-nowrap">
+                <i className="ri-star-fill text-red-500 mr-1"></i>
+                <span translate="no">{property.rating}</span>
+                <span className="text-soft ml-1 font-semibold" translate="no">({property.reviews})</span>
+              </div>
+            )}
           </div>
           <BookingForm {...formProps} />
         </div>
@@ -786,14 +789,18 @@ export default function BookingWidget({
                 )}
               </p>
             ) : (
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 flex items-center justify-center">
-                  <i className="ri-star-fill text-yellow-400 text-xs"></i>
+              property.reviews > 0 ? (
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 flex items-center justify-center">
+                    <i className="ri-star-fill text-yellow-400 text-xs"></i>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {property.rating} {t('property.detail.reviewsCount', { count: property.reviews })}
+                  </span>
                 </div>
-                <span className="text-xs text-gray-500">
-                  {property.rating} {t('property.detail.reviewsCount', { count: property.reviews })}
-                </span>
-              </div>
+              ) : (
+                <span className="text-xs text-gray-500">{t('property.reviews.noReviewsYet')}</span>
+              )
             )}
           </div>
           <button

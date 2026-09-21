@@ -5,7 +5,9 @@ import { resolve } from 'node:path'
 import { writeFileSync } from 'node:fs'
 import AutoImport from 'unplugin-auto-import/vite'
 import { createClient } from '@supabase/supabase-js'
-import { buildGroups } from './src/lib/landingPages.ts'
+import { buildGroups, type LandingListing } from './src/lib/landingPages.ts'
+import { buildListingSchema, type SchemaListing } from './src/lib/listingSchema.ts'
+import { OG_BOX, optimizedImageUrl } from './src/lib/imageUrl.ts'
 
 const base = process.env.BASE_PATH || '/'
 const isPreview = process.env.IS_PREVIEW  ? true : false;
@@ -28,6 +30,9 @@ const isPreview = process.env.IS_PREVIEW  ? true : false;
  * without Supabase credentials produces.
  */
 export const LANDING_INDEX = 'landing-groups.json'
+/** Per-listing JSON-LD, keyed by listing id, for scripts/prerender.mjs. */
+export const SCHEMA_INDEX = 'listing-schemas.json'
+const SITE = 'https://rentcottage.ge'
 
 function landingIndexPlugin(mode: string) {
   return {
@@ -40,21 +45,49 @@ function landingIndexPlugin(mode: string) {
       if (!url || !key) {
         console.warn('⚠ No Supabase credentials; skipping the landing-page index.')
         writeFileSync(LANDING_INDEX, JSON.stringify({ groups: [] }, null, 0))
+        writeFileSync(SCHEMA_INDEX, JSON.stringify({}, null, 0))
         return
       }
       const supabase = createClient(url, key, { auth: { persistSession: false } })
+      // `.returns()` because the select list is a concatenated string, which
+      // supabase-js cannot parse into a row type — without it every field
+      // below is a GenericStringError to the compiler.
       const { data, error } = await supabase
         .from('public_properties')
-        .select('id, title, location, price_per_night, max_guests, bedrooms, categories, cover_photo_url, photo_urls')
+        .select('id, title, location, address, description, price_per_night, max_guests, ' +
+                'bedrooms, amenities, latitude, longitude, categories, cover_photo_url, photo_urls')
+        .returns<(LandingListing & SchemaListing)[]>()
       if (error) throw new Error(`landing index: ${error.message}`)
+      const rows = data ?? []
+
       // buildGroups() asserts slug uniqueness and throws on a collision, which
       // fails the build rather than letting one page overwrite another.
-      const groups = buildGroups(data ?? [])
+      const groups = buildGroups(rows)
       writeFileSync(LANDING_INDEX, JSON.stringify({ groups }, null, 0))
       console.log(`Landing index: ${groups.length} pages ` +
         `(${groups.filter(g => g.kind === 'region').length} region, ` +
         `${groups.filter(g => g.kind === 'city').length} city, ` +
         `${groups.filter(g => g.kind === 'category').length} category)`)
+
+      // The listing structured data, built by the module the property page
+      // itself calls. Emitting it here rather than in prerender.mjs is what
+      // makes "the served JSON-LD and the hydrated JSON-LD are the same
+      // object" a fact about the code instead of a hope.
+      const schemas: Record<string, unknown> = {}
+      for (const row of rows) {
+        const first = [row.cover_photo_url, ...(Array.isArray(row.photo_urls) ? row.photo_urls : [])]
+          .find((u: unknown) => typeof u === 'string' && u.trim())
+        schemas[row.id] = buildListingSchema(row, {
+          url: `${SITE}/property/${row.id}`,
+          image: first ? optimizedImageUrl(first, OG_BOX, 75, 'cover') : `${SITE}/og-image.png`,
+          // Nothing has reviews yet; when that changes this is the one place
+          // the real count has to be read, and aggregateRating follows.
+          reviews: 0,
+          rating: null,
+        })
+      }
+      writeFileSync(SCHEMA_INDEX, JSON.stringify(schemas, null, 0))
+      console.log(`Listing schemas: ${Object.keys(schemas).length}`)
     },
   }
 }

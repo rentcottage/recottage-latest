@@ -13,3 +13,4 @@ supabase/.temp/
 .gg/
 # Build artifact: the /cottages landing-page index (see vite.config.ts).
 landing-groups.json
+listing-schemas.json

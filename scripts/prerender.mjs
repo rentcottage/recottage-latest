@@ -313,6 +313,14 @@ console.log(`\nPrerendered ${routes.length} static route${routes.length === 1 ? 
 
 loadEnv(repoRoot);
 
+// Per-listing JSON-LD, built during `vite build` by the module the property
+// page itself calls (src/lib/listingSchema.ts). Missing artifact means the
+// pages are written without structured data rather than with wrong data.
+const SCHEMA_INDEX = join(repoRoot, 'listing-schemas.json');
+const listingSchemas = existsSync(SCHEMA_INDEX)
+  ? JSON.parse(readFileSync(SCHEMA_INDEX, 'utf8'))
+  : {};
+
 const listings = await fetchApprovedListings();
 
 if (listings === null) {
@@ -323,6 +331,7 @@ if (listings === null) {
 } else {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   let listingsWritten = 0;
+  let schemasWritten = 0;
   let skipped = 0;
 
   for (const listing of listings) {
@@ -334,11 +343,23 @@ if (listings === null) {
       continue;
     }
     const route = listingRoute(listing);
-    write({ ...route, ogImageAlt: `${listing.title} — ${listing.location}, Georgia` });
+    const schema = listingSchemas[listing.id];
+    write({
+      ...route,
+      ogImageAlt: `${listing.title} — ${listing.location}, Georgia`,
+      jsonLd: schema ? [schema] : undefined,
+    });
+    if (schema) schemasWritten += 1;
     listingsWritten += 1;
   }
 
-  console.log(`Prerendered ${listingsWritten} listing page${listingsWritten === 1 ? '' : 's'}.`);
+  console.log(
+    `Prerendered ${listingsWritten} listing page${listingsWritten === 1 ? '' : 's'}, ` +
+    `${schemasWritten} with structured data.`,
+  );
+  if (listingsWritten > 0 && schemasWritten < listingsWritten) {
+    console.warn(`⚠ ${listingsWritten - schemasWritten} listing page(s) have no JSON-LD.`);
+  }
   if (skipped > 0) {
     console.warn(`⚠ Skipped ${skipped} listing(s) with a missing id, title or location.`);
   }
