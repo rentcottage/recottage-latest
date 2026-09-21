@@ -40,6 +40,7 @@ import {
   loadEnv,
 } from './lib/seo.mjs';
 import {
+  CATEGORY_KA,
   georgianName,
   landingBodyHtml,
   landingDescription,
@@ -364,7 +365,12 @@ if (!existsSync(LANDING_INDEX)) {
   const regions = groups.filter((g) => g.kind === 'region');
   const cities = groups.filter((g) => g.kind === 'city');
   const categories = groups.filter((g) => g.kind === 'category');
-  const nameOf = (g) => georgianName(g.key, enToKa);
+  // A category's display name is its Georgian label from the app's own i18n;
+  // a place's comes from the place dictionary. Without this a Georgian page
+  // reads "Mountain — კოტეჯები საქართველოში".
+  const nameOf = (g) => (g.kind === 'category'
+    ? (CATEGORY_KA[g.key] ?? g.key)
+    : georgianName(g.key, enToKa));
   const linkOf = (g) => ({ slug: g.slug, name: nameOf(g) });
 
   /** The region page for a city, when that region has a page of its own. */

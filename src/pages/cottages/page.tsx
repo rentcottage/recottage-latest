@@ -48,8 +48,12 @@ export default function CottagesLanding() {
     [group, dbProperties],
   );
 
+  // Categories carry their own label key in the app's i18n; places go through
+  // the place localiser. Both so a Georgian reader never sees "Mountain".
   const displayName = group
-    ? (group.kind === 'category' ? group.key : localizePlace(group.key, lang))
+    ? (group.kind === 'category'
+      ? t(`becomeHost.category${group.key}`)
+      : localizePlace(group.key, lang))
     : slug;
   // Reuses the search page's own strings, so this heading reads correctly in
   // all three languages without adding a single new message key.

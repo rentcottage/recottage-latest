@@ -23,8 +23,8 @@ import { DEFAULT_OG, SITE, ogImageUrl } from './seo.mjs';
 export const OWNER_REVIEW_MARK =
   '<!-- rc:owner-review copy="machine-generated from listing data; owner review pending" -->';
 
-/** Georgian category labels, copied from the app's own i18n (account.ts, ka). */
-const CATEGORY_KA = {
+/** Georgian category labels, copied from the app's own i18n (becomeHost, ka). */
+export const CATEGORY_KA = {
   Mountain: 'მთა',
   Lakeside: 'ტბის სანაპირო',
   Traditional: 'ტრადიციული',
