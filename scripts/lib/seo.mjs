@@ -115,9 +115,26 @@ export function firstPhoto(listing) {
 
 // ── Text ─────────────────────────────────────────────────────────────────────
 
+/**
+ * The fixed tail of every listing `<title>`.
+ *
+ * It was " Cottage Rental | RentCottage.Ge" — 32 characters, 40% of the
+ * average title tag, on titles whose median was already 78. Google shows
+ * roughly 60-70. "Cottage Rental" also said nothing a reader could not see
+ * from the title and the location beside it, so it was 15 characters spent
+ * repeating the obvious on all 101 pages.
+ *
+ * The brand is spelled `RentCottage.ge` here, which is NOT a new spelling:
+ * it is the one index.html already uses in og:title and twitter:title, and
+ * the one the legal copy uses when naming the company. The other display
+ * spelling on the site is `RentCottage.Ge`, which the static-route titles
+ * still use — see the note in scripts/prerender.mjs.
+ */
+export const TITLE_SUFFIX = ' | RentCottage.ge';
+
 /** `<title>` for a listing — the string src/pages/property/page.tsx builds. */
 export function listingTitle(listing) {
-  return `${listing.title} — ${listing.location} Cottage Rental | RentCottage.Ge`;
+  return `${listing.title} — ${listing.location}${TITLE_SUFFIX}`;
 }
 
 /**

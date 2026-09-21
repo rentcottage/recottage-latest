@@ -25,6 +25,7 @@ import {
   listingRoute,
   listingTitle,
   ogImageUrl,
+  TITLE_SUFFIX,
   // @ts-expect-error — plain .mjs with no type declarations, by design.
 } from '../../scripts/lib/seo.mjs';
 import { OG_BOX, optimizedImageUrl } from '../../src/lib/imageUrl.ts';
@@ -58,7 +59,7 @@ const listing = (over: Partial<Listing> = {}): Listing => ({
  * changes, the assertion below is what fails.
  */
 function pageTitle(l: Listing): string {
-  return `${l.title} — ${l.location} Cottage Rental | RentCottage.Ge`;
+  return `${l.title} — ${l.location} | RentCottage.ge`;
 }
 function pageDescription(l: Listing, reviews = 0, rating = 5): string {
   const ratingPart = reviews > 0 ? ` · Rating ${rating}` : '';
@@ -70,6 +71,18 @@ function pageDescription(l: Listing, reviews = 0, rating = 5): string {
 }
 
 // ── Title and description parity ─────────────────────────────────────────────
+
+test('SUFFIX the tail is short, and spelled the way the site already spells it', () => {
+  // The old tail was ' Cottage Rental | RentCottage.Ge' — 32 characters on a
+  // median title of 78, when Google shows roughly 60-70.
+  assert.equal(TITLE_SUFFIX, ' | RentCottage.ge');
+  assert.equal(TITLE_SUFFIX.length, 17);
+  // "Cottage Rental" repeated what the title and location already said.
+  assert.equal(listingTitle(listing()).includes('Cottage Rental'), false);
+  // .ge lowercase: the spelling index.html already uses in og:title.
+  assert.ok(listingTitle(listing()).endsWith(' | RentCottage.ge'));
+  assert.equal(listingTitle(listing()).includes('RentCottage.Ge'), false);
+});
 
 test('PARITY the build-time title is the page title, character for character', () => {
   for (const l of [

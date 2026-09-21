@@ -503,7 +503,11 @@ export default function PropertyDetail() {
   // They must stay byte-identical to what that script produces, or a crawler
   // indexes one title and the reader is shown another;
   // tests/frontend/prerender.test.ts asserts they do.
-  const metaTitle = `${property.title} — ${property.location} Cottage Rental | RentCottage.Ge`;
+  // Must stay byte-identical to listingTitle() in scripts/lib/seo.mjs, which
+  // writes this same string into the prerendered HTML — see TITLE_SUFFIX there
+  // for why the tail is short, and tests/frontend/prerender.test.ts for the
+  // assertion that stops the two drifting apart.
+  const metaTitle = `${property.title} — ${property.location} | RentCottage.ge`;
 
   // NO RATING UNLESS IT IS EARNED. This description used to end "· Rating 5",
   // built from the `rating: 5.0` literal above — next to `reviews: 0`. That put
