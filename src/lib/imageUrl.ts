@@ -45,3 +45,8 @@ export interface ImageBox { w: number; h: number }
 export const IMG_CARD: ImageBox = { w: 640, h: 440 };    // listing cards, 16:11 box
 export const IMG_HERO: ImageBox = { w: 1600, h: 900 };   // property gallery, 16:9 box
 export const IMG_THUMB: ImageBox = { w: 320, h: 240 };   // thumbnail strips, 4:3 box
+// Link-preview card. 1200x630 is what Facebook, X, LinkedIn and Slack crop to,
+// and at quality 75 the catalogue measured 57-145 KB — well inside the 300 KB
+// a preview bot will wait for, and a very long way from the 6.7 MB original.
+// scripts/lib/seo.mjs writes the same URL into the prerendered listing pages.
+export const OG_BOX: ImageBox = { w: 1200, h: 630 };

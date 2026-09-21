@@ -103,7 +103,12 @@ export default function HomePage() {
         longitude: 44.8015,
       },
       priceRange: '₾₾',
-      telephone: '+995 32 123 4567',
+      // NO TELEPHONE. This carried '+995 32 123 4567', which is not a number
+      // RentCottage answers — it was placeholder digits published to Google as
+      // a contact method. There is no real phone line anywhere in the repo, so
+      // rather than invent one the field is gone and the e-mail below is the
+      // contact, the same address the footer shows.
+      email: 'info.rentcottage@gmail.com',
       openingHoursSpecification: [
         {
           '@type': 'OpeningHoursSpecification',

@@ -17,6 +17,7 @@ import { amenityLabel } from '../../lib/amenityLabels';
 import { localizePlace } from '../../lib/locationNormalizer';
 import { localizeHostName } from '../../lib/hostNames';
 import { isStayUnavailable, parseUnavailableRanges, type UnavailableRange } from '../../lib/availability';
+import { OG_BOX, optimizedImageUrl } from '../../lib/imageUrl';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
 
@@ -494,6 +495,26 @@ export default function PropertyDetail() {
   );
 
   const siteUrl = import.meta.env.VITE_SITE_URL || 'https://rentcottage.ge';
+  // ── What a crawler reads ───────────────────────────────────────────────────
+  //
+  // These two strings are also written into dist/property/<id>/index.html at
+  // build time (scripts/lib/seo.mjs), because SEO.tsx only runs once React has.
+  // They must stay byte-identical to what that script produces, or a crawler
+  // indexes one title and the reader is shown another;
+  // tests/frontend/prerender.test.ts asserts they do.
+  const metaTitle = `${property.title} — ${property.location} Cottage Rental | RentCottage.Ge`;
+
+  // NO RATING UNLESS IT IS EARNED. This description used to end "· Rating 5",
+  // built from the `rating: 5.0` literal above — next to `reviews: 0`. That put
+  // a five-star claim in the search snippet of all 101 listings, none of which
+  // has a single review. The rule here is the one the AggregateRating below
+  // already followed: a rating is shown only when real reviews back it.
+  const ratingPart = property.reviews > 0 ? ` · Rating ${property.rating}` : '';
+  const metaDescription =
+    `Book ${property.title} in ${property.location}, Georgia. ₾${property.price}/night · ` +
+    `${property.bedrooms || 1} bedrooms${ratingPart}. ` +
+    'Authentic Georgian cottage experience with verified host.';
+
   const propertyJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'LodgingBusiness',
@@ -524,12 +545,12 @@ export default function PropertyDetail() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title={`${property.title} — ${property.location} Cottage Rental | RentCottage.Ge`}
-        description={`Book ${property.title} in ${property.location}, Georgia. ₾${property.price}/night · ${property.bedrooms || 1} bedrooms · Rating ${property.rating}. Authentic Georgian cottage experience with verified host.`}
+        title={metaTitle}
+        description={metaDescription}
         keywords={`${property.location} cottage rental, Georgian cottage ${property.location}, rent cottage Georgia`}
         canonical={`/property/${property.id}`}
         ogType="product"
-        ogImage={property.image}
+        ogImage={optimizedImageUrl(property.image, OG_BOX, 75, 'cover')}
         jsonLd={propertyJsonLd}
       />
       <Header />

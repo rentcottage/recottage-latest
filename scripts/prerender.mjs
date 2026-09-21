@@ -9,23 +9,53 @@
 // known static route and patches its <title>, description, canonical, OG,
 // and Twitter tags so crawlers see the correct metadata for every URL.
 // React still hydrates the SPA on top — users see no difference.
+//
+// It also writes one document per APPROVED LISTING, at
+// dist/property/<id>/index.html, plus /search. Before that, those URLs had no
+// file of their own, so Vercel's SPA rewrite served them the homepage document
+// verbatim: homepage title, homepage description, homepage og:image, and
+// <link rel="canonical" href="https://rentcottage.ge/"> on all 101 listings —
+// 93% of the sitemap pointing its canonical at the homepage, and every share
+// of a cottage previewing as the generic site card.
+//
+// NO URL CHANGES. Every path written here already existed and already
+// resolved; this only changes WHAT is served at it, never WHERE. Vercel
+// prefers a matching static file over the "/(.*)" rewrite in vercel.json, so
+// dist/property/<id>/index.html simply takes over from the fallback, query
+// strings and client routing untouched.
+//
+// The listing metadata is built in scripts/lib/seo.mjs, which exists so that
+// what is written here and what SEO.tsx sets after hydration are the same
+// strings. If they drift, a crawler indexes one title and the reader sees
+// another — see the parity note in that file.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_OG,
+  SITE,
+  fetchApprovedListings,
+  listingRoute,
+  loadEnv,
+} from './lib/seo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const distDir = join(__dirname, '..', 'dist');
+const repoRoot = join(__dirname, '..');
+const distDir = join(repoRoot, 'dist');
 const indexPath = join(distDir, 'index.html');
 
-const SITE = 'https://rentcottage.ge';
-const OG = `${SITE}/og-image.png`;
+const OG = DEFAULT_OG;
 
 /**
  * @typedef {Object} Route
  * @property {string} path        URL path (no leading slash for the file system)
  * @property {string} title       Full <title> text
  * @property {string} description Meta description (1-2 sentences, ~150 chars)
+ * @property {string} [keywords]  Meta keywords, when the page sets its own
+ * @property {string} [ogType]    og:type, when it is not the template's "website"
+ * @property {string} [ogImage]   Absolute share image URL; defaults to the site card
+ * @property {string} [ogImageAlt] Alt text for that image
  */
 
 /** @type {Route[]} */
@@ -37,6 +67,18 @@ const routes = [
     title: 'RentCottage.Ge — Georgian Cottage Rentals | Tbilisi, Batumi, Kakheti',
     description:
       'Find and book unique Georgian cottage rentals across Tbilisi, Batumi, Kakheti and Gudauri. Verified cottages, mountain retreats and traditional Georgian homes.',
+  },
+  {
+    // The no-parameter form. /search?location=… keeps serving this document —
+    // Vercel matches the path, the query string is the client's business —
+    // so the copy here must be the unfiltered wording the page itself uses,
+    // and the canonical stays /search for every filter combination.
+    path: 'search',
+    title: 'Search Georgian Cottage Rentals — RentCottage.Ge',
+    description:
+      'Browse hundreds of verified Georgian cottages, mountain retreats and lakeside properties. Filter by location, price and amenities. Find your perfect cottage rental in Georgia.',
+    keywords:
+      'Georgian cottage search, rent cottage Georgia, vacation rental Georgia, mountain cottage Georgia, traditional Georgian home rental',
   },
   {
     path: 'how-it-works',
@@ -102,6 +144,7 @@ function patchHtml(template, route) {
   const url = `${SITE}/${route.path}`;
   const t = escape(route.title);
   const d = escape(route.description);
+  const image = escape(route.ogImage || OG);
 
   let html = template;
 
@@ -124,6 +167,29 @@ function patchHtml(template, route) {
     `<link rel="canonical" href="${url}" />`,
   );
 
+  // keywords — only when the route sets its own, so the template's site-wide
+  // list survives on the pages that never overrode it.
+  if (route.keywords) {
+    const k = escape(route.keywords);
+    html = patchTag(
+      html,
+      /<meta name="keywords" content="[^"]*"\s*\/?>/,
+      `<meta name="keywords" content="${k}" />`,
+      `<meta name="keywords" content="${k}" />`,
+    );
+  }
+
+  // og:type — "product" for a listing, the template's "website" otherwise.
+  if (route.ogType) {
+    const ty = escape(route.ogType);
+    html = patchTag(
+      html,
+      /<meta property="og:type" content="[^"]*"\s*\/?>/,
+      `<meta property="og:type" content="${ty}" />`,
+      `<meta property="og:type" content="${ty}" />`,
+    );
+  }
+
   // og:title / og:description / og:url / og:image
   html = html.replace(
     /<meta property="og:title" content="[^"]*"\s*\/?>/,
@@ -139,12 +205,35 @@ function patchHtml(template, route) {
   );
   html = html.replace(
     /<meta property="og:image" content="[^"]*"\s*\/?>/g,
-    `<meta property="og:image" content="${OG}" />`,
+    `<meta property="og:image" content="${image}" />`,
   );
   html = html.replace(
     /<meta property="og:image:secure_url" content="[^"]*"\s*\/?>/g,
-    `<meta property="og:image:secure_url" content="${OG}" />`,
+    `<meta property="og:image:secure_url" content="${image}" />`,
   );
+
+  // og:image:type — the template declares image/png for the site card. A
+  // listing's image comes from the storage render endpoint, which negotiates
+  // JPEG or WebP per request, so there is no one type to declare. The tag is
+  // removed rather than left asserting something false; it is optional, and
+  // every preview bot sniffs the real type anyway.
+  if (route.ogImage) {
+    html = html.replace(/\s*<meta property="og:image:type" content="[^"]*"\s*\/?>/g, '');
+  }
+
+  // og:image:alt — describes the picture, so a listing's card says which
+  // cottage it shows instead of repeating the site tagline.
+  if (route.ogImageAlt) {
+    const a = escape(route.ogImageAlt);
+    html = html.replace(
+      /<meta property="og:image:alt" content="[^"]*"\s*\/?>/g,
+      `<meta property="og:image:alt" content="${a}" />`,
+    );
+    html = html.replace(
+      /<meta name="twitter:image:alt" content="[^"]*"\s*\/?>/g,
+      `<meta name="twitter:image:alt" content="${a}" />`,
+    );
+  }
 
   // twitter:title / twitter:description / twitter:image
   html = html.replace(
@@ -157,7 +246,7 @@ function patchHtml(template, route) {
   );
   html = html.replace(
     /<meta name="twitter:image" content="[^"]*"\s*\/?>/g,
-    `<meta name="twitter:image" content="${OG}" />`,
+    `<meta name="twitter:image" content="${image}" />`,
   );
 
   return html;
@@ -165,16 +254,60 @@ function patchHtml(template, route) {
 
 const template = readFileSync(indexPath, 'utf8');
 
-let written = 0;
-for (const route of routes) {
+/** Writes one document. `path` is relative and already URL-safe. */
+function write(route) {
   const html = patchHtml(template, route);
-  const outPath = route.path
-    ? join(distDir, route.path, 'index.html')
-    : indexPath;
+  const outPath = route.path ? join(distDir, route.path, 'index.html') : indexPath;
   if (route.path) mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, html, 'utf8');
-  written += 1;
-  console.log(`  ✓ /${route.path}  →  ${route.title}`);
 }
 
-console.log(`\nPrerendered ${written} route${written === 1 ? '' : 's'}.`);
+for (const route of routes) {
+  write(route);
+  console.log(`  ✓ /${route.path}  →  ${route.title}`);
+}
+console.log(`\nPrerendered ${routes.length} static route${routes.length === 1 ? '' : 's'}.`);
+
+// ── Listings ─────────────────────────────────────────────────────────────────
+//
+// One document per approved cottage. The ids come from public_properties, the
+// same view the sitemap is built from, so the set of files written here and
+// the set of /property/<id> URLs in sitemap.xml are the same set by
+// construction — no second source of truth to drift.
+//
+// A build without Supabase credentials keeps the static routes and skips
+// these, matching how scripts/generate-sitemap.mjs already behaves. The site
+// then serves what it served before this change, which is the safe direction.
+
+loadEnv(repoRoot);
+
+const listings = await fetchApprovedListings();
+
+if (listings === null) {
+  console.warn(
+    '\n⚠ VITE_PUBLIC_SUPABASE_URL or VITE_PUBLIC_SUPABASE_ANON_KEY not set; ' +
+      'skipping listing prerender (those URLs keep falling back to index.html).',
+  );
+} else {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let listingsWritten = 0;
+  let skipped = 0;
+
+  for (const listing of listings) {
+    // The id becomes a directory name, so it is checked rather than trusted.
+    // It is a uuid primary key, not user input — but this is the one place a
+    // database value is turned into a filesystem path.
+    if (!UUID_RE.test(String(listing.id ?? '')) || !listing.title || !listing.location) {
+      skipped += 1;
+      continue;
+    }
+    const route = listingRoute(listing);
+    write({ ...route, ogImageAlt: `${listing.title} — ${listing.location}, Georgia` });
+    listingsWritten += 1;
+  }
+
+  console.log(`Prerendered ${listingsWritten} listing page${listingsWritten === 1 ? '' : 's'}.`);
+  if (skipped > 0) {
+    console.warn(`⚠ Skipped ${skipped} listing(s) with a missing id, title or location.`);
+  }
+}
