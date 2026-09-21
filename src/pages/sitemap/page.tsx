@@ -12,10 +12,10 @@ export default function SiteMap() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Site Map — RentCottage.Ge',
-    description: 'Navigate through all pages and sections of RentCottage.Ge, the Georgian cottage rental platform.',
+    name: 'Site Map — RentCottage.ge',
+    description: 'Navigate through all pages and sections of RentCottage.ge, the Georgian cottage rental platform.',
     url: `${siteUrl}/sitemap`,
-    isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+    isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
   };
 
   // Real, public-appropriate routes grouped into the mockup's three columns.
@@ -53,8 +53,8 @@ export default function SiteMap() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <SEO
-        title="Site Map — RentCottage.Ge"
-        description="Navigate through all pages and sections of RentCottage.Ge, the Georgian cottage rental platform."
+        title="Site Map — RentCottage.ge"
+        description="Navigate through all pages and sections of RentCottage.ge, the Georgian cottage rental platform."
         canonical="/sitemap"
         noIndex={true}
         jsonLd={jsonLd}

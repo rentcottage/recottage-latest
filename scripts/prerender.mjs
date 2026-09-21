@@ -76,7 +76,7 @@ const routes = [
   // template, but we still patch it for consistency in case index.html changes.
   {
     path: '',
-    title: 'RentCottage.Ge — Georgian Cottage Rentals | Tbilisi, Batumi, Kakheti',
+    title: 'RentCottage.ge — Georgian Cottage Rentals | Tbilisi, Batumi, Kakheti',
     description:
       'Find and book unique Georgian cottage rentals across Tbilisi, Batumi, Kakheti and Gudauri. Verified cottages, mountain retreats and traditional Georgian homes.',
   },
@@ -86,7 +86,7 @@ const routes = [
     // so the copy here must be the unfiltered wording the page itself uses,
     // and the canonical stays /search for every filter combination.
     path: 'search',
-    title: 'Search Georgian Cottage Rentals — RentCottage.Ge',
+    title: 'Search Georgian Cottage Rentals — RentCottage.ge',
     description:
       'Browse hundreds of verified Georgian cottages, mountain retreats and lakeside properties. Filter by location, price and amenities. Find your perfect cottage rental in Georgia.',
     keywords:
@@ -94,45 +94,45 @@ const routes = [
   },
   {
     path: 'how-it-works',
-    title: 'How It Works — Booking Cottages in Georgia | RentCottage.Ge',
+    title: 'How It Works — Booking Cottages in Georgia | RentCottage.ge',
     description:
       'Step-by-step guide to finding, booking and staying in unique Georgian cottages. Learn how to search, contact hosts, and confirm your reservation.',
   },
   {
     path: 'about-georgia',
-    title: 'About Georgia — Travel Guide to Caucasus Country | RentCottage.Ge',
+    title: 'About Georgia — Travel Guide to Caucasus Country | RentCottage.ge',
     description:
       'Discover Georgia in the Caucasus — culture, cuisine, mountains and 8,000 years of winemaking. The traveller\'s guide for planning your stay.',
   },
   {
     path: 'become-host',
-    title: 'Become a Host — List Your Georgian Cottage | RentCottage.Ge',
+    title: 'Become a Host — List Your Georgian Cottage | RentCottage.ge',
     description:
-      'List your property on RentCottage.Ge and reach guests looking for authentic Georgian stays. No upfront fees, simple onboarding, dedicated support.',
+      'List your property on RentCottage.ge and reach guests looking for authentic Georgian stays. No upfront fees, simple onboarding, dedicated support.',
   },
   {
     path: 'host-resources',
-    title: 'Host Resources — Tools and Tips for Cottage Owners | RentCottage.Ge',
+    title: 'Host Resources — Tools and Tips for Cottage Owners | RentCottage.ge',
     description:
       'Practical guides, pricing strategies and best practices for Georgian cottage hosts. Make your listing stand out and grow bookings.',
   },
   {
     path: 'privacy',
-    title: 'Privacy Policy | RentCottage.Ge',
+    title: 'Privacy Policy | RentCottage.ge',
     description:
-      'How RentCottage.Ge collects, stores and uses your personal data. GDPR-aware privacy practices for guests and hosts.',
+      'How RentCottage.ge collects, stores and uses your personal data. GDPR-aware privacy practices for guests and hosts.',
   },
   {
     path: 'terms',
-    title: 'Terms & Conditions | RentCottage.Ge',
+    title: 'Terms & Conditions | RentCottage.ge',
     description:
-      'The rules of using RentCottage.Ge — booking process, payments, cancellation policies, host and guest responsibilities.',
+      'The rules of using RentCottage.ge — booking process, payments, cancellation policies, host and guest responsibilities.',
   },
   {
     path: 'sitemap',
-    title: 'Site Map | RentCottage.Ge',
+    title: 'Site Map | RentCottage.ge',
     description:
-      'All RentCottage.Ge pages organised in one place — search, locations, hosting and support.',
+      'All RentCottage.ge pages organised in one place — search, locations, hosting and support.',
   },
 ];
 

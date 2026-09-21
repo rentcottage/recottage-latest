@@ -70,7 +70,7 @@ export default function BookExperiencePage() {
         name: active.title,
         description: active.description,
         url: `${siteUrl}/book-experience?id=${active.id}`,
-        provider: { '@type': 'Organization', name: 'RentCottage.Ge', url: siteUrl },
+        provider: { '@type': 'Organization', name: 'RentCottage.ge', url: siteUrl },
         areaServed: { '@type': 'Country', name: 'Georgia' },
         offers: {
           '@type': 'Offer',
@@ -85,8 +85,8 @@ export default function BookExperiencePage() {
       <SEO
         title={
           active
-            ? `Book ${active.title} | RentCottage.Ge`
-            : 'Book Georgian Experiences | RentCottage.Ge'
+            ? `Book ${active.title} | RentCottage.ge`
+            : 'Book Georgian Experiences | RentCottage.ge'
         }
         description={
           active?.description ??

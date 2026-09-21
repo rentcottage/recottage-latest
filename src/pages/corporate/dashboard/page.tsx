@@ -256,7 +256,7 @@ export default function CorporateDashboard() {
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
       <SEO
-        title="Corporate Dashboard | RentCottage.Ge"
+        title="Corporate Dashboard | RentCottage.ge"
         description="Agency dashboard — bookings on behalf of clients and commission tracking."
         canonical="/corporate/dashboard"
         noIndex

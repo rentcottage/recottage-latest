@@ -118,17 +118,16 @@ export function firstPhoto(listing) {
 /**
  * The fixed tail of every listing `<title>`.
  *
- * It was " Cottage Rental | RentCottage.Ge" — 32 characters, 40% of the
+ * It was " Cottage Rental | " plus the brand — 32 characters, 40% of the
  * average title tag, on titles whose median was already 78. Google shows
  * roughly 60-70. "Cottage Rental" also said nothing a reader could not see
  * from the title and the location beside it, so it was 15 characters spent
  * repeating the obvious on all 101 pages.
  *
- * The brand is spelled `RentCottage.ge` here, which is NOT a new spelling:
- * it is the one index.html already uses in og:title and twitter:title, and
- * the one the legal copy uses when naming the company. The other display
- * spelling on the site is `RentCottage.Ge`, which the static-route titles
- * still use — see the note in scripts/prerender.mjs.
+ * The brand is spelled `RentCottage.ge`, lowercase .ge. That is now the only
+ * display spelling in the app: the mixed `.Ge` form this file once described
+ * was normalised away everywhere a reader can see it, and
+ * tests/frontend/brandSpelling.test.ts fails if it comes back.
  */
 export const TITLE_SUFFIX = ' | RentCottage.ge';
 

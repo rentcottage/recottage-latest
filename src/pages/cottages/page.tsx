@@ -66,7 +66,7 @@ export default function CottagesLanding() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title={`${heading} — ${shown.length} | RentCottage.Ge`}
+        title={`${heading} — ${shown.length} | RentCottage.ge`}
         description={plural('search.cottagesFoundCount', shown.length)}
         canonical={`/cottages/${slug}`}
         ogImage={cover ? optimizedImageUrl(cover, OG_BOX, 75, 'cover') : undefined}
@@ -75,7 +75,7 @@ export default function CottagesLanding() {
 
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8 md:py-12">
         <nav className="text-sm text-soft mb-3">
-          <Link to="/" className="hover:text-red-500">RentCottage.Ge</Link>
+          <Link to="/" className="hover:text-red-500">RentCottage.ge</Link>
           <span className="mx-1.5">/</span>
           <Link to="/search" className="hover:text-red-500">{t('footer.search')}</Link>
         </nav>

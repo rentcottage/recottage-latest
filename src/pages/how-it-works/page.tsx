@@ -98,15 +98,15 @@ export default function HowItWorks() {
     {
       '@context': 'https://schema.org',
       '@type': 'WebPage',
-      name: 'How RentCottage.Ge Works — Book Georgian Cottages Easily',
+      name: 'How RentCottage.ge Works — Book Georgian Cottages Easily',
       description: 'Learn how to search, book and stay in authentic Georgian cottages. Simple steps for guests and hosts. Safe payments, verified properties and local support.',
       url: `${siteUrl}/how-it-works`,
-      isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+      isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
     },
     {
       '@context': 'https://schema.org',
       '@type': 'HowTo',
-      name: 'How to Book a Georgian Cottage on RentCottage.Ge',
+      name: 'How to Book a Georgian Cottage on RentCottage.ge',
       description: 'Step-by-step guide to finding and booking your perfect Georgian cottage rental.',
       step: [
         { '@type': 'HowToStep', name: 'Search & Discover', text: 'Enter your destination, dates and number of guests to find available cottages.' },
@@ -120,7 +120,7 @@ export default function HowItWorks() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="How RentCottage.Ge Works — Book Georgian Cottages Easily"
+        title="How RentCottage.ge Works — Book Georgian Cottages Easily"
         description="Learn how to search, book and stay in authentic Georgian cottages. Simple 4-step process for guests and hosts. Safe payments, verified properties and local Georgian support."
         keywords="how to book Georgian cottage, Georgia cottage rental guide, rent cottage Georgia steps, Georgian vacation rental process"
         canonical="/how-it-works"

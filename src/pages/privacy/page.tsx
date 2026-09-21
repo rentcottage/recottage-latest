@@ -199,10 +199,10 @@ export default function Privacy() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Privacy Policy — RentCottage.Ge',
-    description: 'Learn how RentCottage.Ge collects, uses and protects your personal information when you use our Georgian cottage rental platform.',
+    name: 'Privacy Policy — RentCottage.ge',
+    description: 'Learn how RentCottage.ge collects, uses and protects your personal information when you use our Georgian cottage rental platform.',
     url: `${siteUrl}/privacy`,
-    isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+    isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
   };
 
   const sections = buildSections(t);
@@ -231,8 +231,8 @@ export default function Privacy() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <SEO
-        title="Privacy Policy — RentCottage.Ge"
-        description="Learn how RentCottage.Ge collects, uses and protects your personal information when you use our Georgian cottage rental platform."
+        title="Privacy Policy — RentCottage.ge"
+        description="Learn how RentCottage.ge collects, uses and protects your personal information when you use our Georgian cottage rental platform."
         canonical="/privacy"
         jsonLd={jsonLd}
       />

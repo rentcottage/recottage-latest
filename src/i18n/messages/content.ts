@@ -25,7 +25,7 @@ export const contentEn = {
   },
 
   howItWorks: {
-    heroTitle: 'How RentCottage.Ge works',
+    heroTitle: 'How RentCottage.ge works',
     heroSub: 'See how easy it is to find the perfect cottage — or to earn from yours',
     tabGuests: '🧳 For guests',
     tabHosts: '🏡 For hosts',
@@ -75,7 +75,7 @@ export const contentEn = {
     h4b1: 'Secure payouts through the platform',
     h4b2: 'Collect guest reviews',
     h4b3: 'Commission only on successful bookings',
-    guaranteesTitle: 'Why RentCottage.Ge?',
+    guaranteesTitle: 'Why RentCottage.ge?',
     guaranteesSub: 'Guarantees you won’t find elsewhere',
     guar1Title: 'Verified cottages',
     guar1Desc: 'Every cottage is personally checked by our team for quality and safety',
@@ -379,7 +379,7 @@ export const contentKa: ContentNs = {
   },
 
   howItWorks: {
-    heroTitle: 'როგორ მუშაობს RentCottage.Ge',
+    heroTitle: 'როგორ მუშაობს RentCottage.ge',
     heroSub: 'ნახეთ, რამდენად ადვილია იდეალური კოტეჯის პოვნა — ან საკუთარი კოტეჯიდან შემოსავლის მიღება',
     tabGuests: '🧳 სტუმრებისთვის',
     tabHosts: '🏡 მასპინძლებისთვის',
@@ -427,7 +427,7 @@ export const contentKa: ContentNs = {
     h4b1: 'უსაფრთხო გადახდები პლატფორმის მეშვეობით',
     h4b2: 'დააგროვეთ სტუმრების შეფასებები',
     h4b3: 'საკომისიო მხოლოდ წარმატებულ ჯავშნებზე',
-    guaranteesTitle: 'რატომ RentCottage.Ge?',
+    guaranteesTitle: 'რატომ RentCottage.ge?',
     guaranteesSub: 'გარანტიები, რომლებსაც სხვაგან ვერ იპოვით',
     guar1Title: 'დადასტურებული კოტეჯები',
     guar1Desc: 'ყველა კოტეჯს პირადად ამოწმებს ჩვენი გუნდი ხარისხისა და უსაფრთხოებისთვის',
@@ -727,7 +727,7 @@ export const contentRu: ContentNs = {
   },
 
   howItWorks: {
-    heroTitle: 'Как работает RentCottage.Ge',
+    heroTitle: 'Как работает RentCottage.ge',
     heroSub: 'Узнайте, как легко найти идеальный коттедж — или зарабатывать на своём',
     tabGuests: '🧳 Для гостей',
     tabHosts: '🏡 Для хозяев',
@@ -775,7 +775,7 @@ export const contentRu: ContentNs = {
     h4b1: 'Безопасные выплаты через платформу',
     h4b2: 'Собирайте отзывы гостей',
     h4b3: 'Комиссия только за успешные бронирования',
-    guaranteesTitle: 'Почему RentCottage.Ge?',
+    guaranteesTitle: 'Почему RentCottage.ge?',
     guaranteesSub: 'Гарантии, которые вы не найдёте больше нигде',
     guar1Title: 'Проверенные коттеджи',
     guar1Desc: 'Каждый коттедж лично проверяется нашей командой на качество и безопасность',

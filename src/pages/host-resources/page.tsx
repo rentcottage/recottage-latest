@@ -82,13 +82,13 @@ export default function HostResources() {
     name: 'Host Resources — Tips & Guides for Georgian Cottage Hosts',
     description: 'Everything Georgian cottage hosts need: listing tips, photography guides, guest communication templates, pricing strategies and safety guidelines.',
     url: `${siteUrl}/host-resources`,
-    isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+    isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
   };
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <SEO
-        title="Host Resources — Tips & Guides for Georgian Cottage Hosts | RentCottage.Ge"
+        title="Host Resources — Tips & Guides for Georgian Cottage Hosts | RentCottage.ge"
         description="Everything Georgian cottage hosts need to succeed: listing tips, photography best practices, guest communication templates, pricing strategies and safety guidelines."
         keywords="Georgian cottage host tips, host resources Georgia, listing cottage guide, hosting guide Georgia, cottage host photography tips"
         canonical="/host-resources"

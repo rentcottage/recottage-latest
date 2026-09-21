@@ -304,6 +304,6 @@ test('COPY title, description and H1 all describe the same page', () => {
   for (const s of [title, desc, h1]) assert.ok(s.includes('ამბროლაურ'), s);
   assert.ok(title.includes('5'), title);
   assert.ok(desc.includes('5 კოტეჯი'), desc);
-  assert.ok(title.endsWith('| RentCottage.Ge'), title);
+  assert.ok(title.endsWith('| RentCottage.ge'), title);
   assert.equal(h1.includes('RentCottage'), false, 'the H1 is the page, not the brand');
 });

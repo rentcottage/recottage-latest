@@ -323,16 +323,16 @@ export default function BecomeHost() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Become a Host — List Your Georgian Cottage on RentCottage.Ge',
+    name: 'Become a Host — List Your Georgian Cottage on RentCottage.ge',
     description: 'List your Georgian cottage or traditional home. Earn income while sharing authentic Georgian culture with travelers. Easy listing process, host protection and dedicated support.',
     url: `${siteUrl}/become-host`,
-    isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+    isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
   };
 
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="Become a Host — List Your Georgian Cottage on RentCottage.Ge"
+        title="Become a Host — List Your Georgian Cottage on RentCottage.ge"
         description="List your Georgian cottage or traditional home and earn extra income. Share authentic Georgian culture with travelers from around the world. Easy listing, host protection and dedicated support."
         keywords="become host Georgia, list cottage Georgia, rent out Georgian cottage, host Georgian property, earn money hosting Georgia"
         canonical="/become-host"

@@ -314,7 +314,7 @@ export default function PropertyDetail() {
     const shareUrl = `${siteUrl}/property/${id}`;
     const shareData = {
       title: property?.title ?? 'Georgian Cottage',
-      text: `Check out this cottage in ${property?.location ?? 'Georgia'} on RentCottage.Ge!`,
+      text: `Check out this cottage in ${property?.location ?? 'Georgia'} on RentCottage.ge!`,
       url: shareUrl,
     };
     if (navigator.share && navigator.canShare?.(shareData)) {

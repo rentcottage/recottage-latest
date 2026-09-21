@@ -70,7 +70,7 @@ export default function SEO({
     setMeta('meta[property="og:type"]', ogType);
     setMeta('meta[property="og:url"]', canonicalUrl);
     setMeta('meta[property="og:image"]', ogImage);
-    setMeta('meta[property="og:site_name"]', 'RentCottage.Ge');
+    setMeta('meta[property="og:site_name"]', 'RentCottage.ge');
     setMeta('meta[property="og:locale"]', 'en_US');
 
     // Twitter

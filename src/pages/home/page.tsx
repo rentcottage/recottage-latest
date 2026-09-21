@@ -60,7 +60,7 @@ export default function HomePage() {
     {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
-      name: 'RentCottage.Ge',
+      name: 'RentCottage.ge',
       url: siteUrl,
       description: 'Find and book unique Georgian cottage rentals across Georgia — Tbilisi, Batumi, Kakheti and more.',
       potentialAction: {
@@ -72,7 +72,7 @@ export default function HomePage() {
     {
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'RentCottage.Ge',
+      name: 'RentCottage.ge',
       url: siteUrl,
       logo: `${siteUrl}/logo.png`,
       contactPoint: {
@@ -89,7 +89,7 @@ export default function HomePage() {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
       '@id': siteUrl,
-      name: 'RentCottage.Ge',
+      name: 'RentCottage.ge',
       description: 'Georgian cottage rental platform connecting travelers with unique traditional homes and mountain retreats across Georgia.',
       url: siteUrl,
       address: {
@@ -123,7 +123,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="RentCottage.Ge — Find & Book Georgian Cottage"
+        title="RentCottage.ge — Find & Book Georgian Cottage"
         description="Find and book unique Georgian cottage rentals across Tbilisi, Batumi, Kakheti and Gudauri. Verified cottages, mountain retreats and traditional Georgian homes. Book your perfect Georgian getaway today."
         keywords="Georgian cottage rental, Georgia vacation rental, rent cottage Georgia, Tbilisi accommodation, Kakheti cottage"
         canonical="/"

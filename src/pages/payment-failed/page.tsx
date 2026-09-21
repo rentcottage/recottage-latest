@@ -46,7 +46,7 @@ export default function PaymentFailedPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <SEO
-        title="Payment Failed — RentCottage.Ge"
+        title="Payment Failed — RentCottage.ge"
         description="Your payment could not be completed. No charges have been made. Please try again."
         noIndex={true}
         canonical="/payment/failed"

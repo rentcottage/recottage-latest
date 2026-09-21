@@ -73,7 +73,7 @@ export default function AboutGeorgia() {
       name: 'About Georgia — Travel Guide to Georgian Culture, Wine & Landscapes',
       description: "Explore Georgia's 8,000-year history, UNESCO World Heritage sites, ancient wine traditions and stunning Caucasus landscapes. Your complete guide to traveling in Georgia.",
       url: `${siteUrl}/about-georgia`,
-      isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+      isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
     },
     {
       '@context': 'https://schema.org',
@@ -94,7 +94,7 @@ export default function AboutGeorgia() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <SEO
-        title="About Georgia — Travel Guide to Georgian Culture, Wine & Landscapes | RentCottage.Ge"
+        title="About Georgia — Travel Guide to Georgian Culture, Wine & Landscapes | RentCottage.ge"
         description="Explore Georgia's 8,000-year history, UNESCO World Heritage sites, ancient wine traditions and stunning Caucasus landscapes. Your complete guide to traveling in Georgia."
         keywords="Georgia travel guide, Georgian culture, Caucasus mountains, Georgian wine, Kakheti, Kazbegi, UNESCO Georgia, Georgian cuisine, visit Georgia"
         canonical="/about-georgia"

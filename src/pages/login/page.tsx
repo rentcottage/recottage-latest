@@ -94,8 +94,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEO
-        title="Log in — RentCottage.Ge"
-        description="Log in to your RentCottage.Ge account to manage bookings and list your cottage."
+        title="Log in — RentCottage.ge"
+        description="Log in to your RentCottage.ge account to manage bookings and list your cottage."
         canonical="/login"
         noIndex
       />

@@ -139,7 +139,7 @@ export default function AdminGate({ children }: Props) {
             </div>
           </div>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('admin.gate.adminAccess')}</h1>
-          <p className="text-sm text-gray-400 mt-1">RentCottage.Ge</p>
+          <p className="text-sm text-gray-400 mt-1">RentCottage.ge</p>
         </div>
 
         {/* Card */}

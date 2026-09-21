@@ -177,8 +177,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEO
-        title="Create an account — RentCottage.Ge"
-        description="Create a RentCottage.Ge account to book cottages and list your own."
+        title="Create an account — RentCottage.ge"
+        description="Create a RentCottage.ge account to book cottages and list your own."
         canonical="/register"
         noIndex
       />

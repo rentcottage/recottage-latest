@@ -143,7 +143,7 @@ export default function PaymentSuccessPage() {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <SEO
-          title="Payment Successful — RentCottage.Ge"
+          title="Payment Successful — RentCottage.ge"
           description="Your cottage booking payment was successful. View your booking confirmation."
           noIndex={true}
           canonical="/payment/success"
@@ -167,7 +167,7 @@ export default function PaymentSuccessPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <SEO
-        title="Payment Successful — RentCottage.Ge"
+        title="Payment Successful — RentCottage.ge"
         description="Your cottage booking payment was successful. View your booking confirmation."
         noIndex={true}
         canonical="/payment/success"

@@ -120,7 +120,7 @@ export function buildCopy(group, ctx) {
     : locative(name);
 
   p.push(
-    `RentCottage.Ge-ზე ${where} ამჟამად ${s.n} კოტეჯია გამოქვეყნებული. ` +
+    `RentCottage.ge-ზე ${where} ამჟამად ${s.n} კოტეჯია გამოქვეყნებული. ` +
     `თითოეული მათგანი მასპინძელმა თავად დაამატა და ადმინისტრაციამ დაადასტურა, ` +
     `ჯავშანი კი პირდაპირ ამ საიტიდან კეთდება, შუამავლის გარეშე.`,
   );
@@ -203,8 +203,8 @@ export function wordCount(paragraphs) {
 export function landingTitle(group, ctx) {
   const name = ctx.displayName;
   const n = group.listings.length;
-  if (group.kind === 'category') return `${name} — ${n} კოტეჯი საქართველოში | RentCottage.Ge`;
-  return `კოტეჯები ${locative(name)} — ${n} ვარიანტი | RentCottage.Ge`;
+  if (group.kind === 'category') return `${name} — ${n} კოტეჯი საქართველოში | RentCottage.ge`;
+  return `კოტეჯები ${locative(name)} — ${n} ვარიანტი | RentCottage.ge`;
 }
 
 export function landingDescription(group, ctx) {
@@ -217,7 +217,7 @@ export function landingDescription(group, ctx) {
   const head = group.kind === 'category'
     ? `„${name}“ კატეგორიის ${s.n} კოტეჯი საქართველოში`
     : `${s.n} კოტეჯი ${locative(name)}`;
-  return `${head}${price ? `, ღამე ${price}` : ''}.${cap} დამოწმებული ბინადრობა, პირდაპირი ჯავშანი RentCottage.Ge-ზე.`;
+  return `${head}${price ? `, ღამე ${price}` : ''}.${cap} დამოწმებული ბინადრობა, პირდაპირი ჯავშანი RentCottage.ge-ზე.`;
 }
 
 export function landingH1(group, ctx) {
@@ -280,7 +280,7 @@ export function linksHtml(heading, links) {
 export function landingJsonLd(group, ctx) {
   const url = `${SITE}/cottages/${group.slug}`;
   const crumbs = [
-    { name: 'RentCottage.Ge', item: SITE },
+    { name: 'RentCottage.ge', item: SITE },
     { name: 'კოტეჯები', item: `${SITE}/search` },
   ];
   if (ctx.regionLink) {

@@ -423,7 +423,7 @@ export default function AdminBookings() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900 leading-tight">{t('admin.page.bookingsAdminTitle')}</h1>
-                <p className="text-xs text-gray-400 leading-none">RentCottage.Ge</p>
+                <p className="text-xs text-gray-400 leading-none">RentCottage.ge</p>
               </div>
             </div>
             <button

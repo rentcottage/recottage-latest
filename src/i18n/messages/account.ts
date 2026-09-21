@@ -351,7 +351,7 @@ export const accountEn = {
     faqA6: 'Click on "Become a Host" in our menu, fill out the application form with your property details, and our team will review your application within 24 hours.',
     responseTimeLabel: 'Response Time:',
     responseTimeBody: 'Our support team typically responds within 2-4 hours during business hours.',
-    footerNote: '© 2024 RentCottage.Ge - We\'re here to help with your Georgian cottage rental experience.',
+    footerNote: '© 2024 RentCottage.ge - We\'re here to help with your Georgian cottage rental experience.',
   },
 
   cancellationModal: {
@@ -971,7 +971,7 @@ export const accountKa: AccountNs = {
     faqA6: 'დააჭირეთ „გახდი მასპინძელი“ ჩვენს მენიუში, შეავსეთ განაცხადის ფორმა თქვენი ობიექტის დეტალებით და ჩვენი გუნდი განიხილავს თქვენს განაცხადს 24 საათის განმავლობაში.',
     responseTimeLabel: 'პასუხის დრო:',
     responseTimeBody: 'ჩვენი მხარდაჭერის გუნდი, ჩვეულებრივ, პასუხობს 2-4 საათში სამუშაო საათებში.',
-    footerNote: '© 2024 RentCottage.Ge — ჩვენ აქ ვართ, რომ დაგეხმაროთ საქართველოში კოტეჯის ქირაობის გამოცდილებაში.',
+    footerNote: '© 2024 RentCottage.ge — ჩვენ აქ ვართ, რომ დაგეხმაროთ საქართველოში კოტეჯის ქირაობის გამოცდილებაში.',
   },
 
   cancellationModal: {
@@ -1589,7 +1589,7 @@ export const accountRu: AccountNs = {
     faqA6: 'Нажмите «Стать хозяином» в нашем меню, заполните форму заявки с данными о вашем объекте, и наша команда рассмотрит вашу заявку в течение 24 часов.',
     responseTimeLabel: 'Время ответа:',
     responseTimeBody: 'Наша служба поддержки обычно отвечает в течение 2-4 часов в рабочее время.',
-    footerNote: '© 2024 RentCottage.Ge — мы здесь, чтобы помочь вам с арендой грузинского коттеджа.',
+    footerNote: '© 2024 RentCottage.ge — мы здесь, чтобы помочь вам с арендой грузинского коттеджа.',
   },
 
   cancellationModal: {

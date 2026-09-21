@@ -210,7 +210,7 @@ function HostDashboardContent() {
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900 leading-tight">{t('host.dashboard.title')}</p>
-                <p className="text-xs text-gray-400">RentCottage.Ge</p>
+                <p className="text-xs text-gray-400">RentCottage.ge</p>
               </div>
             </div>
             {/* Close button — mobile only */}

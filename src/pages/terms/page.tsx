@@ -337,10 +337,10 @@ export default function TermsPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Terms & Conditions — RentCottage.Ge',
-    description: 'Read the Terms & Conditions for using RentCottage.Ge, the Georgian cottage rental platform. Learn about bookings, payments, cancellations, and user responsibilities.',
+    name: 'Terms & Conditions — RentCottage.ge',
+    description: 'Read the Terms & Conditions for using RentCottage.ge, the Georgian cottage rental platform. Learn about bookings, payments, cancellations, and user responsibilities.',
     url: `${siteUrl}/terms`,
-    isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+    isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
   };
 
   // Scroll-spy: highlight the TOC entry for the section currently in view.
@@ -365,8 +365,8 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <SEO
-        title="Terms & Conditions — RentCottage.Ge"
-        description="Read the Terms & Conditions for using RentCottage.Ge, the Georgian cottage rental platform. Learn about bookings, payments, cancellations, and user responsibilities."
+        title="Terms & Conditions — RentCottage.ge"
+        description="Read the Terms & Conditions for using RentCottage.ge, the Georgian cottage rental platform. Learn about bookings, payments, cancellations, and user responsibilities."
         canonical="/terms"
         jsonLd={jsonLd}
       />

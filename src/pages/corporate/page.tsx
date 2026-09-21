@@ -178,8 +178,8 @@ export default function CorporatePage() {
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       <SEO
-        title="For Travel Agencies — Earn 5% Commission | RentCottage.Ge"
-        description="Partner with RentCottage.Ge as a travel agency. Book cottages on behalf of your clients and earn 5% commission on every confirmed booking."
+        title="For Travel Agencies — Earn 5% Commission | RentCottage.ge"
+        description="Partner with RentCottage.ge as a travel agency. Book cottages on behalf of your clients and earn 5% commission on every confirmed booking."
         canonical="/corporate"
       />
       <Header />

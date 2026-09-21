@@ -503,8 +503,8 @@ export default function SearchResults() {
 
   // SEO meta stays hardcoded English (matches convention on every other wired page).
   const pageTitle = location
-    ? `Cottage Rentals in ${location} — RentCottage.Ge`
-    : 'Search Georgian Cottage Rentals — RentCottage.Ge';
+    ? `Cottage Rentals in ${location} — RentCottage.ge`
+    : 'Search Georgian Cottage Rentals — RentCottage.ge';
 
   const pageDescription = location
     ? `Browse verified Georgian cottage rentals in ${location}. Filter by price, amenities and property type. Book authentic Georgian cottages and mountain retreats.`
@@ -516,7 +516,7 @@ export default function SearchResults() {
     name: pageTitle,
     description: pageDescription,
     url: `${siteUrl}/search`,
-    isPartOf: { '@type': 'WebSite', name: 'RentCottage.Ge', url: siteUrl },
+    isPartOf: { '@type': 'WebSite', name: 'RentCottage.ge', url: siteUrl },
   };
 
   return (
