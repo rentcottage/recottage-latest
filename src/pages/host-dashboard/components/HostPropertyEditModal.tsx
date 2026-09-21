@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
+import MapPinPicker from '../../../components/feature/MapPinPicker';
 import { compressImage } from '../../../lib/imageCompression';
 import { useT } from '../../../i18n';
 
@@ -639,6 +640,17 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                       {t('host.propertyEditModal.googleMapsHint')}
                     </p>
                   </div>
+
+                  {/* The pin writes into the same two fields below, which stay
+                      editable and remain the value that is saved. Typing a
+                      coordinate moves the pin; dragging the pin rewrites the
+                      text. Leaving both empty saves null, exactly as before. */}
+                  <MapPinPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                    locationHint={property.location}
+                  />
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>

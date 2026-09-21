@@ -84,6 +84,17 @@ const TYPE_LABEL_KEY: Record<string, string> = {
   'Farmhouse': 'search.typeFarmhouse',
 };
 
+/**
+ * The sort keys the dropdown offers. Anything else in ?sort= is ignored.
+ *
+ * 'rating' ("Highest Rated") was removed: every listing carries the same
+ * hardcoded 5.0, so the option reordered nothing while promising it did.
+ * Restoring it means adding 'rating' here, the <option> in the dropdown, and a
+ * `case 'rating'` branch in the sort below — once listings carry real review
+ * averages to sort on.
+ */
+const SORT_KEYS = ['alphabetical', 'price-low', 'price-high', 'reviews'];
+
 export default function SearchResults() {
   const { t, plural, lang } = useT();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,7 +129,10 @@ export default function SearchResults() {
 
   // ── Filters live in the URL so they survive navigating into a property and back ──
   // (and make filtered searches shareable/bookmarkable)
-  const sortBy = searchParams.get('sort') || 'alphabetical';
+  // An unknown or retired key (a bookmarked ?sort=rating) falls back to the
+  // default rather than leaving the <select> showing no selection.
+  const requestedSort = searchParams.get('sort') || 'alphabetical';
+  const sortBy = SORT_KEYS.includes(requestedSort) ? requestedSort : 'alphabetical';
   const amenitiesParam = searchParams.get('amenities') || '';
   const typesParam = searchParams.get('types') || '';
   const regionsParam = searchParams.get('regions') || '';
@@ -298,9 +312,6 @@ export default function SearchResults() {
         break;
       case 'price-high':
         filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
         break;
       case 'reviews':
         filtered.sort((a, b) => b.reviews - a.reviews);
@@ -834,7 +845,6 @@ export default function SearchResults() {
                   <option value="alphabetical">{t('search.sortAlphabetical')}</option>
                   <option value="price-low">{t('search.sortPriceLow')}</option>
                   <option value="price-high">{t('search.sortPriceHigh')}</option>
-                  <option value="rating">{t('search.sortRating')}</option>
                   <option value="reviews">{t('search.sortReviews')}</option>
                 </select>
               </div>
