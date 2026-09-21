@@ -11,10 +11,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ACTIONS,
+  AVAILABILITY_CONCURRENCY,
+  AVAILABILITY_RPC,
   CLEANUP_PAGE_SIZE,
   CONTACT_MARK,
   LISTING_COLUMNS,
   LISTINGS_VIEW,
+  DEFAULT_WEEKEND_COUNT,
+  MAX_AVAILABILITY_CHECKS,
   MAX_LISTINGS,
   REEL_NAME_RE,
   REEL_RETENTION_DAYS,
@@ -24,21 +28,36 @@ import {
   STATS_COLUMNS,
   STATS_VIEW,
   UPLOAD_URL_TTL_SECONDS,
+  WEEKEND_NIGHTS,
   clientBucket,
+  comingWeekend,
   createHandler,
   defaultRandomId,
   displayName,
+  epochDay,
   isExpiredReel,
+  isStayUnavailable,
+  isoFromEpochDay,
+  parseUnavailableRanges,
   photoCount,
   pickRotating,
   providedSecret,
   redactContacts,
   reelPath,
+  rangeConflictsWithStay,
   rotationScore,
   rotationSeed,
   shortDescription,
+  tbilisiDate,
+  type UnavailableRange,
 } from './handler.ts';
 import { FAILURES_TABLE, MAX_FAILURES, clientKey } from '../_shared/adminAuth.ts';
+// The property page's own availability rule. available-weekend must agree with
+// it exactly; see the PIN test below.
+import {
+  isStayUnavailable as pageIsStayUnavailable,
+  parseUnavailableRanges as pageParseUnavailableRanges,
+} from '../../../src/lib/availability.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -81,11 +100,30 @@ function listingRows(n: number): Row[] {
 
 class FakeDb {
   calls: { table: string; select?: string; filters: string[] }[] = [];
+  rpcCalls: { fn: string; args: Row }[] = [];
   failures: { ip_hash: string; function_name: string; failed_at: number }[] = [];
   statsRows: Row[] = [STATS_ROW];
   listings: Row[] = listingRows(12);
+  /** property id → what get_unavailable_ranges returns. Absent = wide open. */
+  ranges = new Map<string, UnavailableRange[]>();
   failStats = false;
   failListings = false;
+  /** property ids whose availability probe errors. */
+  failRpcFor = new Set<string>();
+
+  /**
+   * The availability RPC. It answers with whatever the test put in `ranges`;
+   * it does NOT re-derive anything, because in production that derivation is
+   * SQL (see the migration) and is not this function's to make.
+   */
+  rpc(fn: string, args: Row) {
+    this.rpcCalls.push({ fn, args });
+    const id = String(args?.p_property_id ?? '');
+    if (this.failRpcFor.has(id)) {
+      return Promise.resolve({ data: null, error: { message: 'rpc blew up host=10.0.0.9 password=hunter2' } });
+    }
+    return Promise.resolve({ data: this.ranges.get(id) ?? [], error: null });
+  }
 
   from(table: string) {
     if (table === FAILURES_TABLE) return this.failureTable();
@@ -208,13 +246,14 @@ function storedReel(name: string, days: number, prefix = 'reels'): Row {
 
 const RANDOM_ID = 'abcdef0123456789';
 
-function harness(opts: { secret?: string } = { secret: SECRET }) {
+function harness(opts: { secret?: string; now?: Date } = { secret: SECRET }) {
   const secret = 'secret' in opts ? opts.secret : SECRET;
+  const at = opts.now ?? NOW;
   const db = new FakeDb();
   const storage = new FakeStorage();
   const logs: string[] = [];
   const handler = createHandler({
-    db, storage, secret, now: () => NOW, randomId: () => RANDOM_ID,
+    db, storage, secret, now: () => at, randomId: () => RANDOM_ID,
     log: (e, f) => logs.push(`${e} ${JSON.stringify(f ?? {})}`),
   });
   let client = 0;
@@ -343,9 +382,10 @@ test('ROUTING GET → 405, unknown action → 400, bad JSON → 400', async () =
   assert.equal(h.db.calls.length, 0, 'no action ran');
 });
 
-test('ROUTING the whitelist holds exactly the four actions', () => {
-  assert.deepEqual(Object.keys(ACTIONS).sort(),
-    ['listings-for-social', 'reel-cleanup', 'reel-upload-url', 'weekly-report']);
+test('ROUTING the whitelist holds exactly the five actions', () => {
+  assert.deepEqual(Object.keys(ACTIONS).sort(), [
+    'available-weekend', 'listings-for-social', 'reel-cleanup', 'reel-upload-url', 'weekly-report',
+  ]);
 });
 
 // ── weekly-report ────────────────────────────────────────────────────────────
@@ -671,12 +711,18 @@ function assertNoPii(text: string, body: Row, label: string, opts: { allowListin
 }
 
 test('PII no action and no error path leaks contact data, a booking id or a user id', async () => {
-  const cases: { label: string; body: unknown; headers?: Record<string, string>; method?: string; allowListingIds?: boolean }[] = [
+  const cases: {
+    label: string; body: unknown; headers?: Record<string, string>; method?: string;
+    allowListingIds?: boolean; failEveryProbe?: boolean; failListings?: boolean;
+  }[] = [
     { label: 'weekly-report', body: { action: 'weekly-report' } },
     { label: 'listings (default)', body: { action: 'listings-for-social' }, allowListingIds: true },
     { label: 'listings (max)', body: { action: 'listings-for-social', count: MAX_LISTINGS }, allowListingIds: true },
     { label: 'listings (filtered)', body: { action: 'listings-for-social', count: 5, category: 'Mountain', region: 'Batumi' }, allowListingIds: true },
     { label: 'listings (min_photos)', body: { action: 'listings-for-social', count: 5, min_photos: 2 }, allowListingIds: true },
+    { label: 'weekend (default)', body: { action: 'available-weekend' }, allowListingIds: true },
+    { label: 'weekend (max)', body: { action: 'available-weekend', count: MAX_LISTINGS }, allowListingIds: true },
+    { label: 'weekend (filtered)', body: { action: 'available-weekend', count: 5, category: 'Mountain', region: 'Batumi', min_photos: 2 }, allowListingIds: true },
     { label: 'reel-upload-url', body: { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' } },
     { label: 'reel-upload-url (bad id)', body: { action: 'reel-upload-url', listing_id: 'nope' } },
     { label: 'reel-upload-url (unknown listing)', body: { action: 'reel-upload-url', listing_id: '99990000-2222-4222-8222-333333333333' } },
@@ -686,6 +732,11 @@ test('PII no action and no error path leaks contact data, a booking id or a user
     { label: 'no secret', body: { action: 'weekly-report' }, headers: {} },
     { label: 'unknown action', body: { action: 'fetch-users' } },
     { label: 'bad count', body: { action: 'listings-for-social', count: 99 } },
+    { label: 'weekend (bad count)', body: { action: 'available-weekend', count: 99 } },
+    { label: 'weekend (bad min_photos)', body: { action: 'available-weekend', min_photos: -1 } },
+    { label: 'weekend (bad region)', body: { action: 'available-weekend', region: '' } },
+    { label: 'weekend (probes failing)', body: { action: 'available-weekend' }, failEveryProbe: true, allowListingIds: true },
+    { label: 'weekend (listings query broken)', body: { action: 'available-weekend' }, failListings: true },
     { label: 'bad exclude_ids', body: { action: 'listings-for-social', exclude_ids: 'x' } },
     { label: 'method not allowed', body: null, method: 'GET' },
     { label: 'invalid json', body: '{nope' },
@@ -706,9 +757,22 @@ test('PII no action and no error path leaks contact data, a booking id or a user
       host_last_name: 'Privatesurname',
     }));
     h.db.statsRows = [{ ...STATS_ROW, user_email: 'guest.private@example.test' }];
+    // The availability RPC is a booking-derived source. Seed it with rows that
+    // carry what a booking row would, so the scan below is meaningful: if any
+    // of it were ever copied into a response, this test is what catches it.
+    for (const l of h.db.listings) {
+      h.db.ranges.set(String(l.id), [{
+        start_date: '2026-09-26', end_date: '2026-09-28', source_kind: 'booked',
+        booking_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+        user_email: 'guest.private@example.test',
+        user_phone: '+995 599 123 456',
+      } as unknown as UnavailableRange]);
+    }
+    if (c.failEveryProbe) for (const l of h.db.listings) h.db.failRpcFor.add(String(l.id));
+    if (c.failListings) h.db.failListings = true;
     const r = await h.call(c.body, c.headers ?? { 'x-n8n-secret': SECRET }, c.method ?? 'POST');
     assertNoPii(r.text, r.body, c.label, { allowListingIds: c.allowListingIds });
-    if (c.allowListingIds) {
+    if (c.allowListingIds && !c.failEveryProbe) {
       // The fakes above carry an e-mail, a phone and a URL in their
       // descriptions; the scan is only meaningful if cleaned text came back.
       assert.ok(r.body.listings.some((l: Row) => typeof l.short_description === 'string'), `${c.label}: no short_description to scan`);
@@ -758,6 +822,8 @@ test('SOURCES no action ever queries a base table — only the two PII-free view
     { action: 'weekly-report' },
     { action: 'listings-for-social' },
     { action: 'listings-for-social', count: 10, category: 'Mountain', region: 'Batumi', exclude_ids: [], min_photos: 2 },
+    { action: 'available-weekend' },
+    { action: 'available-weekend', count: 10, category: 'Mountain', region: 'Batumi', min_photos: 2 },
     { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' },
   ];
   for (const body of bodies) {
@@ -769,18 +835,34 @@ test('SOURCES no action ever queries a base table — only the two PII-free view
       assert.equal(BASE_TABLES.includes(t), false, `${JSON.stringify(body)} read base table ${t}`);
       assert.ok(['marketing_weekly_stats', 'public_properties'].includes(t), `unexpected source ${t}`);
     }
+    // An RPC is a second way to reach a base table, so it is pinned the same
+    // way: one function name, one argument, and that argument a listing id.
+    for (const c of h.db.rpcCalls) {
+      assert.equal(c.fn, AVAILABILITY_RPC, `${JSON.stringify(body)} called RPC ${c.fn}`);
+      assert.deepEqual(Object.keys(c.args), ['p_property_id'], `${JSON.stringify(body)} passed ${JSON.stringify(c.args)}`);
+      assert.ok(h.db.listings.some((l) => l.id === c.args.p_property_id), 'the RPC argument must be a listing id');
+    }
+  }
+  // Only available-weekend may call an RPC at all.
+  for (const body of [{ action: 'weekly-report' }, { action: 'listings-for-social' },
+    { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' }, { action: 'reel-cleanup' }]) {
+    const h = harness();
+    await h.call(body);
+    assert.deepEqual(h.db.rpcCalls, [], `${JSON.stringify(body)} called an RPC`);
   }
   // reel-cleanup is the one action that reads no table at all — asserted
   // positively, so that a future edit which made it query something shows up.
   const h = harness();
   await h.call({ action: 'reel-cleanup' });
   assert.deepEqual(h.db.calls, []);
+  assert.deepEqual(h.db.rpcCalls, []);
 });
 
 test('SOURCES no action ever touches a bucket other than social-videos', async () => {
   const bodies = [
     { action: 'weekly-report' },
     { action: 'listings-for-social' },
+    { action: 'available-weekend' },
     { action: 'reel-upload-url', listing_id: '11110000-2222-4222-8222-333333333333' },
     { action: 'reel-cleanup' },
   ];
@@ -1179,4 +1261,450 @@ test('REELS the bucket, prefix and retention are pinned to their literal values'
   assert.equal(REEL_RETENTION_DAYS, 3);
   assert.ok(UPLOAD_URL_TTL_SECONDS > 0 && UPLOAD_URL_TTL_SECONDS <= 7200,
     `upload URLs must live at most two hours, got ${UPLOAD_URL_TTL_SECONDS}s`);
+});
+
+// ── available-weekend: which weekend ─────────────────────────────────────────
+//
+// The rule: check_in is the first Saturday STRICTLY AFTER today in
+// Asia/Tbilisi, check_out is two days later. Saturday and Sunday therefore
+// point at the NEXT weekend, never the one they are standing in.
+
+/** 2026-09-19 is a Saturday; the days below are anchored to it. */
+const SAT = '2026-09-19';
+
+test('WEEKEND every day of the week resolves to the Saturday strictly after it', () => {
+  const cases: [string, string][] = [
+    ['2026-09-14', '2026-09-19'], // Monday    → that week's Saturday
+    ['2026-09-15', '2026-09-19'], // Tuesday
+    ['2026-09-16', '2026-09-19'], // Wednesday
+    ['2026-09-17', '2026-09-19'], // Thursday
+    ['2026-09-18', '2026-09-19'], // Friday    → tomorrow
+    ['2026-09-19', '2026-09-26'], // Saturday  → the NEXT one, not today
+    ['2026-09-20', '2026-09-26'], // Sunday    → the NEXT one
+    ['2026-09-21', '2026-09-26'], // Monday again
+  ];
+  for (const [today, saturday] of cases) {
+    // Midday Tbilisi, so the local calendar day is unambiguous.
+    const w = comingWeekend(new Date(`${today}T08:00:00.000Z`));
+    assert.equal(w.check_in, saturday, `from ${today}`);
+    assert.equal(epochDay(w.check_out) - epochDay(w.check_in), WEEKEND_NIGHTS, `from ${today}`);
+    assert.equal(w.nights, WEEKEND_NIGHTS);
+    assert.ok(w.check_in > today, `${today}: check_in must be in the future`);
+  }
+});
+
+test('WEEKEND the boundary is Tbilisi midnight, not UTC midnight', () => {
+  // 2026-09-18T20:30Z is still Friday in UTC but already Saturday 00:30 in
+  // Tbilisi (UTC+4). Tbilisi is the site's calendar, so this must roll over.
+  assert.equal(tbilisiDate(new Date('2026-09-18T19:59:00.000Z')), '2026-09-18');
+  assert.equal(tbilisiDate(new Date('2026-09-18T20:30:00.000Z')), '2026-09-19');
+  assert.equal(comingWeekend(new Date('2026-09-18T19:59:00.000Z')).check_in, '2026-09-19');
+  assert.equal(comingWeekend(new Date('2026-09-18T20:30:00.000Z')).check_in, '2026-09-26');
+  // The last instant of Saturday in Tbilisi still points at the next weekend.
+  assert.equal(comingWeekend(new Date('2026-09-19T19:59:00.000Z')).check_in, '2026-09-26');
+});
+
+test('WEEKEND a whole year of days: always a future Saturday, 1..7 days out', () => {
+  const start = epochDay('2026-01-01');
+  for (let d = 0; d < 366; d++) {
+    const today = isoFromEpochDay(start + d);
+    const w = comingWeekend(new Date(`${today}T08:00:00.000Z`));
+    const ahead = epochDay(w.check_in) - epochDay(today);
+    assert.ok(ahead >= 1 && ahead <= 7, `${today}: ${ahead} days ahead`);
+    assert.equal(new Date(`${w.check_in}T00:00:00Z`).getUTCDay(), 6, `${today} → ${w.check_in} is not a Saturday`);
+  }
+});
+
+test('WEEKEND the response carries the dates the rule produced', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'available-weekend' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.check_in, SAT);
+  assert.equal(r.body.check_out, '2026-09-21');
+  assert.equal(r.body.nights, WEEKEND_NIGHTS);
+  assert.deepEqual(comingWeekend(NOW), { check_in: r.body.check_in, check_out: r.body.check_out, nights: r.body.nights });
+});
+
+// ── available-weekend: the availability rule is the site's ───────────────────
+
+/**
+ * What get_unavailable_ranges returns for these rows, reproducing the
+ * migration's WHERE clause — including the one thing it decides that this
+ * handler must not: a pending_payment hold occupies the dates for twenty
+ * minutes and never after that.
+ */
+const OCCUPYING = ['confirmed', 'pending', 'pending_host_approval'];
+function rpcRows(opts: {
+  bookings?: { check_in: string; check_out: string; status: string; minutesOld?: number }[];
+  blocks?: { start_date: string; end_date: string }[];
+} = {}): UnavailableRange[] {
+  const booked = (opts.bookings ?? [])
+    .filter((b) => OCCUPYING.includes(b.status)
+      || (b.status === 'pending_payment' && (b.minutesOld ?? 0) < 20))
+    .map((b) => ({ start_date: b.check_in, end_date: b.check_out, source_kind: 'booked' as const }));
+  const blocked = (opts.blocks ?? [])
+    .map((d) => ({ start_date: d.start_date, end_date: d.end_date, source_kind: 'blocked' as const }));
+  return [...booked, ...blocked];
+}
+
+/** Every listing, with the given ranges pinned on the first one. */
+function withRanges(h: ReturnType<typeof harness>, ranges: UnavailableRange[]): string {
+  const id = String(h.db.listings[0].id);
+  h.db.ranges.set(id, ranges);
+  return id;
+}
+
+test('WEEKEND a listing booked over the weekend is excluded', async () => {
+  for (const status of OCCUPYING) {
+    const h = harness();
+    const id = withRanges(h, rpcRows({ bookings: [{ check_in: SAT, check_out: '2026-09-21', status }] }));
+    const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+    assert.equal(r.body.candidates, h.db.listings.length, status);
+    assert.equal(r.body.available, h.db.listings.length - 1, `${status}: the booked listing must not count as free`);
+    assert.equal(r.body.listings.some((l: Row) => l.id === id), false, `${status}: booked listing returned`);
+  }
+});
+
+test('WEEKEND a booking that merely touches the weekend edges does not block it', async () => {
+  // 'booked' end_date is the check-out day and is EXCLUSIVE: a guest leaving on
+  // Saturday, and a guest arriving on Monday, both leave the two nights free.
+  for (const booking of [
+    { check_in: '2026-09-16', check_out: SAT, status: 'confirmed' },
+    { check_in: '2026-09-21', check_out: '2026-09-23', status: 'confirmed' },
+  ]) {
+    const h = harness();
+    const id = withRanges(h, rpcRows({ bookings: [booking] }));
+    const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+    assert.equal(r.body.available, h.db.listings.length, JSON.stringify(booking));
+    assert.equal(r.body.listings.some((l: Row) => l.id === id), true, JSON.stringify(booking));
+  }
+});
+
+test('WEEKEND a manual or imported OTA block excludes the listing', async () => {
+  // Both block tables arrive as source_kind 'blocked', whose end_date is
+  // INCLUSIVE — so a block ending on the Saturday still takes that night.
+  for (const block of [
+    { start_date: SAT, end_date: '2026-09-20' },     // the weekend itself
+    { start_date: '2026-09-10', end_date: SAT },     // ends on the Saturday
+    { start_date: '2026-09-20', end_date: '2026-10-01' }, // starts on the Sunday
+    { start_date: '2026-09-01', end_date: '2026-10-01' }, // swallows it
+  ]) {
+    const h = harness();
+    const id = withRanges(h, rpcRows({ blocks: [block] }));
+    const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+    assert.equal(r.body.available, h.db.listings.length - 1, JSON.stringify(block));
+    assert.equal(r.body.listings.some((l: Row) => l.id === id), false, JSON.stringify(block));
+  }
+  // A block that ends the day before check-in leaves the weekend free.
+  const h = harness();
+  const id = withRanges(h, rpcRows({ blocks: [{ start_date: '2026-09-01', end_date: '2026-09-18' }] }));
+  const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+  assert.equal(r.body.available, h.db.listings.length);
+  assert.equal(r.body.listings.some((l: Row) => l.id === id), true);
+});
+
+test('WEEKEND a payment hold under twenty minutes excludes the listing; an expired one does not', async () => {
+  const hold = (minutesOld: number) =>
+    rpcRows({ bookings: [{ check_in: SAT, check_out: '2026-09-21', status: 'pending_payment', minutesOld }] });
+
+  for (const minutesOld of [0, 5, 19]) {
+    const h = harness();
+    const id = withRanges(h, hold(minutesOld));
+    const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+    assert.equal(r.body.available, h.db.listings.length - 1, `${minutesOld} min`);
+    assert.equal(r.body.listings.some((l: Row) => l.id === id), false, `${minutesOld} min: a live hold must hide the listing`);
+  }
+  for (const minutesOld of [20, 60]) {
+    const h = harness();
+    const id = withRanges(h, hold(minutesOld));
+    const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+    assert.equal(r.body.available, h.db.listings.length, `${minutesOld} min`);
+    assert.equal(r.body.listings.some((l: Row) => l.id === id), true, `${minutesOld} min: an expired hold releases the dates`);
+  }
+});
+
+test('WEEKEND PIN the availability rule is the property page’s, range for range', () => {
+  // The handler cannot import src/lib/availability.ts (src/ is outside the
+  // bundle the function deploys from), so the copy is held to the original
+  // here: every range shape against this weekend, both kinds, both modules.
+  const checkIn = SAT;
+  const checkOut = '2026-09-21';
+  const days = Array.from({ length: 16 }, (_, i) => isoFromEpochDay(epochDay('2026-09-12') + i));
+  let compared = 0;
+  for (const kind of ['booked', 'blocked'] as const) {
+    for (const start of days) {
+      for (const end of days) {
+        if (end < start) continue;
+        const ranges: UnavailableRange[] = [{ start_date: start, end_date: end, source_kind: kind }];
+        assert.equal(
+          isStayUnavailable(ranges, checkIn, checkOut),
+          pageIsStayUnavailable(ranges, checkIn, checkOut),
+          `${kind} ${start}..${end} decided differently from the property page`,
+        );
+        compared++;
+      }
+    }
+  }
+  assert.ok(compared > 250, `only ${compared} range shapes compared`);
+  // Same for the row filter, including the rows the RPC could never send.
+  const dirty = [
+    null, 'x', { start_date: SAT, end_date: '2026-09-21', source_kind: 'booked' },
+    { start_date: SAT, end_date: '2026-09-21', source_kind: 'held' },
+    { start_date: '19/09/2026', end_date: '2026-09-21', source_kind: 'blocked' },
+    { start_date: SAT, source_kind: 'blocked' },
+  ];
+  assert.deepEqual(parseUnavailableRanges(dirty), pageParseUnavailableRanges(dirty));
+  assert.deepEqual(parseUnavailableRanges('nope'), pageParseUnavailableRanges('nope'));
+  // And the single-range predicate, so a future edit cannot pass the matrix by
+  // collapsing both kinds into one rule that happens to agree in aggregate.
+  assert.equal(rangeConflictsWithStay({ start_date: '2026-09-16', end_date: SAT, source_kind: 'booked' }, checkIn, checkOut), false);
+  assert.equal(rangeConflictsWithStay({ start_date: '2026-09-16', end_date: SAT, source_kind: 'blocked' }, checkIn, checkOut), true);
+});
+
+test('WEEKEND every candidate is probed, with the site’s RPC and nothing else', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'available-weekend' });
+  assert.equal(r.status, 200);
+  const probed = h.db.rpcCalls.map((c) => c.fn);
+  assert.equal(probed.length, h.db.listings.length, 'every candidate must be checked');
+  assert.deepEqual([...new Set(probed)], [AVAILABILITY_RPC]);
+  assert.deepEqual(
+    h.db.rpcCalls.map((c) => c.args.p_property_id).sort(),
+    h.db.listings.map((l) => l.id).sort(),
+  );
+  // The RPC takes one argument and it is a listing id — no dates, no filters.
+  for (const c of h.db.rpcCalls) assert.deepEqual(Object.keys(c.args), ['p_property_id']);
+});
+
+test('WEEKEND the probes are batched, not fired all at once', async () => {
+  const h = harness();
+  let live = 0;
+  let peak = 0;
+  const inner = h.db.rpc.bind(h.db);
+  h.db.rpc = (fn: string, args: Row) => {
+    live++; peak = Math.max(peak, live);
+    return inner(fn, args).then((v) => { live--; return v; });
+  };
+  await h.call({ action: 'available-weekend' });
+  assert.ok(peak <= AVAILABILITY_CONCURRENCY, `${peak} probes were in flight at once`);
+});
+
+test('WEEKEND a listing whose probe fails is dropped, and nothing of the error escapes', async () => {
+  const h = harness();
+  const id = String(h.db.listings[0].id);
+  h.db.failRpcFor.add(id);
+  const r = await h.call({ action: 'available-weekend', count: MAX_LISTINGS });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.available, h.db.listings.length - 1);
+  assert.equal(r.body.listings.some((l: Row) => l.id === id), false);
+  assert.equal(r.text.includes('hunter2'), false);
+  assert.equal(r.text.includes('10.0.0.9'), false);
+
+  // The same holds when the client throws instead of returning an error.
+  const thrown = harness();
+  const first = String(thrown.db.listings[0].id);
+  const inner = thrown.db.rpc.bind(thrown.db);
+  thrown.db.rpc = (fn: string, args: Row) => (String(args.p_property_id) === first
+    ? Promise.reject(new Error('socket hang up host=10.0.0.9 password=hunter2'))
+    : inner(fn, args));
+  const t2 = await thrown.call({ action: 'available-weekend', count: MAX_LISTINGS });
+  assert.equal(t2.status, 200);
+  assert.equal(t2.body.available, thrown.db.listings.length - 1);
+  assert.equal(t2.body.listings.some((l: Row) => l.id === first), false);
+  assert.equal(t2.text.includes('hunter2'), false);
+});
+
+test('WEEKEND an empty catalogue and a broken listings query', async () => {
+  const empty = harness();
+  empty.db.listings = [];
+  const a = await empty.call({ action: 'available-weekend' });
+  assert.equal(a.status, 200);
+  assert.deepEqual([a.body.candidates, a.body.available, a.body.returned, a.body.listings], [0, 0, 0, []]);
+  assert.equal(empty.db.rpcCalls.length, 0, 'nothing to probe means no probe');
+  assert.equal(a.body.check_in, SAT, 'the weekend is still reported');
+
+  const broken = harness();
+  broken.db.failListings = true;
+  const b = await broken.call({ action: 'available-weekend' });
+  assert.deepEqual([b.status, b.body], [500, { error: 'Request failed' }]);
+  assert.equal(b.text.includes('hunter2'), false);
+  assert.equal(broken.db.rpcCalls.length, 0);
+});
+
+test('WEEKEND without an rpc-capable client the action fails closed', async () => {
+  // A client that exposes reads but no RPC at all.
+  const fake = new FakeDb();
+  const db = { from: (table: string) => fake.from(table) };
+  const handler = createHandler({ db, secret: SECRET, now: () => NOW });
+  const res = await handler(new Request('https://fn.local/n8n-data', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-n8n-secret': SECRET },
+    body: JSON.stringify({ action: 'available-weekend' }),
+  }));
+  assert.equal(res.status, 500);
+  assert.equal(await res.text(), '{"error":"Request failed"}');
+  assert.equal(fake.calls.length, 0, 'it must fail before reading anything');
+});
+
+// ── available-weekend: the parameters ────────────────────────────────────────
+
+test('WEEKEND returns the documented shape, and the same listing fields as listings-for-social', async () => {
+  const h = harness();
+  const r = await h.call({ action: 'available-weekend', count: 2 });
+  assert.equal(r.status, 200);
+  assert.deepEqual(Object.keys(r.body).sort(), [
+    'available', 'candidates', 'check_in', 'check_out', 'checked', 'generated_at',
+    'listings', 'nights', 'returned', 'rotation_seed',
+  ]);
+  assert.equal(r.body.generated_at, NOW.toISOString());
+  assert.equal(r.body.returned, 2);
+  assert.equal(r.body.listings.length, 2);
+
+  const social = await harness().call({ action: 'listings-for-social', count: 2 });
+  assert.deepEqual(
+    Object.keys(r.body.listings[0]).sort(),
+    Object.keys(social.body.listings[0]).sort(),
+    'the two actions must publish exactly the same listing fields',
+  );
+  for (const l of r.body.listings) {
+    assert.equal(l.url, `https://rentcottage.ge/property/${l.id}`);
+    assert.equal(l.host_display_name, 'Nino P.');
+  }
+  // It reads the same view, with the same column list.
+  assert.deepEqual(h.db.calls.map((c) => c.table), [LISTINGS_VIEW]);
+  assert.equal(h.db.calls[0].select, LISTING_COLUMNS);
+});
+
+test('WEEKEND count defaults to five and is bounded by MAX_LISTINGS', async () => {
+  const d = await harness().call({ action: 'available-weekend' });
+  assert.equal(d.body.returned, DEFAULT_WEEKEND_COUNT);
+  assert.equal(d.body.listings.length, DEFAULT_WEEKEND_COUNT);
+
+  for (const count of [1, 2, MAX_LISTINGS]) {
+    const r = await harness().call({ action: 'available-weekend', count });
+    assert.equal(r.body.returned, count, `count ${count}`);
+    assert.equal(r.body.listings.length, count, `count ${count}`);
+  }
+  // Asking for more than there are free is not an error, it just returns fewer.
+  const few = harness();
+  few.db.listings = listingRows(2);
+  const r = await few.call({ action: 'available-weekend', count: MAX_LISTINGS });
+  assert.equal(r.body.returned, 2);
+});
+
+test('WEEKEND an invalid count or min_photos is a 400 that reads nothing', async () => {
+  const bad: [string, Row][] = [
+    ['Invalid count', { count: 0 }],
+    ['Invalid count', { count: -1 }],
+    ['Invalid count', { count: MAX_LISTINGS + 1 }],
+    ['Invalid count', { count: 99 }],
+    ['Invalid count', { count: 2.5 }],
+    ['Invalid count', { count: '3' }],
+    ['Invalid count', { count: null }],
+    ['Invalid count', { count: [3] }],
+    ['Invalid count', { count: Number.NaN }],
+    ['Invalid count', { count: Number.POSITIVE_INFINITY }],
+    ['Invalid min_photos', { min_photos: -1 }],
+    ['Invalid min_photos', { min_photos: 51 }],
+    ['Invalid min_photos', { min_photos: 1.5 }],
+    ['Invalid min_photos', { min_photos: '3' }],
+    ['Invalid min_photos', { min_photos: null }],
+    ['Invalid category', { category: '' }],
+    ['Invalid category', { category: '   ' }],
+    ['Invalid category', { category: 7 }],
+    ['Invalid region', { region: '' }],
+    ['Invalid region', { region: 42 }],
+  ];
+  for (const [error, extra] of bad) {
+    const h = harness();
+    const r = await h.call({ action: 'available-weekend', ...extra });
+    assert.deepEqual([r.status, r.body], [400, { error }], JSON.stringify(extra));
+    assert.equal(h.db.calls.length, 0, `${JSON.stringify(extra)} touched the database`);
+    assert.equal(h.db.rpcCalls.length, 0, `${JSON.stringify(extra)} probed availability`);
+  }
+});
+
+test('WEEKEND min_photos, region and category narrow the candidates before anything is probed', async () => {
+  const photos = harness();
+  photos.db.listings = [
+    { ...photos.db.listings[0], cover_photo_url: 'https://cdn.example.test/only.webp', photo_urls: [] },
+    { ...photos.db.listings[1], cover_photo_url: 'https://cdn.example.test/a.webp', photo_urls: ['https://cdn.example.test/a.webp', 'https://cdn.example.test/b.webp', 'https://cdn.example.test/c.webp'] },
+  ];
+  const r = await photos.call({ action: 'available-weekend', min_photos: 3 });
+  assert.equal(r.body.candidates, 1, 'the one-photo listing must not be a candidate');
+  assert.equal(r.body.available, 1);
+  assert.equal(photos.db.rpcCalls.length, 1, 'a filtered-out listing must not be probed');
+  assert.equal(r.body.listings[0].id, photos.db.listings[1].id);
+
+  const filtered = harness();
+  const f = await filtered.call({ action: 'available-weekend', category: 'Winery', region: 'Kazbegi' });
+  assert.deepEqual(filtered.db.calls[0].filters, ['categories⊇Winery', 'location~%Kazbegi%']);
+  assert.ok(f.body.candidates > 0 && f.body.candidates < 12);
+  assert.equal(filtered.db.rpcCalls.length, f.body.candidates);
+});
+
+test('WEEKEND the number of probes is bounded however big the catalogue gets', async () => {
+  const h = harness();
+  h.db.listings = listingRows(MAX_AVAILABILITY_CHECKS + 25);
+  const r = await h.call({ action: 'available-weekend' });
+  assert.equal(r.body.candidates, MAX_AVAILABILITY_CHECKS + 25);
+  assert.equal(r.body.checked, MAX_AVAILABILITY_CHECKS);
+  assert.equal(h.db.rpcCalls.length, MAX_AVAILABILITY_CHECKS);
+});
+
+test('WEEKEND ROTATION stable within a day, different across days, over free listings only', async () => {
+  const idsAt = async (now: Date) => {
+    const h = harness({ now });
+    // The same listing is booked every time, so it can never be picked.
+    h.db.ranges.set(String(h.db.listings[3].id), rpcRows({ blocks: [{ start_date: '2026-01-01', end_date: '2027-01-01' }] }));
+    const r = await h.call({ action: 'available-weekend', count: 3 });
+    return { ids: r.body.listings.map((l: Row) => l.id) as string[], blocked: String(h.db.listings[3].id) };
+  };
+
+  const a = await idsAt(new Date('2026-09-18T06:00:00.000Z'));
+  const b = await idsAt(new Date('2026-09-18T21:30:00.000Z'));
+  assert.deepEqual(a.ids, b.ids, 'two runs on the same UTC day must return the same listings');
+
+  const seen = new Set<string>();
+  for (let d = 0; d < 20; d++) {
+    const day = await idsAt(new Date(NOW.getTime() + d * 86_400_000));
+    assert.equal(day.ids.includes(day.blocked), false, 'a blocked listing must never be rotated in');
+    assert.equal(new Set(day.ids).size, day.ids.length, 'no listing twice in one response');
+    day.ids.forEach((id) => seen.add(id));
+  }
+  assert.ok(seen.size > 3, `the rotation only ever showed ${seen.size} listings`);
+});
+
+test('WEEKEND is behind the same gate and the same throttle as every other action', async () => {
+  const noSecret = harness();
+  const a = await noSecret.call({ action: 'available-weekend' }, {});
+  assert.deepEqual([a.status, a.body], [401, { error: 'Unauthorized' }]);
+  assert.equal(noSecret.db.calls.length, 0);
+  assert.equal(noSecret.db.rpcCalls.length, 0);
+
+  const wrong = harness();
+  const b = await wrong.call({ action: 'available-weekend' }, { 'x-n8n-secret': 'wrong' });
+  assert.deepEqual([b.status, b.body], [401, { error: 'Unauthorized' }]);
+  assert.equal(wrong.db.rpcCalls.length, 0);
+
+  const throttled = harness();
+  const client = { 'x-forwarded-for': '203.0.113.99' };
+  for (let i = 0; i < MAX_FAILURES; i++) {
+    await throttled.call({ action: 'available-weekend' }, { ...client, 'x-n8n-secret': `guess-${i}` });
+  }
+  const c = await throttled.call({ action: 'available-weekend' }, { ...client, 'x-n8n-secret': SECRET });
+  assert.deepEqual([c.status, c.body], [429, { error: 'Too many attempts' }]);
+  assert.equal(throttled.db.calls.length, 0);
+  assert.equal(throttled.db.rpcCalls.length, 0);
+
+  const methods = harness();
+  const d = await methods.call(null, { 'x-n8n-secret': SECRET }, 'GET');
+  assert.equal(d.status, 405);
+});
+
+test('WEEKEND the log line carries the action and a count, never a date or an id', async () => {
+  const h = harness();
+  await h.call({ action: 'available-weekend', count: 2 });
+  assert.ok(h.logs.includes('ok {"action":"available-weekend","returned":2}'), h.logs.join('\n'));
+  assert.equal(h.logs.join('\n').includes(SECRET), false);
 });

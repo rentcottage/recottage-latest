@@ -13,6 +13,12 @@
 // `reel-cleanup` deletes reels older than three days. Both touch exactly one
 // bucket (social-videos) under exactly one prefix (reels/).
 //
+// Phase 3 adds `available-weekend`: the cottages that are still free for the
+// coming Saturday-to-Monday stay, so the weekly posts can advertise dates a
+// guest can actually book. Availability is not decided here — every candidate
+// is checked against get_unavailable_ranges, the database function the public
+// property page already uses.
+//
 // SECURITY
 // - n8n holds NO database credential and NOT the service-role key: it sends an
 //   HTTP secret and gets shaped JSON back. The service-role client stays inside
@@ -26,11 +32,13 @@
 // - Failed attempts are throttled at 10 per client per 15 minutes → 429, using
 //   the same admin_auth_failures table but under a SEPARATE KEY NAMESPACE.
 //   See clientBucket() for why that matters.
-// - Four actions exist, all on an explicit whitelist. The two that read data
+// - Five actions exist, all on an explicit whitelist. The three that read data
 //   read purpose-built PII-free sources only: marketing_weekly_stats
-//   (aggregates) and public_properties (the same view the public site reads).
-//   No base table is ever queried here. The two reel actions read nothing but
-//   a listing id and touch nothing but the social-videos bucket.
+//   (aggregates), public_properties (the same view the public site reads) and
+//   the get_unavailable_ranges RPC (the same one the property page calls, which
+//   returns dates and nothing else). No base table is ever queried here. The
+//   two reel actions read nothing but a listing id and touch nothing but the
+//   social-videos bucket.
 // - The listing description is never returned as written: short_description
 //   strips e-mails, phones, URLs, domains and @handles from it first.
 // - Database errors are never echoed; the caller gets a generic 500.
@@ -42,7 +50,21 @@ import { isThrottled, passwordMatches, recordFailure, sha256Hex } from '../_shar
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Db = { from: (table: string) => any };
+type Db = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  from: (table: string) => any;
+  /**
+   * Read-only RPC. `available-weekend` is the only caller and
+   * AVAILABILITY_RPC the only function name it ever passes — see
+   * listingIsFree(). Optional so that the three actions that never call an RPC
+   * keep working with a client that does not expose one.
+   */
+  rpc?: (
+    fn: string,
+    args: Row,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) => Promise<{ data: unknown; error: any }>;
+};
 
 /**
  * The slice of the service-role Storage client the reel actions use. Narrowed
@@ -91,6 +113,136 @@ export const SITE_ORIGIN = 'https://rentcottage.ge';
 
 /** Ceiling on how many listings one social call may take. */
 export const MAX_LISTINGS = 10;
+
+// ── The coming weekend ───────────────────────────────────────────────────────
+//
+// `available-weekend` answers one question: which approved cottages are still
+// free for the next Saturday–Monday stay? Two nights, Saturday and Sunday.
+//
+// THE RULE, stated once. check_in is the FIRST Saturday STRICTLY AFTER today in
+// Asia/Tbilisi; check_out is that Saturday + 2 days. So Monday..Friday point at
+// the Saturday of the week that is coming, and Saturday and Sunday both point
+// at the NEXT weekend, never the one they are standing in: on Saturday the
+// Saturday night has already begun, and on Sunday it is gone, so neither is a
+// weekend anyone can still be sold. That is the whole of it — there is no
+// cutoff hour and no partial weekend.
+//
+// Asia/Tbilisi is the site's calendar (get_unavailable_ranges uses it for
+// "today"), so the day boundary is read through Intl rather than assumed to be
+// UTC+4: a caller in any region gets the same weekend the site would show.
+
+export const TBILISI_TZ = 'Asia/Tbilisi';
+/** Saturday and Sunday nights. Saturday is epoch day 2 (1970-01-01 = Thursday). */
+export const WEEKEND_NIGHTS = 2;
+const SATURDAY_EPOCH_MOD = 2;
+/** available-weekend returns five listings unless asked for another number. */
+export const DEFAULT_WEEKEND_COUNT = 5;
+
+/** Today's calendar date in Asia/Tbilisi, as 'YYYY-MM-DD'. */
+export function tbilisiDate(now: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TBILISI_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
+}
+
+/** 'YYYY-MM-DD' → days since 1970-01-01. Pure calendar arithmetic, no zone. */
+export function epochDay(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
+}
+
+/** Days since 1970-01-01 → 'YYYY-MM-DD'. */
+export function isoFromEpochDay(day: number): string {
+  return new Date(day * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * The stay this action offers: the next Saturday strictly after today in
+ * Asia/Tbilisi, for WEEKEND_NIGHTS nights. See the rule above.
+ */
+export function comingWeekend(now: Date): { check_in: string; check_out: string; nights: number } {
+  const today = epochDay(tbilisiDate(now));
+  const ahead = ((SATURDAY_EPOCH_MOD - (today % 7)) + 7) % 7 || 7;
+  const saturday = today + ahead;
+  return {
+    check_in: isoFromEpochDay(saturday),
+    check_out: isoFromEpochDay(saturday + WEEKEND_NIGHTS),
+    nights: WEEKEND_NIGHTS,
+  };
+}
+
+// ── Availability ─────────────────────────────────────────────────────────────
+//
+// The source of truth is the database: `get_unavailable_ranges(p_property_id)`
+// is the same SECURITY DEFINER function the public property page calls. It
+// already decides WHAT occupies a property — confirmed, pending and
+// pending_host_approval bookings, pending_payment holds younger than twenty
+// minutes (an expired hold never blocks), host blocks and imported OTA blocks —
+// and it returns nothing at all for a property that is not approved. None of
+// that is decided here, and none of it is re-derived from base tables: this
+// function never reads bookings, blocked_dates or ical_blocked_dates, and could
+// not, since the SOURCES test pins the tables it may touch.
+//
+// What is left is the comparison, and its two conventions are the migration's,
+// mirrored from src/lib/availability.ts which the property page uses:
+//
+//   'blocked'  end_date INCLUSIVE  → conflict when start_date <= check_out
+//                                    and end_date >= check_in
+//   'booked'   end_date EXCLUSIVE  → conflict when check_in < end_date
+//                                    and check_out > start_date
+//
+// It is four lines rather than an import because src/ is outside the bundle
+// the Supabase deploy builds from this directory. So the copy is not trusted:
+// handler.test.ts imports the page's module and asserts the two agree on an
+// exhaustive matrix of ranges against this weekend, which fails the moment the
+// site's rule and this one part company.
+
+export type UnavailableKind = 'booked' | 'blocked';
+
+export interface UnavailableRange {
+  start_date: string;
+  end_date: string;
+  source_kind: UnavailableKind;
+}
+
+/** The RPC the site uses. The only function name this handler ever calls. */
+export const AVAILABILITY_RPC = 'get_unavailable_ranges';
+
+/** Keeps only well-formed rows from the RPC response. */
+export function parseUnavailableRanges(data: unknown): UnavailableRange[] {
+  if (!Array.isArray(data)) return [];
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  return data.filter((r): r is UnavailableRange =>
+    Boolean(r) && typeof r === 'object'
+    && iso.test(String((r as UnavailableRange).start_date))
+    && iso.test(String((r as UnavailableRange).end_date))
+    && ((r as UnavailableRange).source_kind === 'booked' || (r as UnavailableRange).source_kind === 'blocked'));
+}
+
+export function rangeConflictsWithStay(range: UnavailableRange, checkIn: string, checkOut: string): boolean {
+  if (range.source_kind === 'booked') {
+    return checkIn < range.end_date && checkOut > range.start_date;
+  }
+  return !(checkOut < range.start_date || checkIn > range.end_date);
+}
+
+export function isStayUnavailable(ranges: UnavailableRange[], checkIn: string, checkOut: string): boolean {
+  if (!checkIn || !checkOut) return false;
+  return ranges.some((r) => rangeConflictsWithStay(r, checkIn, checkOut));
+}
+
+/**
+ * How many availability probes run at once. The catalogue is around a hundred
+ * listings and each probe is one indexed RPC, so this is about not opening a
+ * hundred simultaneous connections, not about speed.
+ */
+export const AVAILABILITY_CONCURRENCY = 8;
+/**
+ * A ceiling on probes per request, so this action's cost stays bounded however
+ * large the catalogue grows. Reached only by a catalogue far bigger than
+ * today's; when it is, the response says so (`checked` < `candidates`).
+ */
+export const MAX_AVAILABILITY_CHECKS = 300;
 
 // ── Reels ────────────────────────────────────────────────────────────────────
 //
@@ -435,33 +587,91 @@ const weeklyReport: Action = async (_body, { db, now }) => {
   return { generated_at: now().toISOString(), stats };
 };
 
+// ── Shared request parsing and response shaping ──────────────────────────────
+//
+// `listings-for-social` and `available-weekend` take the same four parameters
+// and publish the same listing object. They share the code so that the two can
+// never drift — in particular so that a column added to one response is added
+// to the other, and stays inside LISTING_COLUMNS.
+
+/** 1..MAX_LISTINGS, or `fallback` when the caller said nothing. */
+function parseCount(body: Row, fallback: number): number {
+  if (body.count === undefined) return fallback;
+  if (typeof body.count !== 'number' || !Number.isInteger(body.count)
+      || body.count < 1 || body.count > MAX_LISTINGS) {
+    throw new HttpError(400, 'Invalid count');
+  }
+  return body.count;
+}
+
+/**
+ * The minimum de-duplicated photo count — see photoCount(). Computed here
+ * rather than in SQL because "how many photos" means the union of
+ * cover_photo_url and photo_urls, and the cover is usually also the first of
+ * the photo_urls.
+ */
+function parseMinPhotos(body: Row): number {
+  if (body.min_photos === undefined) return 0;
+  if (typeof body.min_photos !== 'number' || !Number.isInteger(body.min_photos)
+      || body.min_photos < 0 || body.min_photos > 50) {
+    throw new HttpError(400, 'Invalid min_photos');
+  }
+  return body.min_photos;
+}
+
+/** A non-empty `category` or `region`, or null when it was not given. */
+function parseFilter(body: Row, key: 'category' | 'region'): string | null {
+  if (body[key] === undefined) return null;
+  const value = asString(body[key]);
+  if (!value) throw new HttpError(400, `Invalid ${key}`);
+  return value;
+}
+
+/** The candidate rows, after the view's own filters and the photo minimum. */
+async function candidateListings(
+  db: Db,
+  opts: { category: string | null; region: string | null; minPhotos: number; excluded?: Set<string> },
+): Promise<Row[]> {
+  let query = db.from(LISTINGS_VIEW).select(LISTING_COLUMNS);
+  if (opts.category) query = query.contains('categories', [opts.category]);
+  if (opts.region) query = query.ilike('location', `%${opts.region}%`);
+  const { data, error } = await query;
+  if (error) throw new HttpError(500, 'Request failed');
+  return ((data ?? []) as Row[])
+    .filter((r) => typeof r.id === 'string' && !(opts.excluded?.has(r.id) ?? false))
+    .filter((r) => photoCount(r) >= opts.minPhotos);
+}
+
+/**
+ * One listing as it may leave this function. This shape is the third security
+ * boundary after public_properties and LISTING_COLUMNS: a field appears in a
+ * response only by being named here.
+ */
+function publicListing(r: Row): Row {
+  return {
+    id: r.id,
+    title: r.title ?? null,
+    location: r.location ?? null,
+    property_type: r.property_type ?? null,
+    price_per_night: r.price_per_night ?? null,
+    max_guests: asNumber(r.max_guests),
+    bedrooms: asNumber(r.bedrooms),
+    bathrooms: asNumber(r.bathrooms),
+    short_description: shortDescription(r.description),
+    categories: Array.isArray(r.categories) ? r.categories : [],
+    cover_photo_url: r.cover_photo_url ?? (Array.isArray(r.photo_urls) ? r.photo_urls[0] ?? null : null),
+    photo_urls: Array.isArray(r.photo_urls) ? r.photo_urls : [],
+    host_display_name: displayName(r.host_first_name, r.host_last_initial),
+    url: `${SITE_ORIGIN}/property/${r.id}`,
+  };
+}
+
 /** b) Listings for a social post — see pickRotating for the rotation rule. */
 const listingsForSocial: Action = async (body, { db, now }) => {
-  let count = 3;
-  if (body.count !== undefined) {
-    if (typeof body.count !== 'number' || !Number.isInteger(body.count) || body.count < 1 || body.count > MAX_LISTINGS) {
-      throw new HttpError(400, 'Invalid count');
-    }
-    count = body.count;
-  }
-
-  const category = body.category === undefined ? null : asString(body.category);
-  if (body.category !== undefined && !category) throw new HttpError(400, 'Invalid category');
-  const region = body.region === undefined ? null : asString(body.region);
-  if (body.region !== undefined && !region) throw new HttpError(400, 'Invalid region');
-
-  // A reel needs several photos to be worth rendering; a listing with one
-  // picture makes a slideshow of the same frame. The count is computed here
-  // rather than in SQL because "how many photos" means the de-duplicated union
-  // of the cover and photo_urls — see photoCount().
-  let minPhotos = 0;
-  if (body.min_photos !== undefined) {
-    if (typeof body.min_photos !== 'number' || !Number.isInteger(body.min_photos)
-        || body.min_photos < 0 || body.min_photos > 50) {
-      throw new HttpError(400, 'Invalid min_photos');
-    }
-    minPhotos = body.min_photos;
-  }
+  const count = parseCount(body, 3);
+  const category = parseFilter(body, 'category');
+  const region = parseFilter(body, 'region');
+  const minPhotos = parseMinPhotos(body);
 
   let excludeIds: string[] = [];
   if (body.exclude_ids !== undefined) {
@@ -472,42 +682,81 @@ const listingsForSocial: Action = async (body, { db, now }) => {
     excludeIds = body.exclude_ids as string[];
   }
 
-  let query = db.from(LISTINGS_VIEW).select(LISTING_COLUMNS);
-  if (category) query = query.contains('categories', [category]);
-  if (region) query = query.ilike('location', `%${region}%`);
-  const { data, error } = await query;
-  if (error) throw new HttpError(500, 'Request failed');
-
-  const excluded = new Set(excludeIds);
-  const candidates = ((data ?? []) as Row[])
-    .filter((r) => typeof r.id === 'string' && !excluded.has(r.id))
-    .filter((r) => photoCount(r) >= minPhotos);
+  const candidates = await candidateListings(db, {
+    category, region, minPhotos, excluded: new Set(excludeIds),
+  });
 
   const seed = rotationSeed(now());
-  const listings = pickRotating(candidates as { id: string }[], count, seed).map((row) => {
-    const r = row as Row;
-    return {
-      id: r.id,
-      title: r.title ?? null,
-      location: r.location ?? null,
-      property_type: r.property_type ?? null,
-      price_per_night: r.price_per_night ?? null,
-      max_guests: asNumber(r.max_guests),
-      bedrooms: asNumber(r.bedrooms),
-      bathrooms: asNumber(r.bathrooms),
-      short_description: shortDescription(r.description),
-      categories: Array.isArray(r.categories) ? r.categories : [],
-      cover_photo_url: r.cover_photo_url ?? (Array.isArray(r.photo_urls) ? r.photo_urls[0] ?? null : null),
-      photo_urls: Array.isArray(r.photo_urls) ? r.photo_urls : [],
-      host_display_name: displayName(r.host_first_name, r.host_last_initial),
-      url: `${SITE_ORIGIN}/property/${r.id}`,
-    };
-  });
+  const listings = pickRotating(candidates as { id: string }[], count, seed)
+    .map((row) => publicListing(row as Row));
 
   return {
     generated_at: now().toISOString(),
     rotation_seed: seed,
     available: candidates.length,
+    returned: listings.length,
+    listings,
+  };
+};
+
+/**
+ * b2) The cottages that are still free for the coming weekend.
+ *
+ * Same parameters and same listing shape as listings-for-social, same per-day
+ * rotation, plus the one thing that makes it a different action: every
+ * candidate is checked against the database's own availability before it can
+ * be returned. See comingWeekend() for which Saturday, and the Availability
+ * section for who decides what "free" means (the database does).
+ *
+ * The probe is one RPC per candidate, run AVAILABILITY_CONCURRENCY at a time.
+ * A candidate whose probe errors is dropped rather than returned: this feed
+ * advertises free dates, so the safe failure is to show one cottage fewer, not
+ * to offer a weekend that is already taken.
+ */
+const availableWeekend: Action = async (body, { db, now }) => {
+  const count = parseCount(body, DEFAULT_WEEKEND_COUNT);
+  const category = parseFilter(body, 'category');
+  const region = parseFilter(body, 'region');
+  const minPhotos = parseMinPhotos(body);
+
+  if (typeof db.rpc !== 'function') throw new HttpError(500, 'Request failed');
+  const rpc = db.rpc.bind(db);
+
+  const at = now();
+  const weekend = comingWeekend(at);
+
+  const candidates = await candidateListings(db, { category, region, minPhotos });
+  const probed = candidates.slice(0, MAX_AVAILABILITY_CHECKS);
+
+  const free: Row[] = [];
+  for (let i = 0; i < probed.length; i += AVAILABILITY_CONCURRENCY) {
+    const batch = probed.slice(i, i + AVAILABILITY_CONCURRENCY);
+    const answers = await Promise.all(batch.map(async (row) => {
+      try {
+        const { data, error } = await rpc(AVAILABILITY_RPC, { p_property_id: row.id });
+        if (error) return false;
+        return !isStayUnavailable(parseUnavailableRanges(data), weekend.check_in, weekend.check_out);
+      } catch {
+        // A probe that throws is a probe that did not say "free".
+        return false;
+      }
+    }));
+    answers.forEach((isFree, k) => { if (isFree) free.push(batch[k]); });
+  }
+
+  const seed = rotationSeed(at);
+  const listings = pickRotating(free as { id: string }[], count, seed)
+    .map((row) => publicListing(row as Row));
+
+  return {
+    generated_at: at.toISOString(),
+    check_in: weekend.check_in,
+    check_out: weekend.check_out,
+    nights: weekend.nights,
+    rotation_seed: seed,
+    candidates: candidates.length,
+    checked: probed.length,
+    available: free.length,
     returned: listings.length,
     listings,
   };
@@ -595,6 +844,7 @@ const reelCleanup: Action = async (_body, { now, storage }) => {
 export const ACTIONS: Record<string, Action> = {
   'weekly-report': weeklyReport,
   'listings-for-social': listingsForSocial,
+  'available-weekend': availableWeekend,
   'reel-upload-url': reelUploadUrl,
   'reel-cleanup': reelCleanup,
 };
