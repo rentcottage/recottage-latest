@@ -1,8 +1,14 @@
 # RentCottage — deployed state
 
 Snapshot taken 2026-09-21 (end of day). `main` = `origin/main` = **3c71203**.
-Updated 2026-09-26: §2 item 17 (the nightly rebuild is live) and the §1a reels
-render fix.
+Updated 2026-09-26: §2 item 17 (the nightly rebuild is live), the §1a reels
+render fix, and new open items 20–21.
+
+> **Current state, verified 2026-09-26.** **105 approved listings**
+> (`public_properties`). The live sitemap has **144 URLs**, 105 of them
+> `/property/`, and the database and sitemap ids were compared both ways and
+> **match exactly**. Production was last rebuilt by the `nightly-rebuild`
+> deploy hook (§2 item 17). `rentcottage-reels` `main` = `1a440e4`.
 
 **This file is now COMMITTED** (2026-09-21, by owner request). It was
 previously untracked and deliberately uncommitted; that convention has been
@@ -679,11 +685,26 @@ name the old spelling to assert its absence.
     `admin-host-actions` (8), `resend-approval-email` (3), `host-broadcast` (3),
     `experience-booking-notify` (3), `ical-export` (2 + 1 in its test),
     `booking-reminders/templates` (2), `booking-handler/templates` (1),
-    `bog-payment` (1).
+    `bog-payment` (1). **Still excluded as of 2026-09-26.**
 19. **100 of 101 listings still have no coordinates**, and 94 have no street
     address. The JSON-LD omits `geo` and `streetAddress` rather than inventing
     them, so those pages publish a thinner entity than they could. The map pin
     picker (§1e) and the host e-mail campaign are what close this.
+    **The host map-pin e-mail has NOT been sent** (as of 2026-09-26).
+20. **Reels: blurred-fill framing for wide photos — not started.** A landscape
+    photo is cover-cropped to 9:16, which keeps well under half of its width.
+    A blurred copy of the photo behind the whole, uncropped image would show
+    the full frame. Change it in `prepare_photo()` in `rentcottage-reels`, the
+    one place every photo is framed since `1a440e4`.
+21. **n8n: poll the render before publishing — not started (owner, n8n
+    side).** n8n publishes `public_url` after a fixed wait whether or not the
+    render succeeded, so a failed render becomes a silent non-post that only
+    shows up as a Meta error. The workflow should poll
+    `GET /repos/rentcottage/rentcottage-reels/actions/runs?event=workflow_dispatch`
+    for the dispatched run and publish only if it concluded `success`. The
+    renderer already fails loudly and opens an issue (§1a); this closes the
+    loop on the n8n side. The stray trailing `"` in the Meta URL is also
+    introduced inside n8n (§1a).
 
 ---
 
