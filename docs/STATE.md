@@ -1,6 +1,8 @@
 # RentCottage — deployed state
 
 Snapshot taken 2026-09-21 (end of day). `main` = `origin/main` = **3c71203**.
+Updated 2026-09-26: §2 item 17 (the nightly rebuild is live) and the §1a reels
+render fix.
 
 **This file is now COMMITTED** (2026-09-21, by owner request). It was
 previously untracked and deliberately uncommitted; that convention has been
@@ -173,13 +175,13 @@ eligible for `reel-cleanup` on 2026-09-23.
 | | |
 |---|---|
 | Trigger | `workflow_dispatch` **only** — no push, no schedule, no PR |
-| Runner | `ubuntu-latest`, 10-minute timeout, `permissions: contents: read` |
+| Runner | `ubuntu-latest`; 10-minute job timeout, 5-minute render-step timeout; `permissions: contents: read, issues: write` |
 | Output | 1080x1920, H.264 high@4.0 + AAC 128k, 30 fps, **15.6 s** |
 | Brand | end card is flat **`#FB2C36`** (Tailwind v4 `red-500`) with white — 3.88:1, clears WCAG AA large |
 | Colours | one `BRAND` block at the top of `render.py`; `primary_deep` `#E7000B`, `ink` `#222222` |
 | Fonts | Noto Sans + Noto Sans Georgian, bundled, **OFL 1.1** with licence text |
 | Music | 3 tracks in `music/`, chosen at random; **owner confirms their licences** |
-| Tests | `render_test.py`, 14 tests |
+| Tests | `render_test.py`, 18 tests |
 
 Two things worth remembering:
 
@@ -194,6 +196,47 @@ Two things worth remembering:
 - **macOS gotcha:** Homebrew's plain `ffmpeg` formula is built without
   libfreetype and has no `drawtext`. Use `ffmpeg-full` locally; Ubuntu's
   packaged build is fine. The workflow hard-fails if `drawtext` is missing.
+
+### Render fix — `1a440e4`, merged to `main` 2026-09-26
+
+**What broke.** The Friday 2026-09-25 reel never rendered. Three dispatches
+(runs `36144577480`, `36152418082`, `36158576435`) were each **cancelled** at
+the 10-minute job timeout with ffmpeg still running, so nothing was uploaded
+and the reel's public URL 404s (`NoSuchKey`). Nothing reported it; it surfaced
+days later as a Meta error.
+
+**Why.** The listing had two iPhone 16 Pro Max JPEGs (5712x4284, 3024x4032).
+Those carry an **HDR gain map as a second embedded JPEG (MPF)**, and ffmpeg 7+
+decodes it as an **extra frame**. Under `-loop 1` the input alternated
+5712x4284 / 2856x2142, the filter graph was rebuilt on every frame and
+`zoompan` restarted each time, so the render never converged. Downloads, fonts
+and music were not involved. Tuesday's photos were all ≤1.7 MP with no gain
+map.
+
+**Fix.** `prepare_photo()` decodes only the primary image (`-frames:v 1`) and
+cover-crops it to 1080x1920 once, before the filter graph sees it. The same
+Friday inputs went from >10 minutes (never finishing) to **14.8 s** end to end
+locally.
+
+**The workflow now fails loudly instead of silently uploading nothing:**
+
+- ffmpeg is capped at 60 s per photo and 240 s per render, and the render step
+  has its own 5-minute timeout. A step timeout **fails** the job, where the old
+  job timeout only **cancelled** it with no signal.
+- The upload URL's shape is validated before any work, and a stray `"` or
+  whitespace is named in the error. The URL itself is never printed.
+- Any non-2xx upload fails the job. The public URL is then requested with
+  `HEAD` and must serve the uploaded byte count.
+- Every log line carries elapsed seconds and is flushed as it happens
+  (`python3 -u`).
+- A failed or cancelled render **opens a GitHub issue** in the repo, using the
+  job's own token.
+
+**Still open, on the n8n side (owner):** the trailing `"` in the video URL sent
+to Meta is introduced **inside n8n**. `n8n-data` cannot emit it (`REEL_NAME_RE`),
+and the renderer never sees `public_url`. Also, n8n publishes `public_url`
+after a fixed wait whether or not the render succeeded. It should check that
+the run concluded `success` first.
 
 ---
 
@@ -587,29 +630,38 @@ name the old spelling to assert its absence.
     and the 8-wide batching are what keep it fine. If the catalogue grows past
     a few hundred, this action wants a single set-returning SQL function
     instead — which would be a migration, and was deliberately not written.
-17. **The Vercel deploy hook and nightly rebuild are NOT created yet.**
-    `scripts/prerender.mjs` reads `public_properties` at BUILD time, so every
-    database edit — a host dropping a pin, a title fix, a new approved listing
-    — is invisible to crawlers until something triggers a build. This bit on
-    2026-09-21: four rows were edited and stayed stale in production until an
-    unrelated code commit rebuilt the site. **An empty commit does not work**
-    (`274d4a5` sat for 15 minutes and never built; Vercel deduplicates an
-    identical git tree). The fix is a Deploy Hook called on a schedule:
-    - Vercel → project → **Settings → Git → Deploy Hooks**, name
-      `nightly-rebuild`, branch **`main`**, copy the URL.
-    - The URL is a **secret** — anyone holding it can trigger unlimited
-      production builds, and it carries no authentication of its own. It goes
-      in an **n8n credential only**, never in this repo, never in a node's URL
-      field (that lands in the workflow JSON and in execution logs).
-    - n8n: Schedule Trigger → HTTP Request, POST, empty body.
-    - **Suggested time: 03:00 Asia/Tbilisi** — roughly seven hours clear of the
-      11:00 and 20:00 social posts and the Tue/Fri 18:00 reels, and after
-      midnight so a build picks up a full day of host edits. Avoid 23:00–01:00:
-      `available-weekend` rolls its weekend at Tbilisi midnight.
-    - ⚠️ **Confirm the n8n instance timezone first** — §1b records the post
-      times as owner-reported with the timezone never verified. If n8n runs
-      UTC, those posts are 15:00 and 00:00 Tbilisi and 03:00 Tbilisi lands an
-      hour before the evening one.
+17. ✅ **DONE — the Vercel deploy hook and nightly rebuild are LIVE**, running
+    at **03:00 Asia/Tbilisi** (23:00 UTC) since **2026-09-22**. Confirmed on
+    2026-09-26 in the Vercel dashboard: the four most recent production
+    deployments are all "Created: **Deploy Hook**", hook **`nightly-rebuild`**,
+    branch `main`, rebuilding `358ab9f`. The latest was created
+    **2026-09-24 23:00:07 UTC** and was live at 23:00:31 UTC (22 s build).
+    - **Why it exists.** `scripts/prerender.mjs` and the sitemap read
+      `public_properties` at BUILD time, so a database edit — a host dropping
+      a pin, a title fix, a new approved listing — is invisible to crawlers
+      until something builds. This bit on 2026-09-21. **An empty commit does
+      not work** (`274d4a5` never built; Vercel deduplicates an identical git
+      tree).
+    - **It works.** On 2026-09-26 the live sitemap had 144 URLs, 105 of them
+      `/property/`, and `public_properties` returned exactly 105 rows with the
+      same ids both ways.
+    - ⚠️ **The GitHub deployments API does not record hook rebuilds.**
+      `gh api repos/rentcottage/recottage-latest/deployments` still shows the
+      2026-09-21 push as the newest production deployment. **The Vercel
+      dashboard is the source of truth for what is deployed**: open the
+      deployment and look at "Created", or read `meta.deployHookName` from
+      `/api/v13/deployments/<dpl_id>` in a logged-in vercel.com tab.
+    - The sitemap's static-page `<lastmod>` is the build date **in UTC**, so
+      a 03:00 Tbilisi build is stamped with the previous day. That is
+      expected, not a stale build.
+    - The hook URL is a **secret**. Anyone holding it can trigger unlimited
+      production builds, and it carries no authentication of its own. It
+      belongs in a scheduler credential only, never in this repo or in a node's
+      URL field. *What calls it was not verified from this machine* — the
+      dashboard only shows that the hook fired, on time, every night.
+    - It fires at exactly 03:00 Tbilisi, well clear of the 11:00 and 20:00
+      social posts and the Tue/Fri 18:00 reels, and after `available-weekend`
+      rolls its weekend at Tbilisi midnight.
     - A rebuild has **no user-visible downtime**: Vercel builds to a new
       immutable deployment and flips the production alias atomically only on
       success; a failed build never flips. Content-hashed assets mean a page
@@ -728,7 +780,10 @@ method missed.
   Verify with `functions download` + hash comparison, never with the version
   counter.
 - **Frontend**: Vercel auto-deploys on push to `main`. A backend-only commit
-  still triggers a (no-op) rebuild — confirm it reports success.
+  still triggers a (no-op) rebuild — confirm it reports success. The
+  `nightly-rebuild` deploy hook also rebuilds `main` at 03:00 Tbilisi. Check
+  deploys in the **Vercel dashboard**, not the GitHub deployments API, which
+  never sees hook rebuilds (§2 item 17).
 - **Order that has worked**: additive migrations → functions → frontend →
   restrictive migrations (revokes/policies), with probes after each step.
 - Local SQL tests run against a disposable Postgres 17 in the session scratchpad
