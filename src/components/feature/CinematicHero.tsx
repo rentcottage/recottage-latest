@@ -17,6 +17,9 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
   { labelKey: 'hero.chipSwimmingPool', amenity: 'Swimming Pool' },
 ];
 
+/** Poster and video share one crop so the crossfade lines up. */
+const HERO_POSITION = 'object-[27%_50%] md:object-center';
+
 /** Seconds of crossfade to the poster at each end of the loop. */
 const LOOP_FADE = 0.4;
 /** Headline: per-word stagger and duration (ms). Search follows 200ms after. */
@@ -26,19 +29,23 @@ const SEARCH_GAP = 200;
 
 /**
  * 'pending' — first paint: poster only (it is the LCP image, preloaded on /).
- * 'video'   — desktop, motion OK, normal connection: the looping clip fades in
- *             over the poster once the page has loaded.
- * 'still'   — phones, Save-Data or a 2G connection: poster with a slow zoom.
- * 'static'  — prefers-reduced-motion: poster, nothing moves.
+ * 'video'   — the looping clip fades in over the poster once the page has
+ *             loaded: 1920px WebM/MP4 on desktop, a 720px MP4 on phones.
+ * 'still'   — prefers-reduced-motion, Save-Data or a 2G connection: the
+ *             poster with a very slow 20s zoom; the video is never fetched.
+ * (iPhone Low Power Mode refuses autoplay: play() rejects and the poster
+ * simply stays, which is fine.)
  */
-type HeroMode = 'pending' | 'video' | 'still' | 'static';
+type HeroMode = 'pending' | 'video' | 'still';
+
+/** Phones get the 768px poster and the 720px clip. Must match the <source media>. */
+const MOBILE_MQ = '(max-width: 767px)';
 
 function pickMode(): HeroMode {
   if (typeof window === 'undefined') return 'pending';
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'static';
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  const slow = !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType ?? ''));
-  if (slow || window.matchMedia('(max-width: 767px)').matches) return 'still';
+  const constrained = !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType ?? ''));
+  if (constrained || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'still';
   return 'video';
 }
 
@@ -67,11 +74,12 @@ function afterLoadAndIdle(fn: () => void): () => void {
  * Landing hero: a 5-second "living photo" loop of a mountain cottage behind
  * the headline and live search.
  *
- * The poster (public/hero.jpg, the clip's first frame) paints immediately; the
+ * The poster (public/hero.webp / hero-768.webp, the still the clip was made
+ * from, cropped to line up with its first frame) paints immediately; the
  * video is only mounted after load + idle, starts at opacity 0 and is faded
  * in/out over the first/last LOOP_FADE seconds of every pass so the loop jump
- * happens while only the poster is visible. Phones and constrained
- * connections never download the video.
+ * happens while only the poster is visible. All hero media is served from
+ * public/ (Vercel), not Supabase Storage.
  */
 export default function CinematicHero() {
   const navigate = useNavigate();
@@ -144,15 +152,22 @@ export default function CinematicHero() {
         className="absolute inset-0 overflow-hidden bg-[#1d2a44] transition-[filter] duration-700"
         style={{ filter: sunset ? SUNSET_FILTER : undefined }}
       >
-        <img
-          src="/hero.jpg"
-          alt=""
-          width={1920}
-          height={1080}
-          fetchPriority="high"
-          decoding="async"
-          className={`absolute inset-0 w-full h-full object-cover object-[30%_50%] md:object-center ${mode === 'still' ? 'rc-hero-zoom' : ''}`}
-        />
+        {/* Cottage sits left of centre in the frame: on narrow portrait
+            screens anchor the crop on it rather than on the empty valley. */}
+        <picture>
+          <source media={MOBILE_MQ} type="image/webp" srcSet="/hero-768.webp" />
+          <source media={MOBILE_MQ} srcSet="/hero-768.jpg" />
+          <source type="image/webp" srcSet="/hero.webp" />
+          <img
+            src="/hero.jpg"
+            alt=""
+            width={1920}
+            height={1080}
+            fetchPriority="high"
+            decoding="async"
+            className={`absolute inset-0 w-full h-full object-cover ${HERO_POSITION} ${mode === 'still' ? 'rc-hero-zoom' : ''}`}
+          />
+        </picture>
         {mode === 'video' && (
           <video
             ref={videoRef}
@@ -161,11 +176,13 @@ export default function CinematicHero() {
             loop
             playsInline
             preload="auto"
-            poster="/hero.jpg"
+            poster={window.matchMedia(MOBILE_MQ).matches ? '/hero-768.webp' : '/hero.webp'}
             disablePictureInPicture
-            className="absolute inset-0 w-full h-full object-cover"
+            className={`absolute inset-0 w-full h-full object-cover ${HERO_POSITION}`}
             style={{ opacity: 0 }}
           >
+            {/* First match wins: phones take the 720px MP4 (328 KB). */}
+            <source src="/hero-720.mp4" type="video/mp4" media={MOBILE_MQ} />
             <source src="/hero.webm" type="video/webm" />
             <source src="/hero.mp4" type="video/mp4" />
           </video>
@@ -196,16 +213,22 @@ export default function CinematicHero() {
       {/* ── Stage: headline fades up word by word, then search slides up ── */}
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center">
         <div className="w-full flex flex-col items-center">
-          <div>
+          {/* Full width, not shrink-to-fit: a centred box that hugs the text
+              moves its left edge when the web font swaps in (CLS). */}
+          <div className="w-full">
             <div
               className="rc-word text-xs font-extrabold uppercase text-white/80"
               style={{ letterSpacing: '.35em' }}
             >
               {t('hero.insideLabel')}
             </div>
+            {/* Phones: reserve two lines. In the fallback font the Georgian
+                headline fits one line, in Noto Sans Georgian it wraps to two —
+                without the reserve the whole stage jumped ~20px when the font
+                arrived (Lighthouse CLS 0.08). */}
             <h1
               key={title}
-              className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)]"
+              className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)] max-md:min-h-[2.3em] max-md:flex max-md:flex-wrap max-md:content-center max-md:justify-center max-md:gap-x-[0.25em]"
               style={{ textShadow: '0 2px 18px rgba(0,0,0,.45)' }}
             >
               {words.map((w, i) => (
