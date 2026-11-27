@@ -5,9 +5,8 @@
  * them in the browser BEFORE upload to cut permanent storage: downscale to a
  * sane maximum edge and re-encode as high-quality WebP — perceptually lossless
  * for photos, yet typically 60–85% smaller than the raw camera file. The
- * Supabase Storage render endpoint still resizes per use case on top of this;
- * this only shrinks what we permanently store (and what the lightbox, which
- * serves the raw object, has to download).
+ * smaller display sizes (-400 / -1600 WebP) are stored next to the original by
+ * src/lib/photoUpload.ts; see src/lib/imageUrl.ts.
  *
  * Guarantees:
  * - Fail-safe: any unsupported type, decode error, or non-improving result
@@ -82,6 +81,35 @@ export async function compressImage(file: File, options: CompressImageOptions = 
     });
   } catch {
     return file;
+  } finally {
+    decoded?.release();
+  }
+}
+
+/**
+ * Re-encodes `file` as WebP with its longest edge capped at `maxEdge` (never
+ * upscaled). Used for the stored -400 / -1600 display variants. Resolves null
+ * when the type isn't compressible, decoding fails, or this browser can't
+ * encode WebP — callers treat that as "no variant", which the display side
+ * already handles by falling back to the original. Never throws.
+ */
+export async function resizeToWebp(file: File, maxEdge: number, quality: number): Promise<Blob | null> {
+  if (!COMPRESSIBLE.has(file.type)) return null;
+  let decoded: DecodedImage | null = null;
+  try {
+    decoded = await decodeImage(file);
+    if (decoded.width === 0 || decoded.height === 0) return null;
+    const scale = Math.min(1, maxEdge / Math.max(decoded.width, decoded.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(decoded.width * scale));
+    canvas.height = Math.max(1, Math.round(decoded.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
+    return await encode(canvas, 'image/webp', quality);
+  } catch {
+    return null;
   } finally {
     decoded?.release();
   }

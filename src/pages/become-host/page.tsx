@@ -4,8 +4,7 @@ import Header from '../../components/feature/Header';
 import Footer from '../../components/feature/Footer';
 import LocationPicker from '../../components/feature/LocationPicker';
 import SEO from '../../components/feature/SEO';
-import { supabase } from '../../lib/supabase';
-import { compressImage } from '../../lib/imageCompression';
+import { uploadPropertyPhoto } from '../../lib/photoUpload';
 import { useT } from '../../i18n';
 
 const PROPERTY_APP_FN_URL =
@@ -221,22 +220,15 @@ export default function BecomeHost() {
       //    full-resolution camera files before they ever leave the browser.
       const photoUrls: string[] = [];
       for (const photo of formData.photos) {
-        const uploadFile = await compressImage(photo);
-        const safeName = uploadFile.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
-        const path = `${Date.now()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage
-          .from('property-photos')
-          .upload(path, uploadFile, { contentType: uploadFile.type, upsert: false });
-        if (uploadError) {
-          console.error('Photo upload error:', uploadError);
+        const result = await uploadPropertyPhoto(photo, (f) => {
+          const safeName = f.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
+          return `${Date.now()}-${safeName}`;
+        });
+        if ('error' in result) {
+          console.error('Photo upload error:', result.error);
           continue;
         }
-        const { data: urlData } = supabase.storage
-          .from('property-photos')
-          .getPublicUrl(path);
-        if (urlData?.publicUrl) {
-          photoUrls.push(urlData.publicUrl);
-        }
+        photoUrls.push(result.url);
       }
 
       // 2. Submit application to edge function

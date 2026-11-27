@@ -8,7 +8,6 @@ import { useApprovedProperties } from '../../hooks/useApprovedProperties';
 import { useT } from '../../i18n';
 import { buildGroups, findGroup, type LandingListing } from '../../lib/landingPages';
 import { localizePlace } from '../../lib/locationNormalizer';
-import { OG_BOX, optimizedImageUrl } from '../../lib/imageUrl';
 
 /**
  * /cottages/<slug> — the client half of the landing pages.
@@ -69,7 +68,7 @@ export default function CottagesLanding() {
         title={`${heading} — ${shown.length} | RentCottage.ge`}
         description={plural('search.cottagesFoundCount', shown.length)}
         canonical={`/cottages/${slug}`}
-        ogImage={cover ? optimizedImageUrl(cover, OG_BOX, 75, 'cover') : undefined}
+        ogImage={cover || undefined}
       />
       <Header />
 

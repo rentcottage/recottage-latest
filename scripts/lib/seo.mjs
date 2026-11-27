@@ -10,8 +10,8 @@
 // THE PARITY RULE. Everything here must produce byte-identical strings to what
 // the property page produces after hydration, or the two fight: the crawler
 // indexes one title and the rendered page swaps in another. The duplication is
-// therefore pinned by tests/frontend/prerender.test.ts, which imports BOTH this
-// module and the app's own src/lib/imageUrl.ts and asserts they agree. That
+// therefore pinned by tests/frontend/prerender.test.ts, which imports this
+// module and checks it against what the app renders. That
 // test is the reason this file may be edited only in step with the page.
 //
 // The listing text is deliberately NOT localised. listingText() returns the
@@ -62,46 +62,25 @@ export async function fetchApprovedListings() {
 
 // ── Image ────────────────────────────────────────────────────────────────────
 
-const OBJECT_PATH = '/storage/v1/object/public/';
-const RENDER_PATH = '/storage/v1/render/image/public/';
-
-/** The Open Graph box. 1200x630 is what Facebook, X, LinkedIn and Slack crop to. */
-export const OG_BOX = { w: 1200, h: 630 };
 /**
- * Quality 75 measured at 57-145 KB across the catalogue — inside the 300 KB
- * budget with room to spare, and the same quality the property gallery uses.
- */
-export const OG_QUALITY = 75;
-
-/**
- * A listing's share image: the storage RENDER endpoint, resized and re-encoded.
+ * A listing's share image: the listing's first photo as a plain public object
+ * URL, exactly as stored.
  *
- * Never the raw object URL. Originals are full-resolution camera JPEGs
- * (measured up to 6.7 MB); handing one to a link-preview bot means a share
- * card that renders slowly or not at all. The render endpoint also serves
- * WebP to clients that accept it, and is CDN-cached.
- *
- * This is the same rewrite as optimizedImageUrl() in src/lib/imageUrl.ts, kept
- * separate only because this file must run under whatever Node the deploy
- * platform provides, with no TypeScript loader. The two are asserted equal in
- * tests/frontend/prerender.test.ts.
+ * NOT the storage render endpoint: Image Transformations is not enabled on our
+ * Supabase plan, so every /storage/v1/render/image/ URL is a 403
+ * FeatureNotEnabled — a broken share card. And not a -1600.webp variant
+ * either: a preview bot can't fall back if that file hasn't been generated
+ * yet, and WebP support among preview bots is uneven. The original always
+ * exists. The app's property and cottages pages use the same URL, and
+ * tests/frontend/prerender.test.ts asserts they agree.
  */
 export function ogImageUrl(listing) {
   const raw = firstPhoto(listing);
   if (!raw) return DEFAULT_OG;
-  if (!raw.includes(OBJECT_PATH)) {
-    // Not one of our storage objects, so there is nothing to resize. A handful
-    // of listings still carry absolute URLs on a legacy image host; the app
-    // passes those through untouched (optimizedImageUrl does the same), so
-    // this does too, or the served tag and the hydrated tag would disagree.
-    // Anything that is not an absolute http(s) URL — a relative placeholder
-    // like /cottage-placeholder.svg, a data: URI — is not a valid og:image at
-    // all, and becomes the site card.
-    return /^https?:\/\//i.test(raw) ? raw : DEFAULT_OG;
-  }
-  const rewritten = raw.replace(OBJECT_PATH, RENDER_PATH);
-  const sep = rewritten.includes('?') ? '&' : '?';
-  return `${rewritten}${sep}width=${OG_BOX.w}&height=${OG_BOX.h}&resize=cover&quality=${OG_QUALITY}`;
+  // Anything that is not an absolute http(s) URL — a relative placeholder like
+  // /cottage-placeholder.svg, a data: URI — is not a valid og:image at all,
+  // and becomes the site card.
+  return /^https?:\/\//i.test(raw) ? raw : DEFAULT_OG;
 }
 
 /** The cover, or the first photo, or nothing. Mirrors the property page. */

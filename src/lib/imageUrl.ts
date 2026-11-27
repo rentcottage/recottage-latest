@@ -1,52 +1,67 @@
 /**
- * Supabase Storage image optimizer.
+ * Property photo URLs.
  *
- * Host photos are uploaded at full camera resolution (measured up to 3.6 MB
- * per JPEG) and the public object endpoint serves them raw with
- * `cache-control: no-cache`. The storage *render* endpoint resizes on the
- * fly, auto-converts to WebP when the browser accepts it, and is cached by
- * the CDN (measured: 3.27 MB JPEG → 208 KB WebP at width=640).
+ * Supabase Image Transformations (`/storage/v1/render/image/…`) is NOT enabled
+ * on our plan: every render URL answers 403 FeatureNotEnabled. So nothing here
+ * may ever build a render URL. We serve plain public objects instead, and keep
+ * pre-generated WebP variants next to each original in the bucket:
  *
- * Only Supabase Storage public-object URLs are rewritten — placeholders
- * (`/cottage-placeholder.svg`), data URIs, and external images pass through
- * untouched, so callers can use this on any `src` unconditionally.
+ *   property-photos/<dir>/<name>.<ext>          the original (never deleted)
+ *   property-photos/<dir>/<name>-1600.webp      longest edge ≤1600, q≈78
+ *   property-photos/<dir>/<name>-400.webp       longest edge ≤400,  q≈70
+ *
+ * The variants are written by scripts/optimize-images.mjs (existing photos)
+ * and by uploadPropertyPhoto() in src/lib/photoUpload.ts (new uploads). A
+ * photo whose variants don't exist yet still works: <StoragePhoto> falls back
+ * to the original on the first load error.
+ *
+ * Only objects in the property-photos bucket get variant URLs. Placeholders
+ * (`/cottage-placeholder.svg`), data URIs, other buckets and external images
+ * pass through untouched, so callers can use this on any `src`.
+ *
+ * scripts/lib/variants.mjs holds the same naming rule for the Node scripts;
+ * tests/frontend/imageUrl.test.ts asserts the two agree.
  */
 
-const OBJECT_PATH = '/storage/v1/object/public/';
-const RENDER_PATH = '/storage/v1/render/image/public/';
+export const PHOTO_BUCKET = 'property-photos';
+const OBJECT_PREFIX = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
 
-/**
- * Rewrites a Supabase Storage URL to a resized, CDN-cached variant.
- *
- * BOTH dimensions + an explicit `resize` mode are mandatory: with only
- * `width` the endpoint keeps the source height and center-CROPS the width —
- * measured: 1290×745 original → 640×745 vertical strip.
- *
- * fit='cover'   → exactly box.w×box.h, center-cropped server-side (cards).
- * fit='contain' → whole image fitted inside the box, no crop (gallery, and
- *                 the few covers whose host picked a top/bottom crop — the
- *                 browser then applies object-cover with their position).
- */
-export function optimizedImageUrl(
-  url: string,
-  box: ImageBox,
-  quality = 70,
-  fit: 'cover' | 'contain' = 'contain',
-): string {
-  if (!url || !url.includes(OBJECT_PATH)) return url;
-  const rewritten = url.replace(OBJECT_PATH, RENDER_PATH);
-  const sep = rewritten.includes('?') ? '&' : '?';
-  return `${rewritten}${sep}width=${box.w}&height=${box.h}&resize=${fit}&quality=${quality}`;
+/** Use case → stored size. 'original' is the untouched upload. */
+export type PhotoSize = 'thumb' | 'large' | 'original';
+
+export const PHOTO_VARIANTS = {
+  thumb: { edge: 400, quality: 70 },  // cards, search, mosaic tiles, thumb strips, host dashboard
+  large: { edge: 1600, quality: 78 }, // property gallery hero + lightbox
+} as const;
+
+/** Is this one of our property-photos objects (so variants can exist)? */
+export function isPhotoObjectUrl(url: string): boolean {
+  return typeof url === 'string' && url.includes(OBJECT_PREFIX);
 }
 
-export interface ImageBox { w: number; h: number }
+/** A variant already? Never derive a variant of a variant. */
+const VARIANT_RE = /-(400|1600)\.webp$/i;
 
-/** Standard boxes so the CDN cache stays hot (one variant per use case). */
-export const IMG_CARD: ImageBox = { w: 640, h: 440 };    // listing cards, 16:11 box
-export const IMG_HERO: ImageBox = { w: 1600, h: 900 };   // property gallery, 16:9 box
-export const IMG_THUMB: ImageBox = { w: 320, h: 240 };   // thumbnail strips, 4:3 box
-// Link-preview card. 1200x630 is what Facebook, X, LinkedIn and Slack crop to,
-// and at quality 75 the catalogue measured 57-145 KB — well inside the 300 KB
-// a preview bot will wait for, and a very long way from the 6.7 MB original.
-// scripts/lib/seo.mjs writes the same URL into the prerendered listing pages.
-export const OG_BOX: ImageBox = { w: 1200, h: 630 };
+/**
+ * `<dir>/<name>.<ext>` → `<dir>/<name>-<edge>.webp`. Only the LAST extension is
+ * replaced, so `a.jpg.webp` (compressed uploads) → `a.jpg-400.webp`.
+ */
+export function variantPath(path: string, edge: number): string {
+  const slash = path.lastIndexOf('/');
+  const dir = path.slice(0, slash + 1);
+  const file = path.slice(slash + 1);
+  const dot = file.lastIndexOf('.');
+  const base = dot > 0 ? file.slice(0, dot) : file;
+  return `${dir}${base}-${edge}.webp`;
+}
+
+/**
+ * The URL to show for a photo at a given use-case size. Plain public object
+ * URLs only — never the render endpoint.
+ */
+export function getPhotoUrl(url: string, size: PhotoSize): string {
+  if (!url || size === 'original' || !isPhotoObjectUrl(url)) return url;
+  const [noQuery] = url.split(/[?#]/);
+  if (VARIANT_RE.test(noQuery)) return noQuery;
+  return variantPath(noQuery, PHOTO_VARIANTS[size].edge);
+}

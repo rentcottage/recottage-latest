@@ -17,7 +17,6 @@ import { amenityLabel } from '../../lib/amenityLabels';
 import { localizePlace } from '../../lib/locationNormalizer';
 import { localizeHostName } from '../../lib/hostNames';
 import { isStayUnavailable, parseUnavailableRanges, type UnavailableRange } from '../../lib/availability';
-import { OG_BOX, optimizedImageUrl } from '../../lib/imageUrl';
 import { buildListingSchema } from '../../lib/listingSchema';
 
 const BOOKING_FN_URL = 'https://fkjkyzpunatzkovqxyzp.supabase.co/functions/v1/bog-payment?action=create-order';
@@ -540,7 +539,7 @@ export default function PropertyDetail() {
     },
     {
       url: `${siteUrl}/property/${property.id}`,
-      image: optimizedImageUrl(property.image, OG_BOX, 75, 'cover'),
+      image: property.image,
       reviews: property.reviews,
       rating: property.rating,
     },
@@ -554,7 +553,7 @@ export default function PropertyDetail() {
         keywords={`${property.location} cottage rental, Georgian cottage ${property.location}, rent cottage Georgia`}
         canonical={`/property/${property.id}`}
         ogType="product"
-        ogImage={optimizedImageUrl(property.image, OG_BOX, 75, 'cover')}
+        ogImage={property.image}
         jsonLd={propertyJsonLd}
       />
       <Header />
