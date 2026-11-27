@@ -20,6 +20,20 @@
     <meta name="theme-color" content="#ffffff" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Landing hero poster: the home page's LCP image. Preloaded only on "/"
+         (every SPA route is served this same document). Must come AFTER the
+         viewport meta: before it, a phone still has a 980px layout viewport,
+         so the media queries would pick the desktop poster. -->
+    <script>
+      if (location.pathname === '/') {
+        [['/hero-768.webp', '(max-width: 767px)'], ['/hero.webp', '(min-width: 768px)']].forEach(function (p) {
+          var l = document.createElement('link');
+          l.rel = 'preload'; l.as = 'image'; l.type = 'image/webp'; l.href = p[0]; l.media = p[1];
+          l.setAttribute('fetchpriority', 'high');
+          document.head.appendChild(l);
+        });
+      }
+    </script>
     <title>RentCottage.ge — Georgian Cottage Rentals | Tbilisi, Batumi, Kakheti</title>
     <meta name="description" content="Find and book unique Georgian cottage rentals across Tbilisi, Batumi, Kakheti and Gudauri. Verified cottages, mountain retreats and traditional Georgian homes. Book your perfect Georgian getaway today.">
     <meta name="keywords" content="Georgian cottage rental, Georgia vacation rental, rent cottage Georgia, Tbilisi accommodation, Kakheti cottage">
