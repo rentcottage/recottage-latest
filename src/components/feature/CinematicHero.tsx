@@ -1,13 +1,10 @@
-import { useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HeroPromoBanner from './HeroPromoBanner';
 import { useT } from '../../i18n';
 
-// Local production asset (no Unsplash hotlinking — see public/redesign/).
-const INTERIOR = "url('/redesign/hero-interior.jpg')";
-
-// Golden-hour grade applied to the interior view when the sunset toggle is on.
+// Golden-hour grade applied to the hero media when the sunset toggle is on.
 const SUNSET_FILTER = 'sepia(.3) saturate(1.35) hue-rotate(-12deg) brightness(.92) contrast(1.05)';
 
 // Amenity quick-filters. Each maps to a real value the /search page filters on
@@ -20,44 +17,171 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
   { labelKey: 'hero.chipSwimmingPool', amenity: 'Swimming Pool' },
 ];
 
+/** Seconds of crossfade to the poster at each end of the loop. */
+const LOOP_FADE = 0.4;
+/** Headline: per-word stagger and duration (ms). Search follows 200ms after. */
+const WORD_STAGGER = 90;
+const WORD_DURATION = 600;
+const SEARCH_GAP = 200;
+
 /**
- * Landing hero: the interior view looking back out a window, with the headline
- * and live search on top.
+ * 'pending' — first paint: poster only (it is the LCP image, preloaded on /).
+ * 'video'   — desktop, motion OK, normal connection: the looping clip fades in
+ *             over the poster once the page has loaded.
+ * 'still'   — phones, Save-Data or a 2G connection: poster with a slow zoom.
+ * 'static'  — prefers-reduced-motion: poster, nothing moves.
+ */
+type HeroMode = 'pending' | 'video' | 'still' | 'static';
+
+function pickMode(): HeroMode {
+  if (typeof window === 'undefined') return 'pending';
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'static';
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  const slow = !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType ?? ''));
+  if (slow || window.matchMedia('(max-width: 767px)').matches) return 'still';
+  return 'video';
+}
+
+/** Runs `fn` after the load event and an idle slot, so the video never competes with first paint / LCP. */
+function afterLoadAndIdle(fn: () => void): () => void {
+  let cancelled = false;
+  let idleId: number | undefined;
+  const run = () => {
+    if (cancelled) return;
+    if ('requestIdleCallback' in window) idleId = window.requestIdleCallback(() => !cancelled && fn(), { timeout: 2000 });
+    else idleId = globalThis.setTimeout(() => !cancelled && fn(), 200) as unknown as number;
+  };
+  if (document.readyState === 'complete') run();
+  else window.addEventListener('load', run, { once: true });
+  return () => {
+    cancelled = true;
+    window.removeEventListener('load', run);
+    if (idleId !== undefined) {
+      if ('cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
+      else globalThis.clearTimeout(idleId);
+    }
+  };
+}
+
+/**
+ * Landing hero: a 5-second "living photo" loop of a mountain cottage behind
+ * the headline and live search.
  *
- * No intro sequence — the exterior shot, the Ken Burns push-in and the
- * crossfade were removed, so the hero renders in its final state on first
- * paint and search is usable immediately. The golden-hour grade stays as an
- * opt-in toggle.
+ * The poster (public/hero.jpg, the clip's first frame) paints immediately; the
+ * video is only mounted after load + idle, starts at opacity 0 and is faded
+ * in/out over the first/last LOOP_FADE seconds of every pass so the loop jump
+ * happens while only the poster is visible. Phones and constrained
+ * connections never download the video.
  */
 export default function CinematicHero() {
   const navigate = useNavigate();
   const { t } = useT();
   const [sunset, setSunset] = useState(false);
+  const [mode, setMode] = useState<HeroMode>('pending');
+  const sectionRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // No overflow-hidden on the section: it clipped the Where dropdown, and
-  // nothing overflows now that the Ken Burns intro (which needed the clip) is gone.
+  // Decide the mode after first paint; the video itself waits for load + idle.
+  useEffect(() => {
+    const m = pickMode();
+    if (m !== 'video') { setMode(m); return; }
+    return afterLoadAndIdle(() => setMode('video'));
+  }, []);
+
+  // Video: start muted, crossfade at the loop seam, pause while off-screen.
+  useEffect(() => {
+    const v = videoRef.current;
+    const section = sectionRef.current;
+    if (mode !== 'video' || !v || !section) return;
+    v.muted = true; // React doesn't reliably reflect `muted`; autoplay needs it
+
+    let raf = 0;
+    const tick = () => {
+      const d = v.duration;
+      const time = v.currentTime;
+      let o = 1;
+      if (Number.isFinite(d) && d > LOOP_FADE * 2) {
+        if (time < LOOP_FADE) o = time / LOOP_FADE;
+        else if (time > d - LOOP_FADE) o = (d - time) / LOOP_FADE;
+      }
+      v.style.opacity = String(Math.max(0, Math.min(1, o)));
+      raf = requestAnimationFrame(tick);
+    };
+    const onPlaying = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+    const onPause = () => cancelAnimationFrame(raf);
+    v.addEventListener('playing', onPlaying);
+    v.addEventListener('pause', onPause);
+
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) v.play().catch(() => { /* autoplay refused: poster stays */ });
+      else v.pause();
+    });
+    io.observe(section);
+
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+      v.removeEventListener('playing', onPlaying);
+      v.removeEventListener('pause', onPause);
+    };
+  }, [mode]);
+
+  const title = t('hero.insideTitle');
+  const words = title.split(/\s+/).filter(Boolean);
+  const searchDelay = (words.length - 1) * WORD_STAGGER + WORD_DURATION + SEARCH_GAP;
+
+  // No overflow-hidden on the section: it clipped the Where dropdown. The
+  // media layer has its own clipping wrapper for the zoom.
   return (
     <section
+      ref={sectionRef}
       className="relative w-full min-h-[100svh]"
       aria-label="Find your cottage in Georgia"
     >
-      {/* ── Image layer — static interior, takes the golden-hour grade ── */}
+      {/* ── Media layer — poster + video, takes the golden-hour grade ── */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-cover bg-center transition-[filter] duration-700"
-        style={{ backgroundImage: INTERIOR, filter: sunset ? SUNSET_FILTER : undefined }}
-      />
+        className="absolute inset-0 overflow-hidden bg-[#1d2a44] transition-[filter] duration-700"
+        style={{ filter: sunset ? SUNSET_FILTER : undefined }}
+      >
+        <img
+          src="/hero.jpg"
+          alt=""
+          width={1920}
+          height={1080}
+          fetchPriority="high"
+          decoding="async"
+          className={`absolute inset-0 w-full h-full object-cover object-[30%_50%] md:object-center ${mode === 'still' ? 'rc-hero-zoom' : ''}`}
+        />
+        {mode === 'video' && (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster="/hero.jpg"
+            disablePictureInPicture
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: 0 }}
+          >
+            <source src="/hero.webm" type="video/webm" />
+            <source src="/hero.mp4" type="video/mp4" />
+          </video>
+        )}
+      </div>
 
-      {/* ── Overlays: shade + vignette for legible white text, sunset wash ── */}
+      {/* ── Overlays: light shade under the nav, dark over the bottom 40%, sunset wash ── */}
       <div
         aria-hidden="true"
-        className="absolute inset-0"
-        style={{ background: 'linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.25) 45%,rgba(0,0,0,.6))' }}
+        className="absolute inset-x-0 top-0 h-[28%] pointer-events-none"
+        style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.38),rgba(0,0,0,0))' }}
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.45) 100%)' }}
+        className="absolute inset-x-0 bottom-0 h-[40%] pointer-events-none"
+        style={{ background: 'linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,.35) 55%,rgba(0,0,0,0))' }}
       />
       <div
         aria-hidden="true"
@@ -69,26 +193,32 @@ export default function CinematicHero() {
         }}
       />
 
-      {/* ── Stage: headline + live search, shown immediately ── */}
+      {/* ── Stage: headline fades up word by word, then search slides up ── */}
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center">
         <div className="w-full flex flex-col items-center">
           <div>
             <div
-              className="text-xs font-extrabold uppercase text-white/80"
+              className="rc-word text-xs font-extrabold uppercase text-white/80"
               style={{ letterSpacing: '.35em' }}
             >
               {t('hero.insideLabel')}
             </div>
             <h1
+              key={title}
               className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)]"
               style={{ textShadow: '0 2px 18px rgba(0,0,0,.45)' }}
             >
-              {t('hero.insideTitle')}
+              {words.map((w, i) => (
+                <Fragment key={i}>
+                  <span className="rc-word" style={{ animationDelay: `${i * WORD_STAGGER}ms` }}>{w}</span>
+                  {i < words.length - 1 ? ' ' : null}
+                </Fragment>
+              ))}
             </h1>
           </div>
 
           {/* Live search card + amenity quick-filters */}
-          <div className="w-full max-w-[900px] mx-auto mt-8">
+          <div className="rc-slide-up w-full max-w-[900px] mx-auto mt-8" style={{ animationDelay: `${searchDelay}ms` }}>
             <SearchBar />
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {HERO_CHIPS.map((chip) => (

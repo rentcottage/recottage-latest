@@ -19,6 +19,16 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#ffffff" />
     <link rel="manifest" href="/site.webmanifest" />
+    <!-- Landing hero poster: the home page's LCP image. Preloaded only on "/"
+         (every SPA route is served this same document). -->
+    <script>
+      if (location.pathname === '/') {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.as = 'image'; l.href = '/hero.jpg';
+        l.setAttribute('fetchpriority', 'high');
+        document.head.appendChild(l);
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RentCottage.ge — Georgian Cottage Rentals | Tbilisi, Batumi, Kakheti</title>
     <meta name="description" content="Find and book unique Georgian cottage rentals across Tbilisi, Batumi, Kakheti and Gudauri. Verified cottages, mountain retreats and traditional Georgian homes. Book your perfect Georgian getaway today.">
