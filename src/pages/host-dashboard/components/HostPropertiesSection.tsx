@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import HostPropertyEditModal from './HostPropertyEditModal';
+import StoragePhoto from '../../../components/feature/StoragePhoto';
 import { useT } from '../../../i18n';
 
 interface GuestPricingTier {
@@ -112,9 +113,12 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
               {/* Photo area */}
               {p.photo_urls && p.photo_urls.length > 0 ? (
                 <div className="relative h-40 md:h-48 overflow-hidden">
-                  <img
+                  <StoragePhoto
                     src={p.cover_photo_url || p.photo_urls[0]}
+                    size="thumb"
                     alt={p.title}
+                    width={400}
+                    height={240}
                     className="w-full h-full object-cover object-top"
                   />
                   {p.cover_photo_url && (
@@ -269,9 +273,13 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative h-80">
-              <img
+              <StoragePhoto
                 src={selectedPhoto.urls[selectedPhoto.index]}
+                size="large"
+                loading="eager"
                 alt={t('host.properties.propertyPhoto')}
+                width={768}
+                height={320}
                 className="w-full h-full object-cover object-top"
               />
               <button
@@ -307,7 +315,7 @@ export default function HostPropertiesSection({ properties, loading, onRefresh }
                       i === selectedPhoto.index ? 'ring-2 ring-emerald-500' : 'opacity-60 hover:opacity-90'
                     }`}
                   >
-                    <img src={url} alt="" className="w-full h-full object-cover object-top" />
+                    <StoragePhoto src={url} size="thumb" alt="" width={64} height={48} className="w-full h-full object-cover object-top" />
                   </button>
                 ))}
               </div>

@@ -17,8 +17,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_OG,
-  OG_BOX as SEO_OG_BOX,
-  OG_QUALITY,
   firstPhoto,
   listingDescription,
   listingKeywords,
@@ -28,7 +26,6 @@ import {
   TITLE_SUFFIX,
   // @ts-expect-error — plain .mjs with no type declarations, by design.
 } from '../../scripts/lib/seo.mjs';
-import { OG_BOX, optimizedImageUrl } from '../../src/lib/imageUrl.ts';
 
 type Listing = {
   id: string;
@@ -139,28 +136,21 @@ test('RATING a rating appears once, and only once, real reviews exist', () => {
 
 // ── og:image parity ──────────────────────────────────────────────────────────
 
-test('OGIMAGE the build script and the app produce the same URL', () => {
-  assert.deepEqual(SEO_OG_BOX, OG_BOX, 'the two OG boxes must be the same box');
+test('OGIMAGE is the first photo as stored, the URL the app also uses', () => {
   for (const l of [
     listing(),
     listing({ cover_photo_url: null }),                       // falls back to photo_urls[0]
     listing({ cover_photo_url: '   ' }),                      // blank counts as absent
     listing({ cover_photo_url: `${STORAGE}/x.jpg?v=2` }),     // existing query string
-    listing({ cover_photo_url: 'https://legacy.example.test/a.jpg' }), // not our storage
   ]) {
-    const raw = firstPhoto(l);
-    if (!raw) continue;
-    assert.equal(ogImageUrl(l), optimizedImageUrl(raw, OG_BOX, OG_QUALITY, 'cover'), raw);
+    assert.equal(ogImageUrl(l), firstPhoto(l));
   }
 });
 
-test('OGIMAGE it is the resized render endpoint, never the raw original', () => {
+test('OGIMAGE never uses the render endpoint (Image Transformations is off: 403)', () => {
   const url = ogImageUrl(listing());
-  assert.ok(url.includes('/storage/v1/render/image/public/'), url);
-  assert.equal(url.includes('/storage/v1/object/public/'), false, url);
-  assert.ok(url.includes(`width=${OG_BOX.w}`) && url.includes(`height=${OG_BOX.h}`), url);
-  assert.ok(url.includes('resize=cover') && url.includes(`quality=${OG_QUALITY}`), url);
-  assert.deepEqual(OG_BOX, { w: 1200, h: 630 });
+  assert.equal(url.includes('/render/image/'), false, url);
+  assert.ok(url.includes('/storage/v1/object/public/'), url);
 });
 
 test('OGIMAGE a listing with no usable photo falls back to the site card', () => {
@@ -183,7 +173,6 @@ test('OGIMAGE an absolute URL on another host passes through, as the app does', 
   const external = 'https://storage.readdy-site.link/project_files/x/y.jpg';
   const l = listing({ cover_photo_url: external });
   assert.equal(ogImageUrl(l), external);
-  assert.equal(ogImageUrl(l), optimizedImageUrl(external, OG_BOX, OG_QUALITY, 'cover'));
 });
 
 // ── The route object the writer consumes ─────────────────────────────────────

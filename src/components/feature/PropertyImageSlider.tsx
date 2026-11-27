@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { optimizedImageUrl, IMG_CARD } from '../../lib/imageUrl';
+import StoragePhoto from './StoragePhoto';
 
 type CoverPosition = 'top' | 'center' | 'bottom';
 
@@ -93,11 +93,10 @@ export default function PropertyImageSlider({
       onTouchEnd={handleTouchEnd}
     >
       {/* Image strip — active always; neighbours only after slider intent.
-          Every photo fills the card edge-to-edge: the CDN serves an exact
-          640×440 center-cropped variant (resize=cover), so there are never
-          letterbox bars or blurred edges. Exception: a host-positioned cover
-          (top/bottom, 3 listings) gets the uncropped variant and the browser
-          crops it at their chosen position via object-cover. */}
+          Each photo is the 400px WebP variant (falls back to the original if
+          it hasn't been generated yet), cropped to the 16:11 card by
+          object-cover. A host-positioned cover (top/bottom) keeps their
+          chosen crop position. */}
       {safeImages.map((src, i) => {
         const isActive = i === currentIndex;
         const isAdjacent =
@@ -107,14 +106,14 @@ export default function PropertyImageSlider({
         if (!isActive && !(wantsNeighbors && isAdjacent)) return null;
 
         const isPositionedCover = i === 0 && coverPosition !== 'center';
-        const url = optimizedImageUrl(src, IMG_CARD, 70, isPositionedCover ? 'contain' : 'cover');
         return (
-          <img
+          <StoragePhoto
             key={i}
-            src={url}
+            src={src}
+            size="thumb"
             alt={`${title} - photo ${i + 1}`}
-            loading="lazy"
-            decoding="async"
+            width={400}
+            height={275}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isPositionedCover ? positionClass[coverPosition] : 'object-center'}`}
             style={{ opacity: isActive ? 1 : 0, pointerEvents: 'none' }}
           />

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../hooks/useAuth';
 import { useT } from '../../../i18n';
-import { compressImage } from '../../../lib/imageCompression';
+import { uploadPropertyPhoto } from '../../../lib/photoUpload';
 import {
   CATEGORIES, CATEGORY_EMOJI, formatDuration, formatGel,
   type ActivityCategory, type PriceUnit, type PropertyActivity,
@@ -145,15 +145,13 @@ export default function HostActivitiesSection({ properties, loading: propsLoadin
     setUploading(true);
     setFormError('');
     try {
-      const uploadFile = await compressImage(file);
-      const ext = uploadFile.name.split('.').pop() || 'jpg';
-      const path = `${form.property_id}/activities/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('property-photos')
-        .upload(path, uploadFile, { contentType: uploadFile.type, upsert: false });
-      if (upErr) { setFormError(t('host.activities.uploadFailed')); setUploading(false); return; }
-      const { data: urlData } = supabase.storage.from('property-photos').getPublicUrl(path);
-      setForm((f) => f && { ...f, image_url: urlData.publicUrl });
+      const propertyId = form.property_id;
+      const result = await uploadPropertyPhoto(file, (f) => {
+        const ext = f.name.split('.').pop() || 'jpg';
+        return `${propertyId}/activities/${Date.now()}.${ext}`;
+      });
+      if ('error' in result) { setFormError(t('host.activities.uploadFailed')); setUploading(false); return; }
+      setForm((f) => f && { ...f, image_url: result.url });
     } catch {
       setFormError(t('host.activities.uploadFailed'));
     }

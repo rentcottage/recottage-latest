@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { optimizedImageUrl, IMG_HERO, IMG_THUMB, IMG_CARD } from '../../../lib/imageUrl';
+import StoragePhoto from '../../../components/feature/StoragePhoto';
 import { useT } from '../../../i18n';
 
 interface PropertyGalleryProps {
@@ -68,11 +68,15 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
             className={`relative h-full overflow-hidden bg-gray-100 cursor-zoom-in group ${safeImages.length >= 5 ? 'md:row-span-2' : ''}`}
             onClick={() => openLightbox(0)}
           >
-            <img
-              src={optimizedImageUrl(safeImages[0], IMG_HERO, 75)}
+            {/* Hero: eager + high priority — it is the LCP element. */}
+            <StoragePhoto
+              src={safeImages[0]}
+              size="large"
               alt={`${title} — photo 1`}
+              loading="eager"
               fetchPriority="high"
-              decoding="async"
+              width={1600}
+              height={900}
               className="absolute inset-0 w-full h-full object-cover object-center"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
@@ -96,11 +100,12 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
               className="relative hidden md:block h-full overflow-hidden bg-gray-100 cursor-zoom-in group"
               onClick={() => openLightbox(i + 1)}
             >
-              <img
-                src={optimizedImageUrl(img, IMG_CARD, 65)}
+              <StoragePhoto
+                src={img}
+                size="thumb"
                 alt={`${title} — photo ${i + 2}`}
-                loading="lazy"
-                decoding="async"
+                width={400}
+                height={300}
                 className="absolute inset-0 w-full h-full object-cover object-center"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
@@ -141,10 +146,12 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
             className="flex-1 flex items-center justify-center relative px-16 min-h-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
+            <StoragePhoto
               key={lightboxIndex}
               src={safeImages[lightboxIndex]}
+              size="large"
               alt={`${title} — photo ${lightboxIndex + 1}`}
+              loading="eager"
               className="max-w-full max-h-full object-contain rounded-lg"
               style={{ maxHeight: 'calc(100vh - 200px)' }}
             />
@@ -187,11 +194,12 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                   }`}
                   style={{ width: 72, aspectRatio: '4 / 3' }}
                 >
-                  <img
-                    src={optimizedImageUrl(img, IMG_THUMB, 60)}
+                  <StoragePhoto
+                    src={img}
+                    size="thumb"
                     alt={`Thumbnail ${idx + 1}`}
-                    loading="lazy"
-                    decoding="async"
+                    width={96}
+                    height={72}
                     className="absolute inset-0 w-full h-full object-cover object-center"
                   />
                 </button>

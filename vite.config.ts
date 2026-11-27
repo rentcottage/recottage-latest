@@ -7,7 +7,6 @@ import AutoImport from 'unplugin-auto-import/vite'
 import { createClient } from '@supabase/supabase-js'
 import { buildGroups, type LandingListing } from './src/lib/landingPages.ts'
 import { buildListingSchema, type SchemaListing } from './src/lib/listingSchema.ts'
-import { OG_BOX, optimizedImageUrl } from './src/lib/imageUrl.ts'
 
 const base = process.env.BASE_PATH || '/'
 const isPreview = process.env.IS_PREVIEW  ? true : false;
@@ -79,7 +78,7 @@ function landingIndexPlugin(mode: string) {
           .find((u: unknown) => typeof u === 'string' && u.trim())
         schemas[row.id] = buildListingSchema(row, {
           url: `${SITE}/property/${row.id}`,
-          image: first ? optimizedImageUrl(first, OG_BOX, 75, 'cover') : `${SITE}/og-image.png`,
+          image: first || `${SITE}/og-image.png`, // plain object URL: render endpoint is 403 on our plan
           // Nothing has reviews yet; when that changes this is the one place
           // the real count has to be read, and aggregateRating follows.
           reviews: 0,

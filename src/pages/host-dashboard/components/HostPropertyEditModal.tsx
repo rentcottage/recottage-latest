@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import MapPinPicker from '../../../components/feature/MapPinPicker';
-import { compressImage } from '../../../lib/imageCompression';
+import StoragePhoto from '../../../components/feature/StoragePhoto';
+import { uploadPropertyPhoto } from '../../../lib/photoUpload';
 import { useT } from '../../../i18n';
 
 interface GuestPricingTier {
@@ -257,26 +258,19 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
     setPhotoError('');
 
     try {
-      // Re-encode to high-quality WebP before upload to save storage.
-      const uploadFile = await compressImage(file);
-      const ext = uploadFile.name.split('.').pop() || 'jpg';
-      const fileName = `${property.id}/${Date.now()}.${ext}`;
+      // Compresses, uploads the original, and writes the -400/-1600 variants.
+      const result = await uploadPropertyPhoto(file, (f) => {
+        const ext = f.name.split('.').pop() || 'jpg';
+        return `${property.id}/${Date.now()}.${ext}`;
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from('property-photos')
-        .upload(fileName, uploadFile, { contentType: uploadFile.type, upsert: false });
-
-      if (uploadError) {
+      if ('error' in result) {
         setPhotoError(t('host.propertyEditModal.uploadFailedError'));
         setUploading(false);
         return;
       }
 
-      const { data: urlData } = supabase.storage
-        .from('property-photos')
-        .getPublicUrl(fileName);
-
-      const newUrl = urlData.publicUrl;
+      const newUrl = result.url;
       const updatedPhotos = [...photos, newUrl];
 
       const { error: dbError } = await supabase
@@ -939,9 +933,12 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                           }`}
                         >
                           <div className="w-full h-32">
-                            <img
+                            <StoragePhoto
                               src={url}
+                              size="thumb"
                               alt={t('host.propertyEditModal.propertyPhotoAlt', { count: idx + 1 })}
+                              width={400}
+                              height={256}
                               className="w-full h-full object-cover object-top"
                             />
                           </div>
@@ -993,9 +990,12 @@ export default function HostPropertyEditModal({ property, onClose, onSaved }: Pr
                     {t('host.propertyEditModal.currentCoverPhoto')}
                   </p>
                   <div className="w-full h-40 rounded-lg overflow-hidden">
-                    <img
+                    <StoragePhoto
                       src={coverPhotoUrl}
+                      size="large"
                       alt={t('host.propertyEditModal.currentCoverAlt')}
+                      width={800}
+                      height={320}
                       className={`w-full h-full object-cover ${
                         coverPhotoPosition === 'top' ? 'object-top' :
                         coverPhotoPosition === 'bottom' ? 'object-bottom' :
