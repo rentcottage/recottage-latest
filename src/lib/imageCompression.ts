@@ -3,8 +3,9 @@
  *
  * Host cameras produce large JPEGs (measured up to ~3.6 MB each). We re-encode
  * them in the browser BEFORE upload to cut permanent storage: downscale to a
- * sane maximum edge and re-encode as high-quality WebP — perceptually lossless
- * for photos, yet typically 60–85% smaller than the raw camera file. The
+ * sane maximum edge and re-encode. Host uploads (src/lib/photoUpload.ts) use
+ * JPEG q0.8 at ≤2000px, like the existing originals; the admin Photo Manager
+ * uses the WebP default. Typically 60–90% smaller than the raw camera file. The
  * smaller display sizes (-400 / -1600 WebP) are stored next to the original by
  * src/lib/photoUpload.ts; see src/lib/imageUrl.ts.
  *
@@ -25,6 +26,33 @@ export interface CompressImageOptions {
   maxEdge?: number;
   /** WebP/JPEG quality, 0–1. Default 0.85 — perceptually lossless for photos. */
   quality?: number;
+  /**
+   * Output format. 'webp' (default, the admin Photo Manager relies on it) or
+   * 'jpeg' — host uploads, matching what scripts/compress-originals.mjs did to
+   * the existing originals. With 'jpeg', an image with real transparency
+   * (any pixel not fully opaque) is kept as PNG instead.
+   */
+  format?: 'webp' | 'jpeg';
+}
+
+/** Width/height scaled so the longest edge is at most `maxEdge`; never upscales. */
+export function scaleToFit(width: number, height: number, maxEdge: number): { width: number; height: number } {
+  const scale = Math.min(1, maxEdge / Math.max(width, height));
+  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}
+
+/** True if any pixel in RGBA data is not fully opaque. */
+export function hasTransparentPixel(rgba: ArrayLike<number>): boolean {
+  for (let i = 3; i < rgba.length; i += 4) if (rgba[i] !== 255) return true;
+  return false;
+}
+
+/** The MIME type to encode to, given the requested format and the input. */
+export function pickOutputType(format: 'webp' | 'jpeg', inputType: string, transparent: boolean): 'image/webp' | 'image/jpeg' | 'image/png' {
+  if (format === 'webp') return 'image/webp';
+  // JPEG has no alpha. Only formats that can carry alpha are checked.
+  if (transparent && (inputType === 'image/png' || inputType === 'image/webp')) return 'image/png';
+  return 'image/jpeg';
 }
 
 interface DecodedImage {
@@ -41,6 +69,7 @@ interface DecodedImage {
 export async function compressImage(file: File, options: CompressImageOptions = {}): Promise<File> {
   const maxEdge = options.maxEdge ?? 2560;
   const quality = options.quality ?? 0.85;
+  const format = options.format ?? 'webp';
 
   if (!COMPRESSIBLE.has(file.type)) return file;
 
@@ -49,27 +78,33 @@ export async function compressImage(file: File, options: CompressImageOptions = 
     decoded = await decodeImage(file);
     if (decoded.width === 0 || decoded.height === 0) return file;
 
-    const scale = Math.min(1, maxEdge / Math.max(decoded.width, decoded.height));
-    const width = Math.max(1, Math.round(decoded.width * scale));
-    const height = Math.max(1, Math.round(decoded.height * scale));
+    const { width, height } = scaleToFit(decoded.width, decoded.height, maxEdge);
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return file;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(decoded.source, 0, 0, width, height);
 
-    // Prefer WebP; fall back to JPEG when the browser can't encode WebP.
-    let blob = await encode(canvas, 'image/webp', quality);
-    let outType = 'image/webp';
-    if (!blob) {
-      // JPEG has no alpha — composite onto white so transparency isn't black.
-      ctx.globalCompositeOperation = 'destination-over';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-      blob = await encode(canvas, 'image/jpeg', quality);
-      outType = 'image/jpeg';
+    let blob: Blob | null;
+    let outType: string;
+    if (format === 'jpeg') {
+      const canHaveAlpha = file.type === 'image/png' || file.type === 'image/webp';
+      const transparent = canHaveAlpha && hasTransparentPixel(ctx.getImageData(0, 0, width, height).data);
+      outType = pickOutputType('jpeg', file.type, transparent);
+      if (outType === 'image/jpeg') flattenOnWhite(ctx, width, height);
+      blob = await encode(canvas, outType, quality);
+    } else {
+      // Prefer WebP; fall back to JPEG when the browser can't encode WebP.
+      blob = await encode(canvas, 'image/webp', quality);
+      outType = 'image/webp';
+      if (!blob) {
+        flattenOnWhite(ctx, width, height);
+        blob = await encode(canvas, 'image/jpeg', quality);
+        outType = 'image/jpeg';
+      }
     }
 
     // Keep the original if re-encoding didn't actually save bytes.
@@ -84,6 +119,14 @@ export async function compressImage(file: File, options: CompressImageOptions = 
   } finally {
     decoded?.release();
   }
+}
+
+/** JPEG has no alpha — composite onto white so transparency isn't black. */
+function flattenOnWhite(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /**
@@ -162,8 +205,8 @@ function encode(canvas: HTMLCanvasElement, type: string, quality: number): Promi
 }
 
 /** Replaces a filename's extension to match the encoded output type. */
-function swapExtension(name: string, type: string): string {
-  const ext = type === 'image/webp' ? 'webp' : 'jpg';
+export function swapExtension(name: string, type: string): string {
+  const ext = type === 'image/webp' ? 'webp' : type === 'image/png' ? 'png' : 'jpg';
   const base = name.replace(/\.[^./\\]+$/, '').trim() || 'photo';
   return `${base}.${ext}`;
 }
