@@ -2,8 +2,17 @@ import { supabase } from './supabase';
 import { compressImage, resizeToWebp } from './imageCompression';
 import { PHOTO_BUCKET, PHOTO_VARIANTS, variantPath } from './imageUrl';
 
-/** Variants never change once written (new photo → new path), so cache for a year. */
-const VARIANT_CACHE_SECONDS = '31536000';
+/** Every upload gets a new path (timestamped), so nothing is ever overwritten: cache for a year. */
+const CACHE_SECONDS = '31536000';
+
+/**
+ * How the stored original is compressed in the browser: longest edge 2000px,
+ * JPEG q0.8 (PNG kept only when it has real transparency) — the same as
+ * scripts/compress-originals.mjs did to the existing photos, so the bucket
+ * stays under the Free-plan 1 GB. If compression fails or doesn't shrink the
+ * file, the original is uploaded as-is.
+ */
+export const ORIGINAL_COMPRESSION = { maxEdge: 2000, quality: 0.8, format: 'jpeg' } as const;
 
 /**
  * Compresses and uploads one property photo to `path` in the property-photos
@@ -16,17 +25,17 @@ const VARIANT_CACHE_SECONDS = '31536000';
  * script can backfill it later.
  *
  * `buildPath` receives the compressed file, because compression can change
- * the extension (to .webp).
+ * the extension (to .jpg, or .png for a transparent image).
  */
 export async function uploadPropertyPhoto(
   file: File,
   buildPath: (compressed: File) => string,
 ): Promise<{ url: string; path: string } | { error: unknown }> {
-  const uploadFile = await compressImage(file);
+  const uploadFile = await compressImage(file, ORIGINAL_COMPRESSION);
   const path = buildPath(uploadFile);
   const bucket = supabase.storage.from(PHOTO_BUCKET);
 
-  const { error } = await bucket.upload(path, uploadFile, { contentType: uploadFile.type, upsert: false });
+  const { error } = await bucket.upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: CACHE_SECONDS, upsert: false });
   if (error) return { error };
 
   await Promise.all(
@@ -35,7 +44,7 @@ export async function uploadPropertyPhoto(
       if (!blob) return;
       const { error: vErr } = await bucket.upload(variantPath(path, edge), blob, {
         contentType: 'image/webp',
-        cacheControl: VARIANT_CACHE_SECONDS,
+        cacheControl: CACHE_SECONDS,
         upsert: false,
       });
       if (vErr) console.warn(`Photo variant ${edge} upload failed (original is fine):`, vErr);
