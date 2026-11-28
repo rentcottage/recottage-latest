@@ -17,8 +17,8 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
   { labelKey: 'hero.chipSwimmingPool', amenity: 'Swimming Pool' },
 ];
 
-/** Poster and video share one crop so the crossfade lines up. */
-const HERO_POSITION = 'object-[30%_50%] md:object-center';
+/** Phones get their own 9:16 files, so no off-centre crop is needed. */
+const HERO_POSITION = 'object-center';
 
 /** Seconds of crossfade to the poster at each end of the loop. */
 const LOOP_FADE = 0.4;
@@ -75,8 +75,11 @@ function afterLoadAndIdle(fn: () => void): () => void {
  * Landing hero: a 5-second "living photo" loop of a mountain cottage behind
  * the headline and live search.
  *
- * The poster (public/hero.webp / hero-768.webp, the still the clip was made
- * from, cropped to line up with its first frame) paints immediately; the
+ * The poster (public/hero.webp on desktop — the still the 16:9 clip was made
+ * from, cropped to line up with its first frame — and public/hero-mobile.webp
+ * on phones, the vertical clip's own first frame; the vertical still is framed
+ * differently from its clip, so it would jump at every crossfade) paints
+ * immediately; the
  * video is only mounted after load + idle, starts at opacity 0 and is faded
  * in/out over the first/last LOOP_FADE seconds of every pass so the loop jump
  * happens while only the poster is visible. All hero media is served from
@@ -87,6 +90,15 @@ export default function CinematicHero() {
   const { t } = useT();
   const [sunset, setSunset] = useState(false);
   const [mode, setMode] = useState<HeroMode>('pending');
+  // Decides where the offer banner renders (inside the hero on desktop, below
+  // it on phones) — one mount, so its data is fetched once.
+  const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const on = () => setIsPhone(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -142,6 +154,7 @@ export default function CinematicHero() {
   // No overflow-hidden on the section: it clipped the Where dropdown. The
   // media layer has its own clipping wrapper for the zoom.
   return (
+    <>
     <section
       ref={sectionRef}
       className="relative w-full min-h-[100svh]"
@@ -153,11 +166,9 @@ export default function CinematicHero() {
         className="absolute inset-0 overflow-hidden bg-[#1d2a44] transition-[filter] duration-700"
         style={{ filter: sunset ? SUNSET_FILTER : undefined }}
       >
-        {/* Cottage sits left of centre in the frame: on narrow portrait
-            screens anchor the crop on it rather than on the empty valley. */}
+        {/* Phones: vertical 9:16 files made for them; ≥768px: the 16:9 ones. */}
         <picture>
-          <source media={MOBILE_MQ} type="image/webp" srcSet="/hero-768.webp" />
-          <source media={MOBILE_MQ} srcSet="/hero-768.jpg" />
+          <source media={MOBILE_MQ} type="image/webp" srcSet="/hero-mobile.webp" />
           <source type="image/webp" srcSet="/hero.webp" />
           <img
             src="/hero.jpg"
@@ -177,13 +188,13 @@ export default function CinematicHero() {
             loop
             playsInline
             preload="auto"
-            poster={window.matchMedia(MOBILE_MQ).matches ? '/hero-768.webp' : '/hero.webp'}
+            poster={isPhone ? '/hero-mobile.webp' : '/hero.webp'}
             disablePictureInPicture
             className={`absolute inset-0 w-full h-full object-cover ${HERO_POSITION}`}
             style={{ opacity: 0 }}
           >
-            {/* First match wins: phones take the 720px MP4 (328 KB). */}
-            <source src="/hero-720.mp4" type="video/mp4" media={MOBILE_MQ} />
+            {/* First match wins: phones take the vertical 1080×1920 MP4 (1.0 MB). */}
+            <source src="/hero-mobile.mp4" type="video/mp4" media={MOBILE_MQ} />
             <source src="/hero.webm" type="video/webm" />
             <source src="/hero.mp4" type="video/mp4" />
           </video>
@@ -212,10 +223,11 @@ export default function CinematicHero() {
       />
 
       {/* ── Stage: headline fades up word by word, then search slides up ── */}
-      {/* Phones: the stage sits in the upper part of the screen (over the sky)
-          so the cottage, its windows and the porch keep the lower half. */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-[max(96px,13svh)] md:justify-center md:pt-0 px-4 text-center">
-        <div className="w-full flex flex-col items-center">
+      {/* Phones: headline at the top (over the sky), search pill + chips at
+          the bottom (over the snow) — the cottage and its lit windows, in the
+          middle of the vertical clip, stay clear between them. */}
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-[max(92px,11svh)] pb-[max(20px,3svh)] md:justify-center md:pt-0 md:pb-0 px-4 text-center">
+        <div className="w-full flex flex-col items-center max-md:flex-1 max-md:justify-between">
           {/* Full width, not shrink-to-fit: a centred box that hugs the text
               moves its left edge when the web font swaps in (CLS). */}
           <div className="w-full">
@@ -244,7 +256,7 @@ export default function CinematicHero() {
           </div>
 
           {/* Live search card + amenity quick-filters */}
-          <div className="rc-slide-up w-full max-w-[900px] mx-auto mt-8" style={{ animationDelay: `${searchDelay}ms` }}>
+          <div className="rc-slide-up w-full max-w-[900px] mx-auto md:mt-8" style={{ animationDelay: `${searchDelay}ms` }}>
             <SearchBar compactOnMobile />
             {/* Phones: one swipeable row; desktop: centred, wrapping. */}
             <div className="rc-no-scrollbar flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 mt-3 md:mt-4 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto md:overflow-visible">
@@ -259,8 +271,9 @@ export default function CinematicHero() {
                 </button>
               ))}
             </div>
-            {/* Active offers — nothing renders when none is running. */}
-            <HeroPromoBanner />
+            {/* Active offers — nothing renders when none is running. Phones
+                show them below the hero instead, so they don't cover the cottage. */}
+            {!isPhone && <HeroPromoBanner />}
           </div>
         </div>
       </div>
@@ -287,5 +300,11 @@ export default function CinematicHero() {
         <i className="ri-arrow-down-line text-xl rc-bob inline-block" />
       </div>
     </section>
+    {isPhone && (
+      <div className="bg-white px-4 pt-1 pb-2">
+        <HeroPromoBanner />
+      </div>
+    )}
+    </>
   );
 }

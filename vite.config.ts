@@ -5,6 +5,8 @@ import { resolve } from 'node:path'
 import { writeFileSync } from 'node:fs'
 import AutoImport from 'unplugin-auto-import/vite'
 import { createClient } from '@supabase/supabase-js'
+// @ts-expect-error — plain .mjs shared with the post-build scripts, no type declarations.
+import { buildQuerySignal, warnDegraded } from './scripts/lib/buildData.mjs'
 import { buildGroups, type LandingListing } from './src/lib/landingPages.ts'
 import { buildListingSchema, type SchemaListing } from './src/lib/listingSchema.ts'
 
@@ -51,13 +53,25 @@ function landingIndexPlugin(mode: string) {
       // `.returns()` because the select list is a concatenated string, which
       // supabase-js cannot parse into a row type — without it every field
       // below is a GenericStringError to the compiler.
-      const { data, error } = await supabase
-        .from('public_properties')
-        .select('id, title, location, address, description, price_per_night, max_guests, ' +
-                'bedrooms, amenities, latitude, longitude, categories, cover_photo_url, photo_urls')
-        .returns<(LandingListing & SchemaListing)[]>()
-      if (error) throw new Error(`landing index: ${error.message}`)
-      const rows = data ?? []
+      // A database error or timeout must not fail the deploy: write the same
+      // empty index files as a build without credentials, so prerender.mjs
+      // skips landing pages and listing JSON-LD, and warn loudly.
+      let rows: (LandingListing & SchemaListing)[]
+      try {
+        const { data, error } = await supabase
+          .from('public_properties')
+          .select('id, title, location, address, description, price_per_night, max_guests, ' +
+                  'bedrooms, amenities, latitude, longitude, categories, cover_photo_url, photo_urls')
+          .abortSignal(buildQuerySignal())
+          .returns<(LandingListing & SchemaListing)[]>()
+        if (error) throw new Error(error.message)
+        rows = data ?? []
+      } catch (err) {
+        warnDegraded('landing-page index + listing structured data', err)
+        writeFileSync(LANDING_INDEX, JSON.stringify({ groups: [] }, null, 0))
+        writeFileSync(SCHEMA_INDEX, JSON.stringify({}, null, 0))
+        return
+      }
 
       // buildGroups() asserts slug uniqueness and throws on a collision, which
       // fails the build rather than letting one page overwrite another.

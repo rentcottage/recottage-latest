@@ -21,6 +21,26 @@ export interface TranslatableListing {
   source_lang?: string | null;
 }
 
+/**
+ * Whether the live `public_properties` view has the translation columns.
+ *
+ * It does NOT yet (checked against production 2026-11-28: requesting
+ * `title_en` returns 400 "column public_properties.title_en does not exist").
+ * db/listing-translations.sql adds them to property_applications, but the view
+ * must also be recreated to expose them, and neither step has been applied.
+ *
+ * While false, queries ask only for columns that exist, so there is no failing
+ * request on every page load; listingText() falls back to the original title
+ * and description. Flip to true in the same deploy as (or after) the database
+ * change. The 42703 retry in the callers stays as a safety net either way.
+ */
+export const LISTING_TRANSLATIONS_LIVE = false;
+
+/** Translation columns to add to a public_properties select, or '' while they don't exist. */
+export function translationColumns(...cols: string[]): string {
+  return LISTING_TRANSLATIONS_LIVE ? `, ${cols.join(', ')}` : '';
+}
+
 type Field = 'title' | 'description';
 
 export function listingText(

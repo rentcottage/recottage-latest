@@ -12,7 +12,7 @@ import { FEATURE_FLAGS } from '../../lib/featureFlags';
 import { fetchActivePromos, findPromoForLocation, applyPromoDiscount, type Promo } from '../../lib/promos';
 import { fetchOffersForProperty, findOfferForStay, applyOfferToTotal, freeNightsFor, type HostOffer } from '../../lib/hostOffers';
 import { useT } from '../../i18n';
-import { listingText, type TranslatableListing } from '../../lib/listingText';
+import { listingText, translationColumns, type TranslatableListing } from '../../lib/listingText';
 import { amenityLabel } from '../../lib/amenityLabels';
 import { localizePlace } from '../../lib/locationNormalizer';
 import { localizeHostName } from '../../lib/hostNames';
@@ -126,7 +126,8 @@ export default function PropertyDetail() {
         'id, title, location, price_per_night, cover_photo_url, cover_photo_position, amenities, categories, description, bedrooms, bathrooms, max_guests, google_maps_url, latitude, longitude, address, accepted_payment_methods, pricing_type, guest_pricing_tiers, host_first_name, host_last_initial, photo_urls';
       // Added by a later DB migration than this code may be deployed with;
       // requesting a missing column fails the whole query, so fall back.
-      const TRANSLATION_COLUMNS = 'title_en, title_ru, description_en, description_ru, source_lang';
+      // Empty while the view doesn't have them yet — see LISTING_TRANSLATIONS_LIVE.
+      const TRANSLATION_COLUMNS = translationColumns('title_en', 'title_ru', 'description_en', 'description_ru', 'source_lang');
 
       const runQuery = (columns: string) =>
         supabase
@@ -137,8 +138,8 @@ export default function PropertyDetail() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .returns<Record<string, any>>();
 
-      let { data: app, error } = await runQuery(`${BASE_COLUMNS}, ${TRANSLATION_COLUMNS}`);
-      if (error?.code === '42703') {
+      let { data: app, error } = await runQuery(`${BASE_COLUMNS}${TRANSLATION_COLUMNS}`);
+      if (error?.code === '42703' && TRANSLATION_COLUMNS) {
         ({ data: app, error } = await runQuery(BASE_COLUMNS));
       }
 

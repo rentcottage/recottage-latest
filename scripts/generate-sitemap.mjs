@@ -14,6 +14,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
+import { buildQuerySignal, warnDegraded } from './lib/buildData.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -63,23 +64,31 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: { persistSession: false },
 });
 
-const [propertiesRes, experiencesRes] = await Promise.all([
-  supabase
-    .from('public_properties')
-    .select('id, created_at'),
-  supabase
-    .from('experiences')
-    .select('id, created_at')
-    .neq('status', 'archived'),
-]);
-
-if (propertiesRes.error) {
-  console.error('Failed to fetch properties:', propertiesRes.error.message);
-  process.exit(1);
+// A database error or timeout must not fail the deploy: keep the static
+// sitemap that public/ copied into dist/ and carry on.
+let propertiesRes, experiencesRes;
+try {
+  [propertiesRes, experiencesRes] = await Promise.all([
+    supabase
+      .from('public_properties')
+      .select('id, created_at')
+      .abortSignal(buildQuerySignal()),
+    supabase
+      .from('experiences')
+      .select('id, created_at')
+      .neq('status', 'archived')
+      .abortSignal(buildQuerySignal()),
+  ]);
+} catch (err) {
+  warnDegraded('dynamic sitemap (serving the static public/sitemap.xml)', err);
+  process.exit(0);
 }
-if (experiencesRes.error) {
-  console.error('Failed to fetch experiences:', experiencesRes.error.message);
-  process.exit(1);
+
+for (const [what, res] of [['properties', propertiesRes], ['experiences', experiencesRes]]) {
+  if (res.error) {
+    warnDegraded(`dynamic sitemap (serving the static public/sitemap.xml) — ${what}`, res.error);
+    process.exit(0);
+  }
 }
 
 const properties = propertiesRes.data ?? [];

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { listingText, type TranslatableListing } from '../lib/listingText';
+import { listingText, translationColumns, type TranslatableListing } from '../lib/listingText';
 import { useT } from '../i18n';
 import type { Lang } from '../i18n/config';
 
@@ -95,7 +95,8 @@ export function useApprovedProperties() {
         // there yet.
         const BASE_COLUMNS =
           'id, title, location, price_per_night, host_first_name, host_last_initial, amenities, categories, property_type, bedrooms, bathrooms, max_guests, photo_urls, cover_photo_url, cover_photo_position';
-        const TRANSLATION_COLUMNS = 'title_en, title_ru, source_lang';
+        // Empty while the view doesn't have them yet — see LISTING_TRANSLATIONS_LIVE.
+        const TRANSLATION_COLUMNS = translationColumns('title_en', 'title_ru', 'source_lang');
 
         const runQuery = (columns: string) =>
           supabase
@@ -104,9 +105,9 @@ export function useApprovedProperties() {
             .order('created_at', { ascending: false })
             .returns<Record<string, unknown>[]>();
 
-        let { data, error: fetchError } = await runQuery(`${BASE_COLUMNS}, ${TRANSLATION_COLUMNS}`);
+        let { data, error: fetchError } = await runQuery(`${BASE_COLUMNS}${TRANSLATION_COLUMNS}`);
 
-        if (fetchError?.code === '42703') {
+        if (fetchError?.code === '42703' && TRANSLATION_COLUMNS) {
           ({ data, error: fetchError } = await runQuery(BASE_COLUMNS));
         }
 
