@@ -218,10 +218,6 @@ body {
 .rc-word      { display: inline-block; animation: rc-word-up 0.6s cubic-bezier(0.22, 0.9, 0.3, 1) both; }
 .rc-slide-up  { animation: rc-slide-up 0.7s cubic-bezier(0.22, 0.9, 0.3, 1) both; }
 .rc-hero-zoom { animation: rc-hero-zoom 20s linear both; will-change: transform; }
-/* Compact mobile search: the full search panel slides up from the bottom. */
-@keyframes rc-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
-.rc-sheet-in  { animation: rc-sheet-in 0.32s cubic-bezier(0.22, 0.9, 0.3, 1) both; }
-.rc-fade-in   { animation: rc-fadein 0.25s ease both; opacity: 0; }
 /* Quick chips on phones: one swipeable row, no scrollbar. */
 .rc-no-scrollbar { scrollbar-width: none; }
 .rc-no-scrollbar::-webkit-scrollbar { display: none; }
@@ -236,7 +232,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .rc-promo-row { opacity: 1 !important; animation: none !important; }
   .rc-kenburns, .rc-settle, .rc-rise, .rc-fadein, .rc-bob,
-  .rc-word, .rc-slide-up, .rc-sheet-in, .rc-fade-in {
+  .rc-word, .rc-slide-up {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

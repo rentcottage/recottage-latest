@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { georgianCities } from '../../mocks/georgian-cities';
 import { filterCitiesBilingual, localizePlace } from '../../lib/locationNormalizer';
@@ -7,17 +6,7 @@ import { filterPropertiesByName } from '../../lib/propertyNameSearch';
 import { useCottageIndex } from '../../hooks/useCottageIndex';
 import { useT } from '../../i18n';
 
-interface SearchBarProps {
-  /**
-   * Below md, show one compact pill ("Where to? · Dates · Guests") that opens
-   * the full mobile search in a full-screen panel, instead of the four stacked
-   * rows. Used by the landing hero so the photo stays visible on phones; the
-   * search page keeps the stacked rows.
-   */
-  compactOnMobile?: boolean;
-}
-
-export default function SearchBar({ compactOnMobile = false }: SearchBarProps = {}) {
+export default function SearchBar() {
   const { t, plural, lang } = useT();
   const [showWhereDropdown, setShowWhereDropdown] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
@@ -25,8 +14,6 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('2');
   const [showGuestsDropdown, setShowGuestsDropdown] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const pillRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cottages = useCottageIndex();
@@ -42,21 +29,6 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
     if (urlCheckOut) setCheckOut(urlCheckOut);
     if (urlGuests) setGuests(urlGuests);
   }, [searchParams]);
-
-  // Full-screen panel: lock page scroll, close on Escape, give focus back to the pill.
-  useEffect(() => {
-    if (!panelOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanelOpen(false); };
-    window.addEventListener('keydown', onKey);
-    const pill = pillRef.current;
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-      pill?.focus();
-    };
-  }, [panelOpen]);
 
   const popularDestinations = [
     { name: 'Tbilisi', description: 'Capital city with rich history' },
@@ -126,7 +98,6 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
     if (guests) newSearchParams.set('guests', guests);
     const existingCategory = searchParams.get('category');
     if (existingCategory) newSearchParams.set('category', existingCategory);
-    setPanelOpen(false);
     navigate(`/search?${newSearchParams.toString()}`);
   };
 
@@ -139,291 +110,7 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
   return (
     <>
       {/* ── MOBILE LAYOUT (hidden on md+) ── */}
-      {compactOnMobile ? (
-        <>
-          {/* One pill on phones; the full search opens in a panel. */}
-          <button
-            ref={pillRef}
-            type="button"
-            onClick={() => setPanelOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={panelOpen}
-            className="md:hidden w-full flex items-center gap-3 bg-white/95 backdrop-blur rounded-full shadow-lg pl-2 pr-5 py-2 text-left cursor-pointer"
-          >
-            <span className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0">
-              <i className="ri-search-line text-lg" aria-hidden="true"></i>
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-bold text-gray-900 truncate">
-                {selectedLocation || t('searchBar.whereTo')}
-              </span>
-              <span className="block text-xs text-gray-500 truncate">
-                {checkIn ? `${formatDate(checkIn)}${checkOut ? ` – ${formatDate(checkOut)}` : ''}` : t('searchBar.anyDates')}
-                {' · '}
-                {plural('searchBar.guest', Number(guests) || 0)}
-              </span>
-            </span>
-          </button>
-          {panelOpen && createPortal(
-            <div className="md:hidden fixed inset-0 z-[100]">
-              {/* Dimmed page behind the sheet; tap it to close. */}
-              <div className="absolute inset-0 bg-black/45 rc-fade-in" onClick={() => setPanelOpen(false)} aria-hidden="true" />
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={t('searchBar.search')}
-                className="absolute inset-x-0 bottom-0 top-[max(48px,7svh)] bg-[#f7f7f7] rounded-t-3xl shadow-2xl flex flex-col rc-sheet-in"
-              >
-              <div className="pt-2.5 flex justify-center" aria-hidden="true">
-                <span className="w-10 h-1.5 rounded-full bg-gray-300" />
-              </div>
-              <div className="flex items-center justify-between px-4 pt-2 pb-3">
-                <h2 className="text-lg font-extrabold text-gray-900">{t('searchBar.whereTo')}</h2>
-                <button
-                  type="button"
-                  onClick={() => setPanelOpen(false)}
-                  aria-label={t('searchBar.close')}
-                  className="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center text-gray-700 cursor-pointer"
-                >
-                  <i className="ri-close-line text-xl" aria-hidden="true"></i>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-3 pb-6">
-          <div className={`${compactOnMobile ? 'block' : 'block md:hidden'} w-full space-y-1 px-1`}>
-
-            {/* Where — single row */}
-            <div className="relative bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('searchBar.where')}</span>
-              <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
-              <input
-                type="text"
-                value={selectedLocation}
-                onChange={(e) => {
-                  setSelectedLocation(e.target.value);
-                  setShowWhereDropdown(e.target.value.length > 0);
-                  setShowGuestsDropdown(false);
-                }}
-                onFocus={() => {
-                  if (selectedLocation.length > 0) setShowWhereDropdown(true);
-                  setShowGuestsDropdown(false);
-                }}
-                onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
-                autoFocus={panelOpen}
-                placeholder={t('searchBar.wherePlaceholder')}
-                className="text-xs text-gray-600 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-400"
-              />
-              {selectedLocation && (
-                <button
-                  onMouseDown={(e) => { e.preventDefault(); setSelectedLocation(''); setShowWhereDropdown(false); }}
-                  className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0 cursor-pointer"
-                >
-                  <i className="ri-close-line text-xs"></i>
-                </button>
-              )}
-              {showWhereDropdown && (
-                <div className="absolute top-full left-0 mt-1.5 w-full max-h-[55vh] overflow-y-auto overscroll-contain bg-white rounded-xl shadow-xl border border-gray-200 z-50 text-left">
-                  <div className="p-3">
-                    {selectedLocation.length > 0 ? (
-                      <>
-                        {matchingCottages.length > 0 && (
-                          <div className="mb-3">
-                            <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('searchBar.matchingCottages')}</h3>
-                            <div className="space-y-1">
-                              {matchingCottages.map((cottage) => (
-                                <div
-                                  key={cottage.id}
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => handleCottageSelect(cottage.id)}
-                                  className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                                >
-                                  <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center mr-2 shrink-0">
-                                    <i className="ri-home-4-line text-red-500 text-xs"></i>
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium text-gray-900 leading-snug line-clamp-2">{cottage.title}</p>
-                                    <p className="text-xs text-gray-500 truncate">{cottage.location}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {filterCitiesBilingual(georgianCities, selectedLocation).length > 0 && (
-                          <>
-                            <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('searchBar.matchingDestinations')}</h3>
-                            <div className="space-y-1">
-                              {filterCitiesBilingual(georgianCities, selectedLocation)
-                                .slice(0, 6)
-                                .map((city, index) => (
-                                  <div
-                                    key={index}
-                                    onClick={() =>
-                                      handleLocationSelect(
-                                        `${localizePlace(city.name, lang)}, ${localizePlace(city.region, lang)}`
-                                      )
-                                    }
-                                    className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                                  >
-                                    <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
-                                      <i className="ri-map-pin-line text-gray-600 text-xs"></i>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-medium text-gray-900 truncate">{localizePlace(city.name, lang)}</p>
-                                      <p className="text-xs text-gray-500">{localizePlace(city.region, lang)}</p>
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                          </>
-                        )}
-                        {filterCitiesBilingual(georgianCities, selectedLocation).length === 0 && matchingCottages.length === 0 && (
-                          <div className="p-2 text-center text-xs text-gray-500">{t('searchBar.noMatches')}</div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <h3 className="text-xs font-semibold text-gray-700 mb-2">{t('searchBar.popularDestinations')}</h3>
-                        <div className="space-y-1">
-                          {popularDestinations.map((destination, index) => (
-                            <div
-                              key={index}
-                              onClick={() => handleLocationSelect(localizePlace(destination.name, lang))}
-                              className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                            >
-                              <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center mr-2 shrink-0">
-                                <i className="ri-map-pin-line text-gray-600 text-xs"></i>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-medium text-gray-900 truncate">{localizePlace(destination.name, lang)}</p>
-                                <p className="text-xs text-gray-500 truncate">{destination.description}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Check-in & Check-out — side by side in one row */}
-            <div className="grid grid-cols-2 gap-1">
-              {/* Check-in */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('searchBar.checkInShort')}</span>
-                <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
-                <div className="flex-1 min-w-0 relative">
-                  <span className="text-xs text-gray-500 block truncate">
-                    {checkIn ? formatDate(checkIn) : t('searchBar.addDate')}
-                  </span>
-                  <input
-                    type="date"
-                    value={checkIn}
-                    onChange={(e) => handleCheckInChange(e.target.value)}
-                    min={today()}
-                    className="absolute inset-0 opacity-0 w-full cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Check-out */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('searchBar.checkOutShort')}</span>
-                <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
-                <div className="flex-1 min-w-0 relative">
-                  <span className="text-xs text-gray-500 block truncate">
-                    {checkOut ? formatDate(checkOut) : t('searchBar.addDate')}
-                  </span>
-                  <input
-                    type="date"
-                    value={checkOut}
-                    onChange={(e) => setCheckOut(e.target.value)}
-                    min={checkIn ? dayAfter(checkIn) : today()}
-                    className="absolute inset-0 opacity-0 w-full cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Who — single row */}
-            <div
-              className="relative bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2 cursor-pointer"
-              onClick={() => {
-                setShowGuestsDropdown(!showGuestsDropdown);
-                setShowWhereDropdown(false);
-              }}
-            >
-              <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('searchBar.guests')}</span>
-              <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
-              <span className="text-xs text-gray-600 flex-1">
-                {plural('searchBar.guest', Number(guests) || 0)}
-              </span>
-              <div className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0">
-                <i className="ri-arrow-down-s-line text-sm"></i>
-              </div>
-              {showGuestsDropdown && (
-                <div className="absolute top-full left-0 mt-1.5 w-full bg-white rounded-xl shadow-xl border border-gray-200 z-50 text-left">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900">{t('searchBar.guests')}</h4>
-                        <p className="text-xs text-gray-500">{t('searchBar.agesNote')}</p>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setGuests(Math.max(1, parseInt(guests) - 1).toString());
-                          }}
-                          disabled={guests === '1'}
-                          className={`w-7 h-7 rounded-full border flex items-center justify-center cursor-pointer ${
-                            guests === '1'
-                              ? 'border-gray-200 text-gray-300'
-                              : 'border-gray-400 text-gray-600 hover:border-gray-600'
-                          }`}
-                        >
-                          <i className="ri-subtract-line text-xs"></i>
-                        </button>
-                        <span className="w-6 text-center text-sm font-medium" translate="no">{guests}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setGuests(Math.min(15, parseInt(guests) + 1).toString());
-                          }}
-                          disabled={guests === '15'}
-                          className={`w-7 h-7 rounded-full border flex items-center justify-center cursor-pointer ${
-                            guests === '15'
-                              ? 'border-gray-200 text-gray-300'
-                              : 'border-gray-400 text-gray-600 hover:border-gray-600'
-                          }`}
-                        >
-                          <i className="ri-add-line text-xs"></i>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Search button */}
-            <button
-              onClick={handleSearch}
-              className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-semibold text-sm cursor-pointer transition-colors whitespace-nowrap flex items-center justify-center gap-2"
-            >
-              <i className="ri-search-line"></i>
-              {t('searchBar.search')}
-            </button>
-          </div>
-              </div>
-              </div>
-            </div>,
-            document.body,
-          )}
-        </>
-      ) : (
-      <div className={`${compactOnMobile ? 'block' : 'block md:hidden'} w-full space-y-1 px-1`}>
+      <div className="block md:hidden w-full space-y-1 px-1">
 
         {/* Where — single row */}
         <div className="relative bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
@@ -442,7 +129,6 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
               setShowGuestsDropdown(false);
             }}
             onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
-            autoFocus={panelOpen}
             placeholder={t('searchBar.wherePlaceholder')}
             className="text-xs text-gray-600 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-400"
           />
@@ -650,7 +336,6 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
           {t('searchBar.search')}
         </button>
       </div>
-      )}
 
       {/* ── DESKTOP LAYOUT (hidden below md) ── */}
       {/* No overflow-hidden here: it would clip the Where dropdown. The pill shape

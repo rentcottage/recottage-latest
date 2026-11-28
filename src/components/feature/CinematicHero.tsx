@@ -223,16 +223,18 @@ export default function CinematicHero() {
       />
 
       {/* ── Stage: headline fades up word by word, then search slides up ── */}
-      {/* Phones: headline at the top (over the sky), search pill + chips at
-          the bottom (over the snow) — the cottage and its lit windows, in the
-          middle of the vertical clip, stay clear between them. */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-[max(92px,11svh)] pb-[max(20px,3svh)] md:justify-center md:pt-0 md:pb-0 px-4 text-center">
-        <div className="w-full flex flex-col items-center max-md:flex-1 max-md:justify-between">
+      {/* Phones: headline, then the full search form and the chips, all in the
+          empty sky at the top of the vertical clip — the cottage and its lit
+          windows (lower-middle of the frame) stay fully visible below them.
+          Short phones (≤740px tall, e.g. iPhone SE) drop the small label and
+          shrink the headline so the stack still ends above the windows. */}
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-[max(84px,10svh)] [@media(max-width:767px)_and_(max-height:740px)]:pt-[72px] md:justify-center md:pt-0 px-4 text-center">
+        <div className="w-full flex flex-col items-center">
           {/* Full width, not shrink-to-fit: a centred box that hugs the text
               moves its left edge when the web font swaps in (CLS). */}
           <div className="w-full">
             <div
-              className="rc-word text-xs font-extrabold uppercase text-white/80"
+              className="rc-word text-xs font-extrabold uppercase text-white/80 [@media(max-width:767px)_and_(max-height:740px)]:hidden!"
               style={{ letterSpacing: '.35em' }}
             >
               {t('hero.insideLabel')}
@@ -243,7 +245,7 @@ export default function CinematicHero() {
                 arrived (Lighthouse CLS 0.08). */}
             <h1
               key={title}
-              className="mt-3 font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)] max-md:min-h-[2.3em] max-md:flex max-md:flex-wrap max-md:content-center max-md:justify-center max-md:gap-x-[0.25em]"
+              className="mt-3 [@media(max-width:767px)_and_(max-height:740px)]:mt-0 [@media(max-width:767px)_and_(max-height:740px)]:text-[28px] font-extrabold text-white leading-[1.15] text-[clamp(34px,5.5vw,60px)] max-md:min-h-[2.3em] max-md:flex max-md:flex-wrap max-md:content-center max-md:justify-center max-md:gap-x-[0.25em]"
               style={{ textShadow: '0 2px 18px rgba(0,0,0,.45)' }}
             >
               {words.map((w, i) => (
@@ -256,10 +258,10 @@ export default function CinematicHero() {
           </div>
 
           {/* Live search card + amenity quick-filters */}
-          <div className="rc-slide-up w-full max-w-[900px] mx-auto md:mt-8" style={{ animationDelay: `${searchDelay}ms` }}>
-            <SearchBar compactOnMobile />
+          <div className="rc-slide-up w-full max-w-[900px] mx-auto mt-4 [@media(max-width:767px)_and_(max-height:740px)]:mt-3 md:mt-8" style={{ animationDelay: `${searchDelay}ms` }}>
+            <SearchBar />
             {/* Phones: one swipeable row; desktop: centred, wrapping. */}
-            <div className="rc-no-scrollbar flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 mt-3 md:mt-4 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto md:overflow-visible">
+            <div className="rc-no-scrollbar flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 mt-2.5 [@media(max-width:767px)_and_(max-height:740px)]:mt-2 md:mt-4 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto md:overflow-visible">
               {HERO_CHIPS.map((chip) => (
                 <button
                   key={chip.amenity}

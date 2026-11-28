@@ -75,9 +75,6 @@ const ka: Messages = {
     checkOut: 'გასვლა',
     checkInShort: 'შესვლა',
     checkOutShort: 'გასვლა',
-    whereTo: 'სად მიდიხართ?',
-    anyDates: 'ნებისმიერი თარიღი',
-    close: 'დახურვა',
     guests: 'სტუმრები',
     guest: {
       one: '{count} სტუმარი',
