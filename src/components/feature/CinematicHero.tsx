@@ -18,7 +18,7 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
 ];
 
 /** Poster and video share one crop so the crossfade lines up. */
-const HERO_POSITION = 'object-[27%_50%] md:object-center';
+const HERO_POSITION = 'object-[30%_50%] md:object-center';
 
 /** Seconds of crossfade to the poster at each end of the loop. */
 const LOOP_FADE = 0.4;
