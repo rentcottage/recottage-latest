@@ -75,6 +75,9 @@ const ru: Messages = {
     checkOut: 'Выезд',
     checkInShort: 'Заезд',
     checkOutShort: 'Выезд',
+    whereTo: 'Куда едем?',
+    anyDates: 'Любые даты',
+    close: 'Закрыть',
     guests: 'Гости',
     guest: {
       one: '{count} гость',

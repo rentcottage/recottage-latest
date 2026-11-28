@@ -18,7 +18,7 @@ const HERO_CHIPS: { labelKey: string; amenity: string }[] = [
 ];
 
 /** Poster and video share one crop so the crossfade lines up. */
-const HERO_POSITION = 'object-[27%_50%] md:object-center';
+const HERO_POSITION = 'object-[30%_50%] md:object-center';
 
 /** Seconds of crossfade to the poster at each end of the loop. */
 const LOOP_FADE = 0.4;
@@ -31,12 +31,13 @@ const SEARCH_GAP = 200;
  * 'pending' — first paint: poster only (it is the LCP image, preloaded on /).
  * 'video'   — the looping clip fades in over the poster once the page has
  *             loaded: 1920px WebM/MP4 on desktop, a 720px MP4 on phones.
- * 'still'   — prefers-reduced-motion, Save-Data or a 2G connection: the
- *             poster with a very slow 20s zoom; the video is never fetched.
+ * 'still'   — Save-Data or a 2G connection: the poster with a very slow 20s
+ *             zoom; the video is never fetched.
+ * 'static'  — prefers-reduced-motion: the poster, nothing moves.
  * (iPhone Low Power Mode refuses autoplay: play() rejects and the poster
  * simply stays, which is fine.)
  */
-type HeroMode = 'pending' | 'video' | 'still';
+type HeroMode = 'pending' | 'video' | 'still' | 'static';
 
 /** Phones get the 768px poster and the 720px clip. Must match the <source media>. */
 const MOBILE_MQ = '(max-width: 767px)';
@@ -44,9 +45,9 @@ const MOBILE_MQ = '(max-width: 767px)';
 function pickMode(): HeroMode {
   if (typeof window === 'undefined') return 'pending';
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'static';
   const constrained = !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType ?? ''));
-  if (constrained || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'still';
-  return 'video';
+  return constrained ? 'still' : 'video';
 }
 
 /** Runs `fn` after the load event and an idle slot, so the video never competes with first paint / LCP. */
@@ -211,7 +212,9 @@ export default function CinematicHero() {
       />
 
       {/* ── Stage: headline fades up word by word, then search slides up ── */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center">
+      {/* Phones: the stage sits in the upper part of the screen (over the sky)
+          so the cottage, its windows and the porch keep the lower half. */}
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-[max(96px,13svh)] md:justify-center md:pt-0 px-4 text-center">
         <div className="w-full flex flex-col items-center">
           {/* Full width, not shrink-to-fit: a centred box that hugs the text
               moves its left edge when the web font swaps in (CLS). */}
@@ -242,14 +245,15 @@ export default function CinematicHero() {
 
           {/* Live search card + amenity quick-filters */}
           <div className="rc-slide-up w-full max-w-[900px] mx-auto mt-8" style={{ animationDelay: `${searchDelay}ms` }}>
-            <SearchBar />
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
+            <SearchBar compactOnMobile />
+            {/* Phones: one swipeable row; desktop: centred, wrapping. */}
+            <div className="rc-no-scrollbar flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 mt-3 md:mt-4 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto md:overflow-visible">
               {HERO_CHIPS.map((chip) => (
                 <button
                   key={chip.amenity}
                   type="button"
                   onClick={() => navigate(`/search?amenities=${encodeURIComponent(chip.amenity)}`)}
-                  className="rounded-full border border-white/40 bg-black/25 backdrop-blur-sm text-white text-xs font-bold px-[15px] py-[7px] hover:bg-black/40 transition-colors cursor-pointer whitespace-nowrap"
+                  className="shrink-0 rounded-full border border-white/40 bg-black/25 backdrop-blur-sm text-white text-xs font-bold px-[15px] py-[7px] hover:bg-black/40 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   {t(chip.labelKey)}
                 </button>

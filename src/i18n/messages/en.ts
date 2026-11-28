@@ -76,6 +76,9 @@ const en = {
     checkOut: 'Check-out',
     checkInShort: 'In',
     checkOutShort: 'Out',
+    whereTo: 'Where to?',
+    anyDates: 'Any dates',
+    close: 'Close',
     guests: 'Guests',
     // Plural via Intl.PluralRules — every CLDR category present so ka/ru share this
     // shape (English fills few/many with the plural form; Russian uses them).
