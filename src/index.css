@@ -134,6 +134,8 @@
   --color-ink: #222222;        /* headings / strong text  → text-ink */
   --color-line: #e5e7eb;       /* hairline borders        → border-line */
   --color-soft: #6b7280;       /* soft muted text         → text-soft */
+  --color-cream: #faf6ef;      /* listing-card footer strip → bg-cream */
+  --color-cream-line: #efe7da; /* its top hairline          → border-cream-line */
   --radius-card: 16px;         /* card corner radius      → rounded-card */
   --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.08);        /* → shadow-card */
   --shadow-card-hover: 0 12px 32px rgba(0, 0, 0, 0.12); /* → shadow-card-hover */

@@ -378,3 +378,16 @@ export function localizePlace(name: string, lang: string): string {
 
   return name;
 }
+
+/**
+ * "Village, Region" (how locations are stored) → "REGION · VILLAGE" for the
+ * listing card's small label (uppercase is applied in CSS). One part stays as
+ * it is; with three or more, the first is the village and the last the region.
+ */
+export function locationEyebrow(localized: string): string {
+  const parts = localized.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return parts[0] ?? '';
+  const village = parts[0];
+  const region = parts[parts.length - 1];
+  return region === village ? region : `${region} · ${village}`;
+}

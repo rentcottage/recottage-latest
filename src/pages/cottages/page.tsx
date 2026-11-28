@@ -111,6 +111,8 @@ export default function CottagesLanding() {
                 images={p.images}
                 host={p.host}
                 amenities={p.amenities}
+                maxGuests={p.maxGuests}
+                bedrooms={p.bedrooms}
                 isRealListing={p.isRealListing}
                 coverPosition={p.coverPosition}
               />
