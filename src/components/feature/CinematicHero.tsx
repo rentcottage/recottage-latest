@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HeroPromoBanner from './HeroPromoBanner';
+import { OFFER_BOTTOM_GAP, offerFitsBelowPorch } from '../../lib/heroLayout';
 import { useT } from '../../i18n';
 
 // Golden-hour grade applied to the hero media when the sunset toggle is on.
@@ -41,6 +42,7 @@ type HeroMode = 'pending' | 'video' | 'still' | 'static';
 
 /** Phones get the 768px poster and the 720px clip. Must match the <source media>. */
 const MOBILE_MQ = '(max-width: 767px)';
+
 
 function pickMode(): HeroMode {
   if (typeof window === 'undefined') return 'pending';
@@ -101,6 +103,27 @@ export default function CinematicHero() {
   }, []);
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Phones: show the offer in the hero only where it clears the porch;
+  // re-checked whenever the hero changes size (rotation, browser chrome).
+  // First value from the window (the hero is 100svh), so the banner mounts in
+  // its final place once and fetches its data once.
+  const [offerInHero, setOfferInHero] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches
+      && offerFitsBelowPorch(window.innerWidth, window.innerHeight),
+  );
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!isPhone || !section) { setOfferInHero(false); return; }
+    const check = () => {
+      const r = section.getBoundingClientRect();
+      setOfferInHero(offerFitsBelowPorch(r.width, r.height));
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(section);
+    return () => ro.disconnect();
+  }, [isPhone]);
 
   // Decide the mode after first paint; the video itself waits for load + idle.
   useEffect(() => {
@@ -274,7 +297,7 @@ export default function CinematicHero() {
               ))}
             </div>
             {/* Active offers — nothing renders when none is running. Phones
-                show them below the hero instead, so they don't cover the cottage. */}
+                show them on the snow at the bottom of the hero (below). */}
             {!isPhone && <HeroPromoBanner />}
           </div>
         </div>
@@ -301,8 +324,27 @@ export default function CinematicHero() {
       >
         <i className="ri-arrow-down-line text-xl rc-bob inline-block" />
       </div>
+
+      {/* Phones: the offer on the snowy foreground, centred, anchored to the
+          hero's bottom edge (+ safe area) — only where it clears the porch.
+          Slides up 400ms after the search form starts appearing; static under
+          reduced motion (rc-slide-up is disabled there). */}
+      {isPhone && offerInHero && (
+        <div
+          className="absolute inset-x-0 z-10 flex justify-center px-4 pointer-events-none"
+          style={{ bottom: `calc(${OFFER_BOTTOM_GAP}px + env(safe-area-inset-bottom, 0px))` }}
+        >
+          <div
+            className="rc-slide-up pointer-events-auto max-w-full drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)] [&_.rc-promo-row]:mt-0"
+            style={{ animationDelay: `${searchDelay + 400}ms` }}
+          >
+            <HeroPromoBanner />
+          </div>
+        </div>
+      )}
     </section>
-    {isPhone && (
+    {/* Short phones without room below the porch: keep it below the hero. */}
+    {isPhone && !offerInHero && (
       <div className="bg-white px-4 pt-1 pb-2">
         <HeroPromoBanner />
       </div>
