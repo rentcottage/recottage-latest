@@ -1,5 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
 import StoragePhoto from './StoragePhoto';
+import { useT } from '../../i18n';
+
+/** What the data layer substitutes for a listing with no photos. */
+const NO_PHOTO = '/cottage-placeholder.svg';
 
 type CoverPosition = 'top' | 'center' | 'bottom';
 
@@ -17,6 +21,7 @@ export default function PropertyImageSlider({
   coverPosition = 'center',
   onFavoriteClick,
 }: PropertyImageSliderProps) {
+  const { t } = useT();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   // Adjacent slides are only mounted after the user shows slider intent
@@ -27,7 +32,9 @@ export default function PropertyImageSlider({
   const touchEndX = useRef<number | null>(null);
   const MIN_SWIPE_DISTANCE = 40;
 
-  const safeImages = images.length > 0 ? images : [''];
+  // No photos (or only the placeholder) → show the skeleton, not an <img>.
+  const realImages = images.filter((u) => u && u !== NO_PHOTO);
+  const safeImages = realImages.length > 0 ? realImages : [''];
   const total = safeImages.length;
 
   const positionClass: Record<CoverPosition, string> = {
@@ -84,19 +91,26 @@ export default function PropertyImageSlider({
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-gray-100 select-none md:h-[195px]"
-      style={{ aspectRatio: '16/11', minHeight: '180px' }}
+      className="relative w-full aspect-[4/3] overflow-hidden bg-[#f1eee8] select-none"
       onMouseEnter={() => { setIsHovered(true); setWantsNeighbors(true); }}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Soft placeholder under every photo: visible while a photo loads, if it
+          fails, and for listings with no photos. StoragePhoto never paints a
+          broken icon or alt text, so this is all a failed photo ever shows. */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-[#bdb5a7]">
+        <i aria-hidden="true" className="ri-home-4-line text-[28px] leading-none" />
+        {realImages.length === 0 && <span className="text-[11px] font-medium">{t('search.cardNoPhoto')}</span>}
+      </div>
+
       {/* Image strip — active always; neighbours only after slider intent.
-          Each photo is the 400px WebP variant (falls back to the original if
-          it hasn't been generated yet), cropped to the 16:11 card by
-          object-cover. A host-positioned cover (top/bottom) keeps their
-          chosen crop position. */}
+          Each photo is the 400px WebP variant (falls back to the original),
+          cropped to the 4:3 card by object-cover; a host-positioned cover
+          (top/bottom) keeps their crop position. Zooms slightly on card
+          hover (desktop), not under reduced motion. */}
       {safeImages.map((src, i) => {
         const isActive = i === currentIndex;
         const isAdjacent =
@@ -106,6 +120,7 @@ export default function PropertyImageSlider({
         if (!isActive && !(wantsNeighbors && isAdjacent)) return null;
 
         const isPositionedCover = i === 0 && coverPosition !== 'center';
+        if (!src) return null;
         return (
           <StoragePhoto
             key={i}
@@ -113,8 +128,8 @@ export default function PropertyImageSlider({
             size="thumb"
             alt={`${title} - photo ${i + 1}`}
             width={400}
-            height={275}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isPositionedCover ? positionClass[coverPosition] : 'object-center'}`}
+            height={300}
+            className={`absolute inset-0 w-full h-full object-cover transition-[opacity,scale] duration-500 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isPositionedCover ? positionClass[coverPosition] : 'object-center'}`}
             style={{ opacity: isActive ? 1 : 0, pointerEvents: 'none' }}
           />
         );
