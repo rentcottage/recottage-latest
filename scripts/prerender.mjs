@@ -39,6 +39,7 @@ import {
   listingRoute,
   loadEnv,
 } from './lib/seo.mjs';
+import { warnDegraded } from './lib/buildData.mjs';
 import {
   CATEGORY_KA,
   georgianName,
@@ -321,9 +322,19 @@ const listingSchemas = existsSync(SCHEMA_INDEX)
   ? JSON.parse(readFileSync(SCHEMA_INDEX, 'utf8'))
   : {};
 
-const listings = await fetchApprovedListings();
+let listings;
+try {
+  listings = await fetchApprovedListings();
+} catch (err) {
+  // Database down or too slow: deploy without listing pages (they fall back
+  // to index.html and render client-side) instead of failing the build.
+  warnDegraded('listing prerender', err);
+  listings = undefined;
+}
 
-if (listings === null) {
+if (listings === undefined) {
+  // Warned above.
+} else if (listings === null) {
   console.warn(
     '\n⚠ VITE_PUBLIC_SUPABASE_URL or VITE_PUBLIC_SUPABASE_ANON_KEY not set; ' +
       'skipping listing prerender (those URLs keep falling back to index.html).',

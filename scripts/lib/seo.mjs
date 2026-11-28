@@ -21,6 +21,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
+import { buildQuerySignal } from './buildData.mjs';
 
 export const SITE = 'https://rentcottage.ge';
 /** The site-wide share image, and the fallback for a listing with no photo. */
@@ -55,7 +56,10 @@ export async function fetchApprovedListings() {
   const supabase = createClient(url, key, { auth: { persistSession: false } });
   const { data, error } = await supabase
     .from('public_properties')
-    .select('id, title, location, price_per_night, bedrooms, cover_photo_url, photo_urls');
+    .select('id, title, location, price_per_night, bedrooms, cover_photo_url, photo_urls')
+    .abortSignal(buildQuerySignal());
+  // Throws on a database error or timeout; scripts/prerender.mjs catches it and
+  // deploys without listing pages rather than failing the build.
   if (error) throw new Error(`public_properties read failed: ${error.message}`);
   return data ?? [];
 }
