@@ -114,7 +114,7 @@ export default function SearchBar() {
 
         {/* Where — single row */}
         <div className="relative z-30 rc-glass rounded-xl border border-white/50 shadow-md px-3 py-2.5 flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('searchBar.where')}</span>
+          <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('searchBar.where')}</span>
           <div className="w-px h-3.5 bg-gray-400/80 shrink-0"></div>
           <input
             type="text"
@@ -130,7 +130,7 @@ export default function SearchBar() {
             }}
             onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
             placeholder={t('searchBar.wherePlaceholder')}
-            className="text-xs text-gray-900 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-600"
+            className="text-xs text-gray-900 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-600 tracking-[-0.01em] text-ellipsis"
           />
           {selectedLocation && (
             <button
@@ -274,7 +274,7 @@ export default function SearchBar() {
             setShowWhereDropdown(false);
           }}
         >
-          <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('searchBar.guests')}</span>
+          <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('searchBar.guests')}</span>
           <div className="w-px h-3.5 bg-gray-400/80 shrink-0"></div>
           <span className="text-xs text-gray-600 flex-1">
             {plural('searchBar.guest', Number(guests) || 0)}

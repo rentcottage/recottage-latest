@@ -252,3 +252,15 @@ body {
     filter: none !important;
   }
 }
+/* ── iOS: no auto-zoom when a field gets focus ─────────────────────────────
+   Safari on iPhone/iPad zooms the page in when a focused field's font is under
+   16px, and leaves it zoomed. On touch screens every text-type field is at
+   least 16px; fields deliberately styled larger (text-lg and up, e.g. the
+   6-digit code input) keep their size. Unlayered, so it outranks the Tailwind
+   size utilities on those fields. Pinch-zoom stays enabled: the viewport meta
+   is NOT locked (no maximum-scale / user-scalable=no — an accessibility must). */
+@media (pointer: coarse) {
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="submit"], [type="button"], [type="reset"], [type="image"], [type="hidden"]), select, textarea):not([class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"]) {
+    font-size: 16px;
+  }
+}
