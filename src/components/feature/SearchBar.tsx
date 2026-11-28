@@ -113,9 +113,9 @@ export default function SearchBar() {
       <div className="block md:hidden w-full space-y-1 px-1">
 
         {/* Where — single row */}
-        <div className="relative bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
+        <div className="relative z-30 rc-glass rounded-xl border border-white/50 shadow-md px-3 py-2.5 flex items-center gap-2">
           <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('searchBar.where')}</span>
-          <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
+          <div className="w-px h-3.5 bg-gray-400/80 shrink-0"></div>
           <input
             type="text"
             value={selectedLocation}
@@ -130,12 +130,12 @@ export default function SearchBar() {
             }}
             onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
             placeholder={t('searchBar.wherePlaceholder')}
-            className="text-xs text-gray-600 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-400"
+            className="text-xs text-gray-900 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-600"
           />
           {selectedLocation && (
             <button
               onMouseDown={(e) => { e.preventDefault(); setSelectedLocation(''); setShowWhereDropdown(false); }}
-              className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0 cursor-pointer"
+              className="w-4 h-4 flex items-center justify-center text-gray-600 shrink-0 cursor-pointer"
             >
               <i className="ri-close-line text-xs"></i>
             </button>
@@ -230,11 +230,11 @@ export default function SearchBar() {
         {/* Check-in & Check-out — side by side in one row */}
         <div className="grid grid-cols-2 gap-1">
           {/* Check-in */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
+          <div className="rc-glass rounded-xl border border-white/50 shadow-md px-3 py-2.5 flex items-center gap-2">
             <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('searchBar.checkInShort')}</span>
-            <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
+            <div className="w-px h-3.5 bg-gray-400/80 shrink-0"></div>
             <div className="flex-1 min-w-0 relative">
-              <span className="text-xs text-gray-500 block truncate">
+              <span className="text-xs text-gray-600 block truncate">
                 {checkIn ? formatDate(checkIn) : t('searchBar.addDate')}
               </span>
               <input
@@ -248,11 +248,11 @@ export default function SearchBar() {
           </div>
 
           {/* Check-out */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2">
+          <div className="rc-glass rounded-xl border border-white/50 shadow-md px-3 py-2.5 flex items-center gap-2">
             <span className="text-xs font-bold text-gray-800 whitespace-nowrap shrink-0">{t('searchBar.checkOutShort')}</span>
-            <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
+            <div className="w-px h-3.5 bg-gray-400/80 shrink-0"></div>
             <div className="flex-1 min-w-0 relative">
-              <span className="text-xs text-gray-500 block truncate">
+              <span className="text-xs text-gray-600 block truncate">
                 {checkOut ? formatDate(checkOut) : t('searchBar.addDate')}
               </span>
               <input
@@ -268,18 +268,18 @@ export default function SearchBar() {
 
         {/* Who — single row */}
         <div
-          className="relative bg-white rounded-xl border border-gray-200 shadow-md px-3 py-2.5 flex items-center gap-2 cursor-pointer"
+          className="relative z-20 rc-glass rounded-xl border border-white/50 shadow-md px-3 py-2.5 flex items-center gap-2 cursor-pointer"
           onClick={() => {
             setShowGuestsDropdown(!showGuestsDropdown);
             setShowWhereDropdown(false);
           }}
         >
           <span className="text-xs font-bold text-gray-800 whitespace-nowrap w-16 shrink-0">{t('searchBar.guests')}</span>
-          <div className="w-px h-3.5 bg-gray-300 shrink-0"></div>
+          <div className="w-px h-3.5 bg-gray-400/80 shrink-0"></div>
           <span className="text-xs text-gray-600 flex-1">
             {plural('searchBar.guest', Number(guests) || 0)}
           </span>
-          <div className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0">
+          <div className="w-4 h-4 flex items-center justify-center text-gray-600 shrink-0">
             <i className="ri-arrow-down-s-line text-sm"></i>
           </div>
           {showGuestsDropdown && (
@@ -340,7 +340,7 @@ export default function SearchBar() {
       {/* ── DESKTOP LAYOUT (hidden below md) ── */}
       {/* No overflow-hidden here: it would clip the Where dropdown. The pill shape
           comes from rounding the first and last cells instead. */}
-      <div className="hidden md:grid grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] max-w-[920px] mx-auto bg-white border-[1.5px] border-line rounded-full shadow-card">
+      <div className="hidden md:grid relative z-20 grid-cols-[1.3fr_1fr_1fr_0.9fr_auto] max-w-[920px] mx-auto rc-glass border-[1.5px] border-white/50 rounded-full shadow-card">
         {/* Where */}
         <div className="relative px-5 py-3.5 pl-7 border-r border-line text-left rounded-l-full">
           <div className="text-xs font-semibold text-gray-900 mb-1 uppercase tracking-wide">{t('searchBar.where')}</div>
@@ -358,7 +358,7 @@ export default function SearchBar() {
             }}
             onBlur={() => setTimeout(() => setShowWhereDropdown(false), 150)}
             placeholder={t('searchBar.wherePlaceholder')}
-            className="text-[15px] text-ink bg-transparent border-none outline-none w-full placeholder-gray-400"
+            className="text-[15px] text-ink bg-transparent border-none outline-none w-full placeholder-gray-600"
           />
 
           {showWhereDropdown && (

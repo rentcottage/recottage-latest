@@ -18,9 +18,11 @@ const en = {
     next: 'Next',
     viewAll: 'View all',
     selectLanguage: 'Select language',
+    changeLanguage: 'Change language',
   },
 
   nav: {
+    menu: 'Menu',
     search: 'Search',
     howItWorks: 'How It Works',
     aboutGeorgia: 'About Georgia',
