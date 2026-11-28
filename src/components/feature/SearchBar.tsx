@@ -165,13 +165,19 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
             </span>
           </button>
           {panelOpen && createPortal(
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label={t('searchBar.search')}
-              className="md:hidden fixed inset-0 z-[100] bg-[#f7f7f7] flex flex-col rc-sheet-in"
-            >
-              <div className="flex items-center justify-between px-4 pt-4 pb-3">
+            <div className="md:hidden fixed inset-0 z-[100]">
+              {/* Dimmed page behind the sheet; tap it to close. */}
+              <div className="absolute inset-0 bg-black/45 rc-fade-in" onClick={() => setPanelOpen(false)} aria-hidden="true" />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('searchBar.search')}
+                className="absolute inset-x-0 bottom-0 top-[max(48px,7svh)] bg-[#f7f7f7] rounded-t-3xl shadow-2xl flex flex-col rc-sheet-in"
+              >
+              <div className="pt-2.5 flex justify-center" aria-hidden="true">
+                <span className="w-10 h-1.5 rounded-full bg-gray-300" />
+              </div>
+              <div className="flex items-center justify-between px-4 pt-2 pb-3">
                 <h2 className="text-lg font-extrabold text-gray-900">{t('searchBar.whereTo')}</h2>
                 <button
                   type="button"
@@ -410,6 +416,7 @@ export default function SearchBar({ compactOnMobile = false }: SearchBarProps = 
               {t('searchBar.search')}
             </button>
           </div>
+              </div>
               </div>
             </div>,
             document.body,

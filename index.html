@@ -26,7 +26,7 @@
          so the media queries would pick the desktop poster. -->
     <script>
       if (location.pathname === '/') {
-        [['/hero-768.webp', '(max-width: 767px)'], ['/hero.webp', '(min-width: 768px)']].forEach(function (p) {
+        [['/hero-mobile.webp', '(max-width: 767px)'], ['/hero.webp', '(min-width: 768px)']].forEach(function (p) {
           var l = document.createElement('link');
           l.rel = 'preload'; l.as = 'image'; l.type = 'image/webp'; l.href = p[0]; l.media = p[1];
           l.setAttribute('fetchpriority', 'high');
