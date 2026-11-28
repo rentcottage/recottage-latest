@@ -17,9 +17,11 @@ const ka: Messages = {
     next: 'შემდეგი',
     viewAll: 'ყველას ნახვა',
     selectLanguage: 'ენის არჩევა',
+    changeLanguage: 'ენის შეცვლა',
   },
 
   nav: {
+    menu: 'მენიუ',
     search: 'ძებნა',
     howItWorks: 'როგორ მუშაობს',
     aboutGeorgia: 'საქართველოს შესახებ',

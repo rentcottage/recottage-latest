@@ -17,9 +17,11 @@ const ru: Messages = {
     next: 'Далее',
     viewAll: 'Показать все',
     selectLanguage: 'Выбрать язык',
+    changeLanguage: 'Сменить язык',
   },
 
   nav: {
+    menu: 'Меню',
     search: 'Поиск',
     howItWorks: 'Как это работает',
     aboutGeorgia: 'О Грузии',

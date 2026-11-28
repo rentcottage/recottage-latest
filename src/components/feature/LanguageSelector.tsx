@@ -3,16 +3,45 @@ import { useT } from '../../i18n';
 import { LANGS, LANG_LABELS, type Lang } from '../../i18n/config';
 
 interface LanguageSelectorProps {
-  variant?: 'desktop' | 'mobile';
+  /**
+   * 'icon'   — round globe button + small dropdown (header, desktop and phone).
+   * 'mobile' — the language grid inside the full-screen mobile menu.
+   * 'desktop' — legacy pill with label + chevron (no longer used in the header).
+   */
+  variant?: 'desktop' | 'mobile' | 'icon';
+  /** 'icon' variant: draw the round border (desktop header) or not (phone header). */
+  bordered?: boolean;
   onClose?: () => void;
   /** Recolor the desktop trigger for a dark/transparent header (e.g. the home hero overlay). */
   onDark?: boolean;
 }
 
-export default function LanguageSelector({ variant = 'desktop', onClose, onDark = false }: LanguageSelectorProps) {
+export default function LanguageSelector({ variant = 'desktop', bordered = false, onClose, onDark = false }: LanguageSelectorProps) {
   const { t, lang, setLang } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Icon variant: keyboard — focus the current language on open, arrows move,
+  // Escape closes and returns focus to the globe, Tab closes.
+  useEffect(() => {
+    if (!open || variant !== 'icon') return;
+    const start = Math.max(0, LANGS.indexOf(lang));
+    itemRefs.current[start]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      const items = itemRefs.current.filter(Boolean) as HTMLButtonElement[];
+      const i = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.key === 'Escape') { e.preventDefault(); setOpen(false); buttonRef.current?.focus(); }
+      else if (e.key === 'Tab') setOpen(false);
+      else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length]?.focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
+      else if (e.key === 'Home') { e.preventDefault(); items[0]?.focus(); }
+      else if (e.key === 'End') { e.preventDefault(); items[items.length - 1]?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, variant, lang]);
 
   // Close on outside click
   useEffect(() => {
@@ -35,6 +64,55 @@ export default function LanguageSelector({ variant = 'desktop', onClose, onDark 
   );
 
   const currentLabel = LANG_LABELS[lang];
+
+  if (variant === 'icon') {
+    const label = t('common.changeLanguage');
+    return (
+      <div ref={ref} className="relative">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={label}
+          title={label}
+          className={`w-10 h-10 max-[376px]:w-9 max-[376px]:h-9 md:w-[42px] md:h-[42px] rounded-full flex items-center justify-center cursor-pointer transition-colors ${
+            bordered ? (onDark ? 'border border-white/40 hover:border-white/70' : 'border border-gray-300 hover:shadow-md') : ''
+          } ${onDark ? 'text-white hover:bg-white/10' : 'text-gray-700 hover:bg-gray-100'}`}
+        >
+          <i className="ri-global-line text-xl leading-none" aria-hidden="true" />
+        </button>
+
+        {open && (
+          <div
+            role="menu"
+            aria-label={label}
+            className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl border border-gray-200 py-1 z-[60] shadow-lg"
+          >
+            {LANGS.map((code, i) => (
+              <button
+                key={code}
+                ref={(el) => { itemRefs.current[i] = el; }}
+                type="button"
+                role="menuitemradio"
+                aria-checked={lang === code}
+                onClick={() => { selectLanguage(code); buttonRef.current?.focus(); }}
+                className={`w-full min-h-[44px] text-left px-4 text-sm cursor-pointer transition-colors flex items-center gap-2.5 whitespace-nowrap outline-none focus-visible:bg-gray-100 ${
+                  lang === code ? 'text-red-500 font-semibold bg-red-50' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                  {lang === code ? <i className="ri-check-line text-red-500 text-sm"></i> : null}
+                </span>
+                <span lang={code}>{LANG_LABELS[code]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (variant === 'mobile') {
     return (

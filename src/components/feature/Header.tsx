@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, signOutUser } from '../../hooks/useAuth';
 import { useIsAgency } from '../../hooks/useIsAgency';
 import LanguageSelector from './LanguageSelector';
+import HeaderAvatar from './HeaderAvatar';
 import CancellationModal from './CancellationModal';
 import { useT } from '../../i18n';
 
@@ -22,7 +23,9 @@ export default function Header({ overlay = false }: HeaderProps) {
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLoggedIn, loading } = useAuth();
+  const { user, isLoggedIn, loading } = useAuth();
+  // Only once the auth state is known: no avatar (or Log in) flashing on load.
+  const showAvatar = !loading && isLoggedIn && !!user;
   // Agencies book for clients and never host, so the host-facing menu entries
   // are hidden for them and "My Profile" opens their agency dashboard.
   const { isAgency } = useIsAgency();
@@ -132,12 +135,8 @@ export default function Header({ overlay = false }: HeaderProps) {
 
             {/* ── Desktop right cluster ── */}
             <div className="hidden md:flex items-center gap-2">
-              {/* Pill language control */}
-              <div className={`flex items-center rounded-full border px-1.5 py-0.5 transition-colors ${
-                dark ? 'border-white/40 hover:border-white/70' : 'border-line hover:border-gray-300'
-              }`}>
-                <LanguageSelector variant="desktop" onDark={dark} />
-              </div>
+              {/* Language: globe icon only, same round style as the menu button */}
+              <LanguageSelector variant="icon" bordered onDark={dark} />
 
               {/* Ghost "Log in" — logged out only (mockup CTA) */}
               {!loading && !isLoggedIn && (
@@ -155,19 +154,26 @@ export default function Header({ overlay = false }: HeaderProps) {
 
               {/* Account menu */}
               <div className="relative user-menu-container">
-                <div
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={isUserMenuOpen}
+                  aria-label={t('nav.menu')}
                   className={`flex items-center border rounded-full p-1 hover:shadow-md transition-shadow cursor-pointer ${
                     dark ? 'border-white/40' : 'border-gray-300'
                   }`}
                   onClick={(e) => { e.stopPropagation(); setIsUserMenuOpen((o) => !o); }}
                 >
-                  <div className="w-8 h-8 flex items-center justify-center">
-                    <i className={`ri-menu-line ${dark ? 'text-white' : 'text-gray-700'}`}></i>
-                  </div>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ml-1 ${isLoggedIn ? 'bg-red-500' : 'bg-gray-500'}`}>
-                    <i className="ri-user-line text-white"></i>
-                  </div>
-                </div>
+                  <span className="w-8 h-8 flex items-center justify-center">
+                    <i className={`ri-menu-line ${dark ? 'text-white' : 'text-gray-700'}`} aria-hidden="true"></i>
+                  </span>
+                  {/* Avatar only for a known, logged-in user — never a grey placeholder. */}
+                  {showAvatar && (
+                    <span className="ml-1">
+                      <HeaderAvatar user={user!} />
+                    </span>
+                  )}
+                </button>
 
                 {isUserMenuOpen && !loading && (
                   <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
@@ -201,12 +207,15 @@ export default function Header({ overlay = false }: HeaderProps) {
             </div>
 
             {/* ── Mobile right side ── */}
-            <div className="md:hidden flex items-center gap-2 ml-auto">
+            {/* Order: logo … [globe] [Log in | avatar] [menu]. ≤375px phones (max-[376px] = width < 376px)
+                tighten the gaps and buttons so nothing wraps into the logo. */}
+            <div className="md:hidden flex items-center gap-1.5 max-[376px]:gap-1 ml-auto flex-shrink-0">
+              <LanguageSelector variant="icon" onDark={dark} />
               {/* Quick login pill — only when logged out */}
               {!loading && !isLoggedIn && (
                 <button
                   onClick={() => navigate('/login')}
-                  className={`text-xs font-semibold border px-3 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors ${
+                  className={`text-xs font-semibold border px-3 max-[376px]:px-2.5 py-1.5 rounded-full whitespace-nowrap cursor-pointer transition-colors ${
                     dark ? 'text-white border-white/70 hover:bg-white/10' : 'text-red-500 border-red-500 hover:bg-red-50'
                   }`}
                 >
@@ -214,14 +223,10 @@ export default function Header({ overlay = false }: HeaderProps) {
                 </button>
               )}
               {/* User avatar dot — when logged in */}
-              {!loading && isLoggedIn && (
-                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <i className="ri-user-line text-white text-sm"></i>
-                </div>
-              )}
+              {showAvatar && <HeaderAvatar user={user!} />}
               {/* Hamburger */}
               <button
-                className={`w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-colors ${
+                className={`w-10 h-10 max-[376px]:w-9 max-[376px]:h-9 flex items-center justify-center rounded-full cursor-pointer transition-colors ${
                   dark ? 'hover:bg-white/10' : 'hover:bg-gray-100'
                 }`}
                 onClick={() => setIsMenuOpen(true)}
@@ -261,9 +266,11 @@ export default function Header({ overlay = false }: HeaderProps) {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex-shrink-0">
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <i className="ri-user-line text-white"></i>
-                </div>
+                {user ? <HeaderAvatar user={user} size={40} /> : (
+                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i className="ri-user-line text-white"></i>
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{t('nav.myAccount')}</p>
                   <p className="text-xs text-gray-500">{t('nav.loggedIn')}</p>
